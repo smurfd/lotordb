@@ -1,0 +1,6 @@
+.pytest_cache/
+.mypy_cache/
+.ruff_cache
+smurfdb.egg-info/
+smurfdb/__pycache__
+smurfdb/test/__pycache__
