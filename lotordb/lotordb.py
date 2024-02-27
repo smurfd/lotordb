@@ -1,4 +1,4 @@
 #!/usr/bin/env python3
-class Smurfdb:
+class Lotordb:
   def __init__(self) -> None:
     pass

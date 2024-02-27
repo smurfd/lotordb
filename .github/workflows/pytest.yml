@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python-version: ["3.8", "3.10", "3.12"]
+        python-version: ["3.11"]
 
     steps:
       - uses: actions/checkout@v4
@@ -26,14 +26,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest
       - name: Test with pytest
-        run: python -m pytest template/test
+        run: python -m pytest lotordb/test
 
   build-latest:
 
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.10", "3.12"]
+        python-version: ["3.11"]
 
     steps:
       - uses: actions/checkout@v4
@@ -47,4 +47,4 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest
       - name: Test with pytest
-        run: python -m pytest template/test
+        run: python -m pytest lotordb/test

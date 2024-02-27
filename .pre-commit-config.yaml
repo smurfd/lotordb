@@ -15,13 +15,13 @@ repos:
         pass_filenames: false
       - id: mypy
         name: mypy
-        entry: python3 -m mypy smurfdb/smurfdb.py smurfdb/test/test_smurfdb.py
+        entry: python3 -m mypy lotordb/lotordb.py lotordb/test/test_lotordb.py
         language: system
         always_run: true
         pass_filenames: false
       - id: tests
         name: tests
-        entry: python3 -m pytest smurfdb/test/
+        entry: python3 -m pytest lotordb/test/
         language: system
         always_run: true
         pass_filenames: false
