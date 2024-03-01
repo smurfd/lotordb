@@ -21,7 +21,7 @@ target-version = "py311"
 
 [lint]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
-ignore = ["E111"]
+ignore = ["E111", "E401", "E114"]
 select = [
   "F",
   "E",
