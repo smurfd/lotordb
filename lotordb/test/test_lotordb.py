@@ -10,8 +10,8 @@ def test_lotordb() -> None:
   Lotordb()
   LotordbServer()
   LotordbServerRunnable(test=True)
-  c = LotordbClient('127.0.0.1', 1337)
-  c.start()
+  client = LotordbClient('127.0.0.1', 1337)
+  client.start()
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 

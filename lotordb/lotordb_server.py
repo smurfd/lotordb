@@ -31,54 +31,20 @@ class LotordbServerListener(threading.Thread):
     self.sock.close()
 
   def run(self):
-    # TODO: while true, if not test
-    self.listen()
+    if not self.test:
+      while True:
+        self.listen()
+    else:
+      self.listen()
 
   def listen(self):
-    # self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # self.sock.bind((self.host, self.port))
-    # self.sock.listen(10)
-
-    # with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
-    #  sock.bind(('127.0.0.1', 8443))
-    #  sock.listen(5)
-    #  with context.wrap_socket(sock, server_side=True) as ssock:
-    #    conn, addr = ssock.accept()
-    """
-    self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-    self.sock.bind((self.host, self.port))
-    self.sock.listen(10)
-    print("listening")
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    print("listening2")
-
-    context.load_cert_chain('.lib/selfsigned.cert', '.lib/selfsigned.key')
-    print("listening3")
-    with context.wrap_socket(self.sock, server_side=True) as self.ssock:
-      print("listening4")
-      conn, addr = self.ssock.accept()
-      print("listening5")
-      print(conn, addr)
-    """
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.load_cert_chain('.lib/selfsigned.cert', '.lib/selfsigned.key')
-
-    # context.load_cert_chain('.lib/selfsigned.cert', '.lib/selfsigned.key')
-
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
       sock.bind((self.host, self.port))
       sock.listen(5)
-      # conn, addr = sock.accept()
-      # works
-      # ssls = ssl.wrap_socket(conn, server_side=True, certfile=".lib/selfsigned.cert", keyfile=".lib/selfsigned.key")
-      ssls = context.wrap_socket(sock, server_side=True)
-      conn, addr = ssls.accept()
+      conn, addr = context.wrap_socket(sock, server_side=True).accept()
       print(conn, addr)
-      # ssls = context.wrap_socket(conn, server_side=True)
-
-      # ssock = context.wrap_socket(sock, server_side=True)
-      # with context.wrap_socket(sock, server_side=True) as ssock:
-      # conn, addr = ssock.accept()
 
 
 class LotordbServerRunnable(threading.Thread):
@@ -86,16 +52,13 @@ class LotordbServerRunnable(threading.Thread):
     signal.signal(signal.SIGTERM, self.service_shutdown)
     signal.signal(signal.SIGINT, self.service_shutdown)
     self.test = test
-    # sr = LotordbServer()
-    # sr.start()
     try:
-      sl = LotordbServerListener('127.0.0.1', 1337, self.test)
-      sl.start()
+      listen = LotordbServerListener('127.0.0.1', 1337, test=self.test)
+      listen.start()
     except self.ServiceExit:
-      sl.event.set()
-      sl.join()
-      sl.close()
-    # sr.join()
+      listen.event.set()
+      listen.join()
+      listen.close()
 
   class ServiceExit(Exception):
     pass
