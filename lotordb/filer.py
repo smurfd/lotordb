@@ -1,29 +1,45 @@
 #!/usr/bin/env python3
 import binascii, struct
 from dataclasses import dataclass
-from typing import List, Union
+from typing import List, Union, Any, BinaryIO
+
+
+@dataclass
+class Row:
+  nrrows: int  # number of rows
+  nrrow: int  # number for this row
+  data: list[Any]  # data for a row
+
+
+@dataclass
+class Table:
+  nrtbls: int  # number of tables
+  nrtbl: int  # this tables nr
+  colnames: list[str]  # column names
+  r: Row
 
 
 @dataclass
 class Db:
-  nrdbs: int
-  nrdb: int
-  dbname: str
-  nrtbl: int
-  tblnames: list[str]
-  fn: str
+  nrdbs: int  # total number of databases
+  nrdb: int  # this database number
+  dbname: str  # database name
+  nrtbl: int  # number of tables in database
+  tblnames: list[str]  # table names
+  fn: str  # database filename
+  tbl: Table
 
 
 class LotordbFiler:
   def __init__(self) -> None:
-    pass
+    self.f: Union[None, BinaryIO] = None
 
-  def open_file(self, filename, rwd) -> str:
-    return open(filename, rwd)
+  def open_file(self, filename, rwd) -> None:
+    self.f = open(filename, rwd)
 
-  def close_file(self, f) -> None:
-    if not f.closed:
-      f.close()
+  def close_file(self) -> None:
+    if self.f and not self.f.closed:
+      self.f.close()
 
   def read_header_from_file(self) -> None:
     pass
@@ -37,57 +53,56 @@ class LotordbFiler:
   def read_data_row_from_file(self) -> None:
     pass
 
-  def create_db_file(self, filename) -> str:
-    return self.open_file(filename, 'ab+')
+  def create_db_file(self, filename) -> None:
+    self.open_file(filename, 'ab+')
 
   def modify_nr_from_file(self, nr, mnr) -> bytes:
     dbs = binascii.unhexlify(nr.rstrip())
     dbsint = int.from_bytes(dbs, 'big') + mnr
     return binascii.hexlify(dbsint.to_bytes(len(dbs), 'big'))
 
-  def add_db_to_file(self, f, fn, db_name) -> None:
-    d4 = Db(6, 4, 'db4', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr')
-    self.pack_db(f, d4)
+  def add_db_to_file(self, fn, db_name) -> None:
+    r1 = Row(2, 0, [66, 55, 'stuff', 'm0reStUFf', 1234667])
+    t1 = Table(3, 0, ['tb1', 'tb2', 'tb3', 'tb4'], r1)
+    self.pack_db(Db(6, 4, 'db4', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1))
 
-  """
-  header row1: number of databases, [db nr, number of tables]
-  header row2: [table nr, numbers of collumns]
-  header row2: database name, table names...
-  header row3: tablename, collumns"""
+  def pack_write_to_file(self, packed) -> None:
+    print('P=', packed, self.f)
+    if self.f:
+      [self.f.write(p) for p in packed]
+      # for p in packed:
+      #  self.f.write(p)
 
-  def pack_db(self, f, db) -> None:
-    p: List[Union[bytes, None]] = [None] * 6
-    p[0] = struct.pack('>Q', db.nrdbs)
-    p[1] = struct.pack('>Q', db.nrdb)
-    p[2] = struct.pack('>%ds' % len(db.dbname), bytes(db.dbname, 'UTF-8'))
-    p[3] = struct.pack('>Q', db.nrtbl)
-    p[4] = ','.join(db.tblnames).encode('UTF-8')
-    p[5] = struct.pack('>%ds' % len(db.fn), bytes(db.fn, 'UTF-8'))
-    print('P=', p)
-    for pp in p:
-      f.write(pp)
+  def pack_db(self, db) -> None:
+    packed: List[Union[bytes, None]] = [None] * 6
+    packed[0] = struct.pack('>Q', db.nrdbs)
+    packed[1] = struct.pack('>Q', db.nrdb)
+    packed[2] = struct.pack('>%ds' % len(db.dbname), bytes(db.dbname, 'UTF-8'))
+    packed[3] = struct.pack('>Q', db.nrtbl)
+    packed[4] = ','.join(db.tblnames).encode('UTF-8')
+    packed[5] = struct.pack('>%ds' % len(db.fn), bytes(db.fn, 'UTF-8'))
+    print('F=', self.f)
+    self.pack_write_to_file(packed)
 
-  def add_db_to_file_(self, f, fn, db_name) -> None:
-    self.close_file(f)
-    f = open(fn, 'rb+')
-    databases = f.readline()
-    print(databases)
-    if not databases:
-      print('db empty, creating header')
-      f.write(b'00\n')
-      databases = b'00'
-    f.seek(0)
-    databases = self.modify_nr_from_file(databases, 1)
-    f.write(databases + '\n'.encode())
-    f.readline()
-    f.readline()
-    f.write((db_name + ',').encode())
+  def pack_tbl(self, tbl) -> None:
+    packed: List[Union[bytes, None]] = [None] * 4
+    packed[0] = struct.pack('>Q', tbl.nrtbls)
+    packed[1] = struct.pack('>Q', tbl.nrtbl)
+    packed[2] = struct.pack('>%ds' % len(tbl.colnames), bytes(tbl.colnames, 'UTF-8'))
+    self.pack_write_to_file(packed)
 
-  def add_table_to_db(self, f, db_name, tbl_name, tbl_columns, tbl_types) -> None:
-    pass
+  def pack_row(self, col) -> None:
+    packed: List[Union[bytes, None]] = [None] * 3
+    packed[0] = struct.pack('>Q', col.nrrows)
+    packed[1] = struct.pack('>Q', col.nrrow)
+    packed[2] = struct.pack('>%ds' % len(col.data), bytes(col.data, 'UTF-8'))
+    self.pack_write_to_file(packed)
 
-  def add_row_to_table(self, f, db_name, tbl_name, row) -> None:
-    pass
+  def add_table_to_db(self, tbl) -> None:
+    self.pack_tbl(tbl)
+
+  def add_row_to_table(self, col) -> None:
+    self.pack_row(col)
 
   def delete_db_from_file(self) -> None:
     pass
@@ -110,22 +125,23 @@ class LotordbFiler:
 
 if __name__ == '__main__':
   print('DB')
-  d1 = Db(6, 1, 'db1', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr')
-  d2 = Db(6, 2, 'db2', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr')
-  d3 = Db(6, 3, 'db3', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr')
-  d4 = Db(6, 4, 'db4', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr')
-  d5 = Db(6, 5, 'db5', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr')
-  d6 = Db(6, 6, 'db6', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr')
+  r1 = Row(2, 0, [66, 55, 'stuff', 'm0reStUFf', 1234667])
+  t1 = Table(3, 0, ['tb1', 'tb2', 'tb3', 'tb4'], r1)
+  d1 = Db(6, 1, 'db1', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
+  d2 = Db(6, 2, 'db2', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
+  d3 = Db(6, 3, 'db3', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
+  d4 = Db(6, 4, 'db4', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
+  d5 = Db(6, 5, 'db5', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
+  d6 = Db(6, 6, 'db6', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
   print(d1, d2, d3, d4, d5, d6)
-  # pack_db(d1)
-  # exit()
 
   db = LotordbFiler()
-  db_file = db.create_db_file('.lib/db1.db')
-  db.add_db_to_file(db_file, '.lib/db1.db', 'db1')
-  db.add_db_to_file(db_file, '.lib/db1.db', 'db2')
-  db.add_db_to_file(db_file, '.lib/db1.db', 'db3')
-  db.close_file(db_file)
+  db.create_db_file('.lib/db1.db')
+  print('DBF', db.f)
+  db.add_db_to_file('.lib/db1.db', 'db1')
+  db.add_db_to_file('.lib/db1.db', 'db2')
+  db.add_db_to_file('.lib/db1.db', 'db3')
+  db.close_file()
 
 
 """ 2nd plan
