@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
 from lotordb.server import LotordbServerRunnable
-from lotordb.client import LotordbClient
-
-# from lotordb.files import LotordbFile
+from lotordb.client import LotordbClientRunnable
 import time
 
 
 def test_lotordb() -> None:
   t = time.perf_counter()
-  # LotordbFile()
-  # LotordbServer()
   LotordbServerRunnable(test=True)
-  client = LotordbClient('127.0.0.1', 1337)
-  client.start()
-  client.connect()
+  LotordbClientRunnable()
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 

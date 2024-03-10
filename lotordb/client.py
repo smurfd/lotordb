@@ -38,6 +38,7 @@ class LotordbClientRunnable(threading.Thread):
   def __init__(self) -> None:
     threading.Thread.__init__(self, group=None)
     self.client = Union[None, LotordbClient]
+    self.run()
 
   def run(self) -> None:
     try:
