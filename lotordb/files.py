@@ -1,36 +1,108 @@
 #!/usr/bin/env python3
 import binascii, struct
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Union, Any, BinaryIO
 
 
 @dataclass
 class Row:
-  nrrows: int  # number of rows
-  nrrow: int  # number for this row
+  nrrows: int = field(default=False, init=False)  # number of rows
+  nrrow: int = field(default=False, init=False)  # number for this row
   data: list[Any]  # data for a row
 
 
 @dataclass
 class Table:
-  nrtbls: int  # number of tables
-  nrtbl: int  # this tables nr
+  nrtbls: int = field(default=False, init=False)  # number of tables
+  nrtbl: int = field(default=False, init=False)  # this tables nr
   colnames: list[str]  # column names
   r: Row
 
 
 @dataclass
 class Db:
-  nrdbs: int  # total number of databases
-  nrdb: int  # this database number
+  nrdbs: int = field(default=False, init=False)  # total number of databases
+  nrdb: int = field(default=False, init=False)  # this database number
   dbname: str  # database name
-  nrtbl: int  # number of tables in database
+  nrtbl: int = field(default=False, init=False)  # number of tables in database
   tblnames: list[str]  # table names
   fn: str  # database filename
   tbl: Table
 
 
-class LotordbFiler:
+"""
+header file:
+8b number_of_databases
+  [8b db1][8b number_of_tables][8b tbl1][8b number_of_columns][8b col1]
+  [8b db1][8b number_of_tables][8b tbl1][8b number_of_columns][8b col2]
+  [8b db1][8b number_of_tables][8b tbl1][8b number_of_columns][8b col3]
+
+  [8b db1][8b number_of_tables][8b tbl2][8b number_of_columns][8b col1]
+  [8b db1][8b number_of_tables][8b tbl2][8b number_of_columns][8b col2]
+
+  [8b db1][8b number_of_tables][8b tbl3][8b number_of_columns][8b col1]
+
+  [8b db1][8b number_of_tables][8b tbl1][8b number_of_columns][8b col4]
+  ...
+00000001                                                                create db
+  0000000100000000
+    0000000100000001                                                    create table
+      000000010000000100000000
+        000000010000000100000001                                        create column
+          00000001000000010000000100000000
+            00000001000000010000000100000001                            column1
+            00000001000000010000000200000002                            column2
+            00000001000000010000000300000003                            column3
+
+    0000000100000002                                                    create table
+      000000010000000200000000
+        000000010000000200000001                                        create column
+          00000001000000020000000100000000
+            00000001000000020000000100000001                            column1
+            00000001000000020000000200000002                            column2
+
+    0000000100000003                                                    create table
+      000000010000000300000000
+        000000010000000300000001                                        create column
+          00000001000000030000000100000000
+            00000001000000030000000100000001                            column1
+
+            00000001000000010000000400000004                            column4
+
+00000002                                                                create db
+00000003                                                                create db
+"""
+
+
+"""
+header file:
+1,00000001                                                              create db
+2,00000001                                                              create table
+3,00000001                                                              create colum
+4,00000002                                                              create db
+5,00000003                                                              create db
+
+"""
+"""
+index file:
+1,00000001
+2,0000000100000001
+3,000000010000000100000001
+4,00000002
+5,00000003
+"""
+"""
+data file:
+1,'db1'
+2,'table1'
+3,'column1'
+4,'db2'
+5,'db3'
+
+"""
+
+
+class LotordbFile:
   def __init__(self) -> None:
     self.f: Union[None, BinaryIO] = None
 
@@ -41,8 +113,30 @@ class LotordbFiler:
     if self.f and not self.f.closed:
       self.f.close()
 
-  def read_header_from_file(self) -> None:
-    pass
+  def read_header_from_file(self, filename) -> None:
+    self.f = open(filename, 'ab+')
+    print('---------')
+    print(self.f)
+    data = self.f.read()
+    print(data)
+    print(len(data))
+    print(type(data[0]))
+    print(
+      data[0],
+      data[1],
+      data[2],
+      data[3],
+      data[4],
+      data[5],
+      data[6],
+      data[7],
+    )
+    print(data[15], data[16], data[17])
+    # print(struct.unpack('>32768Q', data))
+    for i in range(len(data)):
+      print(type(data[i]))
+    print(struct.unpack('>s', bytes(data[389])))
+    print(data.decode('UTF-8'))
 
   def read_dbheader_from_file(self) -> None:
     pass
@@ -62,13 +156,14 @@ class LotordbFiler:
     return binascii.hexlify(dbsint.to_bytes(len(dbs), 'big'))
 
   def add_db_to_file(self, db) -> None:
-    # r1 = Row(2, 0, [66, 55, 'stuff', 'm0reStUFf', 1234667])
-    # t1 = Table(3, 0, ['tb1', 'tb2', 'tb3', 'tb4'], r1)
     self.pack_db(db)
 
   def pack_write_to_file(self, packed) -> None:
     if self.f:
-      [self.f.write(p) for p in packed]
+      self.f.seek(0)
+      self.f.write(packed[0])
+      print('write')
+      # [self.f.write(p) for p in packed if p]
 
   def pack_db(self, db) -> None:
     packed: List[Union[bytes, None]] = [None] * 6
@@ -101,6 +196,33 @@ class LotordbFiler:
       packed[2] = bytes(packed[2])
     self.pack_write_to_file(packed)
 
+  def add_db_to_file2(self, db) -> None:
+    self.pack_db2(db)
+
+  def pack_db2(self, db) -> None:
+    dbs: Union[bytes, int, None] = None
+    ff = open('.lib/db2.db', 'rb+')
+    for _ in range(db.nrdbs):
+      dbs = ff.read(8)
+      print('loop dbs', dbs)
+    if dbs:
+      print('dbs', dbs)
+      dbs = bytes(struct.unpack('>Q', dbs)[0])  # type: ignore
+      print('dbs', bytes(int(dbs)))  # struct.unpack('>Q', dbs))
+      dbs += bytes(1)
+      print('dbs', dbs)
+      db.nrdb = dbs
+    else:
+      dbs = 1
+    packed: List[Union[bytes, None]] = [None] * 6
+    packed[0] = struct.pack('>Q', dbs)
+    packed[1] = struct.pack('>Q', dbs)
+    # packed[2] = struct.pack('>%ds' % len(db.dbname), bytes(db.dbname, 'UTF-8'))
+    # packed[3] = struct.pack('>Q', db.nrtbl)
+    # packed[4] = ','.join(db.tblnames).encode('UTF-8')
+    # packed[5] = struct.pack('>%ds' % len(db.fn), bytes(db.fn, 'UTF-8'))
+    self.pack_write_to_file(packed)
+
   def add_table_to_db(self, tbl) -> None:
     self.pack_tbl(tbl)
 
@@ -128,6 +250,7 @@ class LotordbFiler:
 
 if __name__ == '__main__':
   print('DB')
+  """
   r1 = Row(2, 0, [66, 55, 'stuff', 'm0reStUFf', 1234667])
   t1 = Table(3, 0, ['tb1', 'tb2', 'tb3', 'tb4'], r1)
   d1 = Db(6, 1, 'db1', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
@@ -135,10 +258,10 @@ if __name__ == '__main__':
   d3 = Db(6, 3, 'db3', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
   d4 = Db(6, 4, 'db4', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
   d5 = Db(6, 5, 'db5', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
-  d6 = Db(6, 6, 'db6', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
+  d6 = Db('db6', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
   print(d1, d2, d3, d4, d5, d6, t1)
 
-  db = LotordbFiler()
+  db = LotordbFile()
   db.create_db_file('.lib/db1.db')
   db.add_db_to_file(d1)
   db.add_db_to_file(d2)
@@ -148,7 +271,54 @@ if __name__ == '__main__':
   db.add_db_to_file(d6)
   db.add_table_to_db(t1)
   db.add_row_to_table(r1)
+
+  #db.read_header_from_file('.lib/db1.db')
   db.close_file()
+  """
+  r1 = Row([66, 55, 'stuff', 'm0reStUFf', 1234667])
+  t1 = Table(['tb1', 'tb2', 'tb3', 'tb4'], r1)
+  d6 = Db('db6', ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
+  db1 = LotordbFile()
+  db1.create_db_file('.lib/db2.db')
+  """
+  #db1.add_db_to_file2(d6)
+  pp = struct.pack('>Q', 1)# "1".encode('UTF-8'))
+  db1.f.write(pp)
+  db1.close_file()
+  db1.f = open('.lib/db2.db', 'rb+')
+  dat = db1.f.read(8)
+  print("d", dat)
+  dat = struct.unpack('>Q', dat)[0]
+  print("d", dat)
+  dat += 1
+  pp = struct.pack('>Q', dat)
+  db1.f.seek(0)
+  db1.f.write(pp)
+  db1.f.write(b'abc123123123')
+  db1.close_file()
+  """
+  db1.f = open('.lib/db2.db', 'rb+')
+  dat = db1.f.read(8)
+  print('d', dat)
+  if dat:
+    dat = bytes(struct.unpack('>%ds' % 8, dat))
+    print('d', dat)
+    dat = bytes(int(dat[0]))
+    dat += bytes(1)
+  else:
+    dat = bytes(1)
+  pp = struct.pack('>%ds' % 8, str(dat).zfill(8).encode('UTF-8'))
+  db1.f.seek(0)
+  db1.f.write(pp)
+
+  db1.f.seek(0)
+  for i in range(int(dat)):
+    db1.f.seek((i + 1) * 8)
+    p = struct.pack('>%ds' % 8, str(i + 1).zfill(8).encode('UTF-8'))
+    db1.f.write(p)
+    print(i + 1, p, len(str(i + 1)))
+    # For Look for tables
+  db1.close_file()
 
 
 """ 2nd plan
