@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-import os
 from dataclasses import dataclass, field
+import os
 
 
 @dataclass

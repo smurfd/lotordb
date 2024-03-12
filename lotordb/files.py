@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-import binascii, struct
 from dataclasses import dataclass, field
 from typing import List, Union, Any, BinaryIO
+import binascii, struct
 
 
 @dataclass
