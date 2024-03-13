@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import threading, signal, socket, ssl
+from lotordb.keys import Keys
 
 
-class LotordbServerListener(threading.Thread):
+class ServerListener(threading.Thread):
   def __init__(self, dbhost, dbport, dbmaster=True, dbnode=0, test=False, dbtype=False):
     threading.Thread.__init__(self)
     self.host = dbhost
@@ -27,26 +28,41 @@ class LotordbServerListener(threading.Thread):
     if self.type == 'key' and self.test:  # key value server, hack so you can run server in tests
       pass
     if self.type == 'key':  # key value server
-      pass
+      self.init_socket()
+      while not self.event.is_set():
+        self.listen()
+        try:
+          k = self.recv()
+          v = self.recv()
+          s = self.recv()
+          print('serv', k, v, s)
+          if k and v and s:
+            kvs = Keys()
+            kvs.set_key(k, v)
+            kvs.set_store(s)
+            print('kvs', kvs.get_key())
+            kvs.write_key()
+        finally:
+          self.ssl_sock.close()
+
     elif self.type == 'db' and self.test:  # database server, hack so you can run server in tests
       pass
     elif self.type == 'db':  # database server
       pass
     elif self.test:  # hack so you can run server in tests
-      self.init()
+      self.init_socket()
       self.listen()
       self.recv()
     else:
-      self.init()
+      self.init_socket()
       while not self.event.is_set():
         self.listen()
         try:
           self.recv()
-          self.recv()
         finally:
           self.ssl_sock.close()
 
-  def init(self):
+  def init_socket(self):
     self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     self.context.load_cert_chain('.lib/selfsigned.cert', '.lib/selfsigned.key')
     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -64,13 +80,13 @@ class LotordbServerListener(threading.Thread):
       return r
 
 
-class LotordbServerRunnable(threading.Thread):
+class ServerRunnable(threading.Thread):
   def __init__(self, test=False, dbtype=False) -> None:
     signal.signal(signal.SIGTERM, self.service_shutdown)
     signal.signal(signal.SIGINT, self.service_shutdown)
     self.test = test
     try:
-      listen = LotordbServerListener('127.0.0.1', 1337, test=self.test, dbtype=dbtype)
+      listen = ServerListener('127.0.0.1', 1337, test=self.test, dbtype=dbtype)
       listen.start()
     except self.ServiceExit:
       listen.event.set()
@@ -86,4 +102,4 @@ class LotordbServerRunnable(threading.Thread):
 
 if __name__ == '__main__':
   print('Server')
-  LotordbServerRunnable()
+  ServerRunnable(dbtype='key')
