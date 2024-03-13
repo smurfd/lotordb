@@ -26,8 +26,11 @@ class ServerListener(threading.Thread):
 
   def run(self):
     if self.type == 'key' and self.test:  # key value server, hack so you can run server in tests
-      pass
-    if self.type == 'key':  # key value server
+      self.init_socket()
+      self.listen()
+      self.recv()
+      self.ssl_sock.close()
+    elif self.type == 'key':  # key value server
       self.init_socket()
       while not self.event.is_set():
         self.listen()
@@ -44,7 +47,6 @@ class ServerListener(threading.Thread):
             kvs.write_key()
         finally:
           self.ssl_sock.close()
-
     elif self.type == 'db' and self.test:  # database server, hack so you can run server in tests
       pass
     elif self.type == 'db':  # database server
@@ -85,8 +87,9 @@ class ServerRunnable(threading.Thread):
     signal.signal(signal.SIGTERM, self.service_shutdown)
     signal.signal(signal.SIGINT, self.service_shutdown)
     self.test = test
+    print('run ', test)
     try:
-      listen = ServerListener('127.0.0.1', 1337, test=self.test, dbtype=dbtype)
+      listen = ServerListener('127.0.0.1', 1337, test=test, dbtype=dbtype)
       listen.start()
     except self.ServiceExit:
       listen.event.set()
