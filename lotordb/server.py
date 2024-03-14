@@ -3,8 +3,13 @@ import threading, signal, socket, ssl
 from lotordb.keys import Keys
 
 
-class ServerListener(threading.Thread):
-  def __init__(self, dbhost, dbport, dbmaster=True, dbnode=0, test=False, dbtype=False):
+class ServerRunnable(threading.Thread):
+  class ServiceExit(Exception):
+    pass
+
+  def __init__(self, dbhost, dbport, dbmaster=True, dbnode=0, test=False, dbtype=False) -> None:
+    signal.signal(signal.SIGTERM, self.service_shutdown)
+    signal.signal(signal.SIGINT, self.service_shutdown)
     threading.Thread.__init__(self)
     self.host = dbhost
     self.port = dbport
@@ -14,24 +19,28 @@ class ServerListener(threading.Thread):
     self.event = threading.Event()
     self.test = test
     self.type = dbtype
+    self.thread = threading.Thread()
+    try:
+      self.thread.start()
+      self.start()
+    except self.ServiceExit:
+      self.event.set()
+      self.thread.join()
+      self.close()
 
   def __exit__(self, exc_type, exc_value, traceback):
     self.close()
-
-  def __enter__(self):
-    return self
 
   def close(self):
     self.sock.close()
 
   def run(self):
+    self.init_server_socket()
     if self.type == 'key' and self.test:  # key value server, hack so you can run server in tests
-      self.init_socket()
       self.listen()
       self.recv()
       self.ssl_sock.close()
     elif self.type == 'key':  # key value server
-      self.init_socket()
       while not self.event.is_set():
         self.listen()
         try:
@@ -52,11 +61,9 @@ class ServerListener(threading.Thread):
     elif self.type == 'db':  # database server
       pass
     elif self.test:  # hack so you can run server in tests
-      self.init_socket()
       self.listen()
       self.recv()
     else:
-      self.init_socket()
       while not self.event.is_set():
         self.listen()
         try:
@@ -64,7 +71,7 @@ class ServerListener(threading.Thread):
         finally:
           self.ssl_sock.close()
 
-  def init_socket(self):
+  def init_server_socket(self):
     self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     self.context.load_cert_chain('.lib/selfsigned.cert', '.lib/selfsigned.key')
     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -81,28 +88,10 @@ class ServerListener(threading.Thread):
       print(r)
       return r
 
-
-class ServerRunnable(threading.Thread):
-  def __init__(self, test=False, dbtype=False) -> None:
-    signal.signal(signal.SIGTERM, self.service_shutdown)
-    signal.signal(signal.SIGINT, self.service_shutdown)
-    self.test = test
-    print('run ', test)
-    try:
-      listen = ServerListener('127.0.0.1', 1337, test=test, dbtype=dbtype)
-      listen.start()
-    except self.ServiceExit:
-      listen.event.set()
-      listen.join()
-      listen.close()
-
-  class ServiceExit(Exception):
-    pass
-
   def service_shutdown(self, signum, frame):
     raise self.ServiceExit
 
 
 if __name__ == '__main__':
   print('Server')
-  ServerRunnable(dbtype='key')
+  ServerRunnable('127.0.0.1', 1337, dbtype='key')

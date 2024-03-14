@@ -3,34 +3,6 @@ import threading, socket, ssl
 from lotordb.keys import Keys
 from typing import Union
 
-"""
-class ClientCaller(threading.Thread):
-  def __init__(self, dbhost, dbport, dbmaster=True, dbnode=0, dbtype=False) -> None:
-    threading.Thread.__init__(self, group=None)
-    self.event = threading.Event()
-    self.host = dbhost
-    self.port = dbport
-    self.sock = None
-    self.type = dbtype
-
-  def run(self):
-    pass
-
-  def connect(self):
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    context.load_verify_locations('.lib/selfsigned.cert')
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-    self.sock = context.wrap_socket(sock, server_hostname='localhost')
-    self.sock.connect((self.host, self.port))
-    return self.sock
-
-  def send(self, data):
-    self.sock.send(data)
-
-  def receive(self, data):
-    self.sock.recv(data)
-"""
-
 
 class ClientRunnable(threading.Thread):
   def __init__(self, dbhost, dbport, dbmaster=True, dbnode=0, dbtype=False) -> None:
@@ -46,8 +18,6 @@ class ClientRunnable(threading.Thread):
 
   def run(self) -> None:
     try:
-      # self.client = ClientCaller('127.0.0.1', 1337, dbtype=self.type)
-      # self.client.start()
       self.thread.start()
       self.connect()
       if self.type == 'key':  # key value client
@@ -80,5 +50,3 @@ class ClientRunnable(threading.Thread):
 if __name__ == '__main__':
   print('Client')
   ClientRunnable('127.0.0.1', 1337, dbtype='key')
-
-  # client = ClientRunnable(dbtype='key')
