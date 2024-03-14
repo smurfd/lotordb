@@ -7,7 +7,7 @@ import time
 def test_lotordb() -> None:
   t = time.perf_counter()
   ServerRunnable(test=True, dbtype='key')
-  ClientRunnable(dbtype='key')
+  ClientRunnable('127.0.0.1', 1337, dbtype='key')
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
