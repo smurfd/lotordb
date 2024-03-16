@@ -15,9 +15,9 @@ class Hash(threading.Thread):
   def run(self):
     print('hashing:', self.s)
     if isinstance(self.s, bytes):
-      self.h = hashlib.sha512(self.s).hexdigest()
+      self.h = hashlib.sha3_512(self.s).hexdigest()
     else:
-      self.h = hashlib.sha512(self.s.encode('UTF-8')).hexdigest()
+      self.h = hashlib.sha3_512(self.s.encode('UTF-8')).hexdigest()
     print('hashed:::', self.h)
 
   def get(self):
