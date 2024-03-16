@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import threading, signal, socket, ssl
 from lotordb.keys import Keys
+from typing import Union, Any
 
 
 class ServerRunnable(threading.Thread):
@@ -13,9 +14,9 @@ class ServerRunnable(threading.Thread):
     threading.Thread.__init__(self)
     self.host = dbhost
     self.port = dbport
-    self.sock = None
-    self.ssl_sock = None
-    self.context = None
+    self.sock: Union[socket.socket, Any] = None
+    self.ssl_sock: Union[socket.socket, Any] = None
+    self.context: Union[ssl.SSLContext, Any] = None
     self.event = threading.Event()
     self.test = test
     self.type = dbtype
@@ -28,13 +29,13 @@ class ServerRunnable(threading.Thread):
       self.thread.join()
       self.close()
 
-  def __exit__(self, exc_type, exc_value, traceback):
+  def __exit__(self, exc_type, exc_value, traceback) -> None:
     self.close()
 
-  def close(self):
+  def close(self) -> None:
     self.sock.close()
 
-  def run(self):
+  def run(self) -> None:
     self.init_server_socket()
     if self.type == 'key' and self.test:  # key value server, hack so you can run server in tests
       self.listen()
@@ -69,24 +70,23 @@ class ServerRunnable(threading.Thread):
         finally:
           self.ssl_sock.close()
 
-  def init_server_socket(self):
+  def init_server_socket(self) -> None:
     self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     self.context.load_cert_chain('.lib/selfsigned.cert', '.lib/selfsigned.key')
     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
     self.sock.bind((self.host, self.port))
     self.sock.listen(10)
 
-  def listen(self):
+  def listen(self) -> None:
     s, _ = self.sock.accept()
     self.ssl_sock = self.context.wrap_socket(s, server_side=True)
 
-  def recv(self):
-    if self.ssl_sock:
-      r = self.ssl_sock.recv(2048)
-      print('receiving:', r)
-      return r
+  def recv(self) -> bytes:
+    r = self.ssl_sock.recv(2048)
+    print('receiving:', r)
+    return r
 
-  def service_shutdown(self, signum, frame):
+  def service_shutdown(self, signum, frame) -> None:
     raise self.ServiceExit
 
 

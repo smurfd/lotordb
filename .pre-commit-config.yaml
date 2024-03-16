@@ -15,7 +15,7 @@ repos:
         pass_filenames: false
       - id: mypy
         name: mypy
-        entry: python3 -m mypy lotordb/keys.py lotordb/files.py lotordb/client.py lotordb/server.py lotordb/test/test_lotordb.py
+        entry: python3 -m mypy lotordb/keys.py lotordb/files.py lotordb/client.py lotordb/server.py lotordb/hash.py lotordb/test/test_lotordb.py
         language: system
         always_run: true
         pass_filenames: false
