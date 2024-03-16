@@ -22,10 +22,12 @@ class ClientRunnable(threading.Thread):
       self.connect()
       if self.type == 'key':  # key value client
         k = Keys(k='1122', v='abc', s='/tmp')
-        print('sending', k.get_key())
-        self.send(k.get_key()[0].encode('UTF-8'))
-        self.send(k.get_key()[1].encode('UTF-8'))
-        self.send(k.get_key()[2].encode('UTF-8'))
+        key, value, store, ha = k.get_key()
+        print('sending:', key, value, store, ha)
+        self.send(key.encode('UTF-8'))
+        self.send(value.encode('UTF-8'))
+        self.send(store.encode('UTF-8'))
+        self.send(ha.encode('UTF-8'))
       elif self.type == 'db':  # database client
         pass
       self.thread.join()

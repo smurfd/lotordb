@@ -44,16 +44,14 @@ class ServerRunnable(threading.Thread):
       while not self.event.is_set():
         self.listen()
         try:
-          k = self.recv()
-          v = self.recv()
-          s = self.recv()
-          print('serv', k, v, s)
+          k, v, s, h = self.recv(), self.recv(), self.recv(), self.recv()
+          print('serv', k, v, s, h)
           if k and v and s:
-            kvs = Keys()
-            kvs.set_key(k, v)
-            kvs.set_store(s)
-            print('kvs', kvs.get_key())
-            kvs.write_key()
+            kvs = Keys(k, v, s)
+            if h.decode('UTF-8') == kvs.get_key()[3]:
+              kvs.write_key()
+            else:
+              print('Will not write key, hash does not match!')
         finally:
           self.ssl_sock.close()
     elif self.type == 'db' and self.test:  # database server, hack so you can run server in tests
@@ -85,7 +83,7 @@ class ServerRunnable(threading.Thread):
   def recv(self):
     if self.ssl_sock:
       r = self.ssl_sock.recv(2048)
-      print(r)
+      print('receiving:', r)
       return r
 
   def service_shutdown(self, signum, frame):

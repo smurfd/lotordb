@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass, field
+from lotordb.hash import Hash
 import os
 
 
@@ -8,6 +9,7 @@ class Key:
   key: str = field(default='', init=False)
   value: str = field(default='', init=False)
   store: str = field(default='/tmp', init=False)
+  hash: str = field(default='', init=False)
 
 
 class Keys:
@@ -20,9 +22,10 @@ class Keys:
   def set_key(self, k, v):
     self.k.key = k
     self.k.value = v
+    self.k.hash = Hash(self.k.value).get()
 
   def get_key(self):
-    return self.k.key, self.k.value, self.k.store
+    return self.k.key, self.k.value, self.k.store, self.k.hash
 
   def del_key(self):
     if os.path.exists(os.path.join(self.k.store, self.k.key)):
@@ -45,9 +48,4 @@ class Keys:
 
 
 if __name__ == '__main__':
-  lk = Keys(b'12345', b'add', b'/tmp')
-  print(lk.get_key())
-  assert lk.write_key()
-  print(lk.read_key())
-  print(lk.read_key()[0])
-  lk.del_key()
+  print('Keys')
