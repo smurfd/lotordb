@@ -30,6 +30,8 @@ class Db:
   tbl: Table
 
 
+# Thinking out loud about how to do a database
+
 """
 header file:
 8b number_of_databases
