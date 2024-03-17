@@ -49,6 +49,12 @@ class Keys:
       return (True, f.read())
     return (False,)
 
+  def send_key(self, sock, kvsh):
+    sock.send(kvsh[0].encode('UTF-8'))
+    sock.send(kvsh[1].encode('UTF-8'))
+    sock.send(kvsh[2].encode('UTF-8'))
+    sock.send(kvsh[3].encode('UTF-8'))
+
 
 if __name__ == '__main__':
   print('Keys')

@@ -22,12 +22,7 @@ class ClientRunnable(threading.Thread):
       self.connect()
       if self.type == 'key':  # key value client
         k = Keys(k='1122', v='abc', s='/tmp')
-        key, value, store, ha = k.get_key()
-        print('sending:', key, value, store, ha)
-        self.send(key.encode('UTF-8'))
-        self.send(value.encode('UTF-8'))
-        self.send(store.encode('UTF-8'))
-        self.send(ha.encode('UTF-8'))
+        k.send_key(self.sock, k.get_key())
       elif self.type == 'db':  # database client
         pass
       self.thread.join()
@@ -38,7 +33,7 @@ class ClientRunnable(threading.Thread):
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.load_verify_locations('.lib/selfsigned.cert')
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-    self.sock = context.wrap_socket(sock, server_hostname='localhost')
+    self.sock = context.wrap_socket(sock, server_hostname=socket.gethostbyaddr(self.host)[0])  # Get hostname from ip
     self.sock.connect((self.host, self.port))
     return self.sock
 

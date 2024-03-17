@@ -13,12 +13,10 @@ class Hash(threading.Thread):
     self.join()
 
   def run(self):
-    print('hashing:', self.s)
     if isinstance(self.s, bytes):
       self.h = hashlib.sha3_512(self.s).hexdigest()
     else:
       self.h = hashlib.sha3_512(self.s.encode('UTF-8')).hexdigest()
-    print('hashed:::', self.h)
 
   def get(self):
     self.join()
