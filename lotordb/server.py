@@ -45,11 +45,11 @@ class ServerRunnable(threading.Thread):
       while not self.event.is_set():
         self.listen()
         try:
-          k, v, s, h = self.recv(), self.recv(), self.recv(), self.recv()
+          k, v, s, h = Keys().recv_key(self.ssl_sock)
           print('serv', k, v, s, h)
           if k and v and s:
             kvs = Keys(k, v, s)
-            if h.decode('UTF-8') == kvs.get_key()[3]:
+            if h.decode('UTF-8') == kvs.get_key()[3]:  # Check that the serverside hash is the same as received hash from client
               kvs.write_key()
             else:
               print('Will not write key, hash does not match!')
@@ -83,7 +83,6 @@ class ServerRunnable(threading.Thread):
 
   def recv(self) -> bytes:
     r = self.ssl_sock.recv(2048)
-    print('receiving:', r)
     return r
 
   def service_shutdown(self, signum, frame) -> None:

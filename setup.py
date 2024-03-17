@@ -8,7 +8,7 @@ setuptools.setup(
   author='smurfd',
   author_email='smurfd@gmail.com',
   packages=['lotordb'],
-  description='Database, sneaky like the natures bandit',
+  description='Database, sneaky like natures bandit',
   long_description=description,
   long_description_content_type='text/markdown',
   url='https://github.com/smurfd/lotordb',

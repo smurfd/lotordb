@@ -4,7 +4,7 @@
 @!!      @!@  !@!   @!!   @!@  !@! @!@!!@!  @!@  !@! @!@!@!@
 !!:      !!:  !!!   !!:   !!:  !!! !!: :!!  !!:  !!! !!:  !!!
 : ::.: :  : :. :     :     : :. :   :   : : :: :  :  :: : ::
-     auth: smurfd 2024   Database, sneaky like the natures bandit"
+     auth: smurfd 2024   Database, sneaky like natures bandit"
 ```
 `https://en.wikipedia.org/wiki/Raccoon`
 

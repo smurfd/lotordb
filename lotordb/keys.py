@@ -49,11 +49,14 @@ class Keys:
       return (True, f.read())
     return (False,)
 
-  def send_key(self, sock, kvsh):
+  def send_key(self, sock, kvsh) -> None:
     sock.send(kvsh[0].encode('UTF-8'))
     sock.send(kvsh[1].encode('UTF-8'))
     sock.send(kvsh[2].encode('UTF-8'))
     sock.send(kvsh[3].encode('UTF-8'))
+
+  def recv_key(self, sock, size=2048) -> Tuple:
+    return (sock.recv(size), sock.recv(size), sock.recv(size), sock.recv(size))
 
 
 if __name__ == '__main__':
