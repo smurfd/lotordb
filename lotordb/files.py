@@ -1,8 +1,92 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass, field
-from typing import List, Union, Any, BinaryIO
-import binascii, struct
+from typing import List, Union, BinaryIO
 
+
+# Thinking out loud about how to do a database
+"""
+index (read data when server starts)
+[index 16b, dbfile str, dbindex 16b, database 16b, table 16b, row 16b, col 16b, datasegments, seek in file,]
+
+ex: small data, 1st index, 1st db and 1st table. 1st row and 1st column
+[0x1, '/tmp/db.db', 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0]
+
+ex: big data, 2st index, 1st db and 1st table. 2nd row and 1st column (0x20 * 4000) data
+[0x2, '/tmp/db.db', 0x2, 0x1, 0x1, 0x1, 0x1, 0x1, 0x20, 4096]
+
+
+data:
+4096 segments
+4000 data, compressed
+[index 16b, database 16b, table 16b, relative 16b, row 16b, col 16b, data 4000b]
+
+ex: small data, 1st index, 1st db and 1st table. 1st row and 1st column
+[0x1, 0x1, 0x1, 0x0, 0x1, 0x1, b'some data here']
+
+ex: big data, 2st index, 1st db and 1st table. 2st row and 1st column
+[0x2, 0x1, 0x1, 0x0, 0x1, 0x1, b'a shit ton of data way more than 4000b']
+[   , 0x1, 0x1, 0x2, 0x1, 0x1, b'a shit ton of data way more than 4000b']
+[   , 0x1, 0x1, 0x2, 0x1, 0x1, b'a shit ton of data way more than 4000b']
+[   , 0x1, 0x1, 0x2, 0x1, 0x1, b'a shit ton of data way more than 4000b']
+[   , 0x1, 0x1, 0x2, 0x1, 0x1, b'a shit ton of data way more than 4000b']
+
+inserting:
+add entry to index
+add entry to data(if zipped data exceeds 4000 add to more segments)
+
+retrieving:
+...
+
+----------------------------------------------
+"""
+
+
+@dataclass
+class DbIndex:
+  index: int = field(default=False, init=False)
+  file: str = field(default='', init=False)
+  dbindex: int = field(default=False, init=False)
+  database: int = field(default=False, init=False)
+  table: int = field(default=False, init=False)
+  row: int = field(default=False, init=False)
+  col: int = field(default=False, init=False)
+  segments: int = field(default=False, init=False)
+  seek: int = field(default=False, init=False)
+
+
+@dataclass
+class DbData:
+  index: int = field(default=False, init=False)
+  database: int = field(default=False, init=False)
+  table: int = field(default=False, init=False)
+  relative: int = field(default=False, init=False)
+  row: int = field(default=False, init=False)
+  col: int = field(default=False, init=False)
+  data: List[bytes] = field(default=[], init=False)
+
+
+class Files:
+  def __init__(self, fn) -> None:
+    self.f: Union[None, BinaryIO] = None
+    self.fn = (fn + '.dbindex', fn + '.dbdata')
+    self.open_file(self.fn[0], 'ab+')
+
+  def __exit__(self) -> None:
+    self.close_file()
+
+  def open_file(self, filename, rwd) -> None:
+    self.f = open(filename, rwd)
+
+  def close_file(self) -> None:
+    if self.f and not self.f.closed:
+      self.f.close()
+
+
+if __name__ == '__main__':
+  print('DB')
+  f = Files('.lib/db1')
+
+"""
 
 @dataclass
 class Row:
@@ -28,80 +112,6 @@ class Db:
   tblnames: list[str]  # table names
   fn: str  # database filename
   tbl: Table
-
-
-# Thinking out loud about how to do a database
-
-"""
-header file:
-8b number_of_databases
-  [8b db1][8b number_of_tables][8b tbl1][8b number_of_columns][8b col1]
-  [8b db1][8b number_of_tables][8b tbl1][8b number_of_columns][8b col2]
-  [8b db1][8b number_of_tables][8b tbl1][8b number_of_columns][8b col3]
-
-  [8b db1][8b number_of_tables][8b tbl2][8b number_of_columns][8b col1]
-  [8b db1][8b number_of_tables][8b tbl2][8b number_of_columns][8b col2]
-
-  [8b db1][8b number_of_tables][8b tbl3][8b number_of_columns][8b col1]
-
-  [8b db1][8b number_of_tables][8b tbl1][8b number_of_columns][8b col4]
-  ...
-00000001                                                                create db
-  0000000100000000
-    0000000100000001                                                    create table
-      000000010000000100000000
-        000000010000000100000001                                        create column
-          00000001000000010000000100000000
-            00000001000000010000000100000001                            column1
-            00000001000000010000000200000002                            column2
-            00000001000000010000000300000003                            column3
-
-    0000000100000002                                                    create table
-      000000010000000200000000
-        000000010000000200000001                                        create column
-          00000001000000020000000100000000
-            00000001000000020000000100000001                            column1
-            00000001000000020000000200000002                            column2
-
-    0000000100000003                                                    create table
-      000000010000000300000000
-        000000010000000300000001                                        create column
-          00000001000000030000000100000000
-            00000001000000030000000100000001                            column1
-
-            00000001000000010000000400000004                            column4
-
-00000002                                                                create db
-00000003                                                                create db
-"""
-
-
-"""
-header file:
-1,00000001                                                              create db
-2,00000001                                                              create table
-3,00000001                                                              create colum
-4,00000002                                                              create db
-5,00000003                                                              create db
-
-"""
-"""
-index file:
-1,00000001
-2,0000000100000001
-3,000000010000000100000001
-4,00000002
-5,00000003
-"""
-"""
-data file:
-1,'db1'
-2,'table1'
-3,'column1'
-4,'db2'
-5,'db3'
-
-"""
 
 
 class LotordbFile:
@@ -249,10 +259,8 @@ class LotordbFile:
   def modify_row(self) -> None:
     pass
 
-
 if __name__ == '__main__':
   print('DB')
-  """
   r1 = Row(2, 0, [66, 55, 'stuff', 'm0reStUFf', 1234667])
   t1 = Table(3, 0, ['tb1', 'tb2', 'tb3', 'tb4'], r1)
   d1 = Db(6, 1, 'db1', 3, ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
@@ -277,12 +285,14 @@ if __name__ == '__main__':
   #db.read_header_from_file('.lib/db1.db')
   db.close_file()
   """
+"""
   r1 = Row([66, 55, 'stuff', 'm0reStUFf', 1234667])
   t1 = Table(['tb1', 'tb2', 'tb3', 'tb4'], r1)
   d6 = Db('db6', ['tb1', 'tb2', 'tb3'], '.lib/db.dbhdr', t1)
   db1 = LotordbFile()
   db1.create_db_file('.lib/db2.db')
   """
+"""
   #db1.add_db_to_file2(d6)
   pp = struct.pack('>Q', 1)# "1".encode('UTF-8'))
   db1.f.write(pp)
@@ -299,11 +309,12 @@ if __name__ == '__main__':
   db1.f.write(b'abc123123123')
   db1.close_file()
   """
+"""
   db1.f = open('.lib/db2.db', 'rb+')
   dat = db1.f.read(8)
   print('d', dat)
   if dat:
-    dat = bytes(struct.unpack('>%ds' % 8, dat))
+    dat = (struct.unpack('>%ds' % 8, dat))
     print('d', dat)
     dat = bytes(int(dat[0]))
     dat += bytes(1)
@@ -321,7 +332,7 @@ if __name__ == '__main__':
     print(i + 1, p, len(str(i + 1)))
     # For Look for tables
   db1.close_file()
-
+  """
 
 """ 2nd plan
 db header file structure
