@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass, field
 from typing import List, Union, BinaryIO
-
+import struct, gzip
 
 # Thinking out loud about how to do a database
 """
-index (read data when server starts)
-[index 16b, dbfile str, dbindex 16b, database 16b, table 16b, row 16b, col 16b, datasegments, seek in file,]
+index[320] (read data when server starts)
+[index 8b, dbindex 8b, database 8b, table 8b, row 8b, col 8b, datasegments 8b, seek in file 8b, filename 256str]
 
 ex: small data, 1st index, 1st db and 1st table. 1st row and 1st column
 [0x1, '/tmp/db.db', 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0]
@@ -15,10 +15,8 @@ ex: big data, 2st index, 1st db and 1st table. 2nd row and 1st column (0x20 * 40
 [0x2, '/tmp/db.db', 0x2, 0x1, 0x1, 0x1, 0x1, 0x1, 0x20, 4096]
 
 
-data:
-4096 segments
-4000 data, compressed
-[index 16b, database 16b, table 16b, relative 16b, row 16b, col 16b, data 4000b]
+data[4096]
+[index 8b, database 8b, table 8b, relative 8b, row 8b, col 8b, data 4048b]
 
 ex: small data, 1st index, 1st db and 1st table. 1st row and 1st column
 [0x1, 0x1, 0x1, 0x0, 0x1, 0x1, b'some data here']
@@ -43,26 +41,26 @@ retrieving:
 
 @dataclass
 class DbIndex:
-  index: int = field(default=False, init=False)
-  file: str = field(default='', init=False)
-  dbindex: int = field(default=False, init=False)
-  database: int = field(default=False, init=False)
-  table: int = field(default=False, init=False)
-  row: int = field(default=False, init=False)
-  col: int = field(default=False, init=False)
-  segments: int = field(default=False, init=False)
-  seek: int = field(default=False, init=False)
+  index: Union[bytes, None] = field(default=b'', init=True)
+  dbindex: Union[bytes, None] = field(default=b'', init=True)
+  database: Union[bytes, None] = field(default=b'', init=True)
+  table: Union[bytes, None] = field(default=b'', init=True)
+  row: Union[bytes, None] = field(default=b'', init=True)
+  col: Union[bytes, None] = field(default=b'', init=True)
+  segments: Union[bytes, None] = field(default=b'', init=True)
+  seek: Union[bytes, None] = field(default=b'', init=True)
+  file: Union[bytes, None] = field(default=b'db.dbindex', init=True)
 
 
 @dataclass
 class DbData:
-  index: int = field(default=False, init=False)
-  database: int = field(default=False, init=False)
-  table: int = field(default=False, init=False)
-  relative: int = field(default=False, init=False)
-  row: int = field(default=False, init=False)
-  col: int = field(default=False, init=False)
-  data: List[bytes] = field(default=[], init=False)
+  index: Union[bytes, None] = field(default=b'', init=True)
+  database: Union[bytes, None] = field(default=b'', init=True)
+  table: Union[bytes, None] = field(default=b'', init=True)
+  relative: Union[bytes, None] = field(default=b'', init=True)
+  row: Union[bytes, None] = field(default=b'', init=True)
+  col: Union[bytes, None] = field(default=b'', init=True)
+  data: Union[bytes, None] = field(default=b'', init=True)
 
 
 class Files:
@@ -81,11 +79,38 @@ class Files:
     if self.f and not self.f.closed:
       self.f.close()
 
+  def init_index(self, index, dbindex, database, table, row, col, segments, seek, file) -> DbIndex:
+    packed: List[Union[bytes, None]] = [None] * 9
+    packed[0] = struct.pack('>Q', index)
+    packed[1] = struct.pack('>Q', dbindex)
+    packed[2] = struct.pack('>Q', database)
+    packed[3] = struct.pack('>Q', table)
+    packed[4] = struct.pack('>Q', row)
+    packed[5] = struct.pack('>Q', col)
+    packed[6] = struct.pack('>Q', segments)
+    packed[7] = struct.pack('>Q', seek)
+    packed[8] = struct.pack('>255s', bytes(file.ljust(255, ' '), 'UTF-8'))
+    return DbIndex(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6], packed[7], packed[8])
+
+  def init_data(self, index, database, table, relative, row, col, data) -> DbData:
+    d = (data + 4048 * [0])[:4048]
+    packed: List[Union[bytes, None]] = [None] * 7
+    packed[0] = struct.pack('>Q', index)
+    packed[1] = struct.pack('>Q', database)
+    packed[2] = struct.pack('>Q', table)
+    packed[3] = struct.pack('>Q', relative)
+    packed[4] = struct.pack('>Q', row)
+    packed[5] = struct.pack('>Q', col)
+    packed[6] = struct.pack('>%dQ' % 4048, *d)
+    return DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6])
+
 
 if __name__ == '__main__':
   print('DB')
   f = Files('.lib/db1')
-
+  f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
+  f.init_data(1, 1, 1, 1, 1, 1, [111, 1222])
+  print('smurfd', gzip.compress('smurfd'.encode('UTF-8')))
 """
 
 @dataclass
