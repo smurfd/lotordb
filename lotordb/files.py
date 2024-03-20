@@ -92,24 +92,43 @@ class Files:
     packed[8] = struct.pack('>255s', bytes(file.ljust(255, ' '), 'UTF-8'))
     return DbIndex(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6], packed[7], packed[8])
 
-  def init_data(self, index, database, table, relative, row, col, data) -> DbData:
-    d = (data + 4048 * [0])[:4048]
+  def init_data(self, index, database, table, relative, row, col, data) -> Union[DbData, List]:
     packed: List[Union[bytes, None]] = [None] * 7
-    packed[0] = struct.pack('>Q', index)
-    packed[1] = struct.pack('>Q', database)
-    packed[2] = struct.pack('>Q', table)
-    packed[3] = struct.pack('>Q', relative)
-    packed[4] = struct.pack('>Q', row)
-    packed[5] = struct.pack('>Q', col)
-    packed[6] = struct.pack('>%dQ' % 4048, *d)
-    return DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6])
+    gzd: bytes = gzip.compress(struct.pack('>%dQ' % (len(data)), *data))
+    print('GZD', len(gzd))
+    if len(gzd) <= 4048:
+      packed[0] = struct.pack('>Q', index)
+      packed[1] = struct.pack('>Q', database)
+      packed[2] = struct.pack('>Q', table)
+      packed[3] = struct.pack('>Q', relative)
+      packed[4] = struct.pack('>Q', row)
+      packed[5] = struct.pack('>Q', col)
+      packed[6] = gzd
+      return DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6])
+    elif len(gzd) > 4048:
+      ret: List = []
+      j: int = len(gzd) // 4048
+      if len(gzd) - (j * 4048) > 0:
+        j = j + 1
+      for i in range(j):
+        packed[0] = struct.pack('>Q', index)
+        packed[1] = struct.pack('>Q', database)
+        packed[2] = struct.pack('>Q', table)
+        packed[3] = struct.pack('>Q', relative)
+        packed[4] = struct.pack('>Q', row)
+        packed[5] = struct.pack('>Q', col)
+        ret.append(DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], gzd[i * 4048 : (i + 1) * 4848]))
+      return ret
+    return []
 
 
 if __name__ == '__main__':
   print('DB')
   f = Files('.lib/db1')
-  f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
-  f.init_data(1, 1, 1, 1, 1, 1, [111, 1222])
+  a = f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
+  b = f.init_data(1, 1, 1, 1, 1, 1, [1222] * 1000000)
+  print(a)
+  print(b)
   print('smurfd', gzip.compress('smurfd'.encode('UTF-8')))
 """
 
