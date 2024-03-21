@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass, field
-from typing import List, Union, BinaryIO
+from typing import List, Union, BinaryIO, Tuple
 import struct, gzip, time
 
 # Thinking out loud about how to do a database
@@ -123,6 +123,19 @@ class Files:
       return ret
     return []
 
+  def get_index(self, dbi) -> List:
+    unpacked: List[Union[int, Tuple, None]] = [None] * 9
+    unpacked[0] = struct.unpack('>Q', dbi.index)
+    unpacked[1] = struct.unpack('>Q', dbi.dbindex)
+    unpacked[2] = struct.unpack('>Q', dbi.database)
+    unpacked[3] = struct.unpack('>Q', dbi.table)
+    unpacked[4] = struct.unpack('>Q', dbi.row)
+    unpacked[5] = struct.unpack('>Q', dbi.col)
+    unpacked[6] = struct.unpack('>Q', dbi.segments)
+    unpacked[7] = struct.unpack('>Q', dbi.seek)
+    unpacked[8] = struct.unpack('>255s', dbi.file)[0].decode('UTF-8').rstrip(' ')
+    return unpacked
+
 
 if __name__ == '__main__':
   print('DB')
@@ -131,7 +144,5 @@ if __name__ == '__main__':
   f = Files('.lib/db1')
   a = f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
   b = f.init_data(1, 1, 1, 1, 1, 1, [123] * 10000025)
+  f.get_index(a)
   print('time {:.4f}'.format(time.perf_counter() - t))
-  # print(a)
-  # print(b)
-  print('smurfd', gzip.compress('smurfd'.encode('UTF-8')))
