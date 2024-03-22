@@ -93,7 +93,7 @@ class Files:
     packed[8] = struct.pack('>255s', bytes(file.ljust(255, ' '), 'UTF-8'))
     return DbIndex(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6], packed[7], packed[8])
 
-  def init_data(self, index, database, table, relative, row, col, data) -> Union[DbData, List]:
+  def init_data(self, index, database, table, relative, row, col, data, dbi) -> Union[DbData, List]:
     packed: List[Union[bytes, None]] = [None] * 7
     gzd: bytes = gzip.compress(struct.pack('>%dQ' % (len(data)), *data))
     print('GZD', len(gzd))
@@ -119,7 +119,14 @@ class Files:
         packed[3] = struct.pack('>Q', relative)
         packed[4] = struct.pack('>Q', row)
         packed[5] = struct.pack('>Q', col)
-        ret.append(DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], gzd[i * self.size : (i + 1) * self.size]))
+        if not dbi.segments == j:
+          dbi.segments = j.to_bytes(8, 'big')
+        gzdd = gzd[i * self.size : (i + 1) * self.size]
+        if not len(gzdd) == self.size:
+          gzdd = bytearray(gzdd)
+          print('AAAAA', self.size - len(gzdd))
+          gzdd.extend(bytes([0] * (self.size - len(gzdd))))  # Fill out data to be 4048 in size
+        ret.append(DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], gzdd))
       return ret
     return []
 
@@ -136,6 +143,21 @@ class Files:
     unpacked[8] = struct.unpack('>255s', dbi.file)[0].decode('UTF-8').rstrip(' ')
     return unpacked
 
+  def get_data(self, dbi, dbd) -> Tuple[list, bytes]:
+    ret: List = []
+    dat: bytes = b''
+    for i in range(int(''.join(map(str, dbi.segments)))):
+      unpacked: List[Union[int, Tuple, None]] = [None] * 7
+      unpacked[0] = struct.unpack('>Q', dbd[i].index)
+      unpacked[1] = struct.unpack('>Q', dbd[i].database)
+      unpacked[2] = struct.unpack('>Q', dbd[i].table)
+      unpacked[3] = struct.unpack('>Q', dbd[i].relative)
+      unpacked[4] = struct.unpack('>Q', dbd[i].row)
+      unpacked[5] = struct.unpack('>Q', dbd[i].col)
+      dat += dbd[i].data
+      ret.append(unpacked)
+    return ret, dat.rstrip(b'\x00')
+
 
 if __name__ == '__main__':
   print('DB')
@@ -143,6 +165,8 @@ if __name__ == '__main__':
   print('time {:.4f}'.format(time.perf_counter() - t))
   f = Files('.lib/db1')
   a = f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
-  b = f.init_data(1, 1, 1, 1, 1, 1, [123] * 10000025)
+  b = f.init_data(1, 1, 1, 1, 1, 1, [123] * 10000025, a)
   f.get_index(a)
+  d1, d2 = f.get_data(a, b)
+  print(len(d2))
   print('time {:.4f}'.format(time.perf_counter() - t))
