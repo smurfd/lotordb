@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass, field
 from typing import List, Union, BinaryIO, Tuple
-import struct, gzip, time
+import struct, gzip, time, threading
 
 # Thinking out loud about how to do a database
 """
@@ -63,15 +63,18 @@ class DbData:
   data: Union[bytes, None] = field(default=b'', init=True)
 
 
-class Files:
+class Files(threading.Thread):
   def __init__(self, fn) -> None:
+    threading.Thread.__init__(self, group=None)
     self.f: Union[None, BinaryIO] = None
     self.fn = (fn + '.dbindex', fn + '.dbdata')
     self.open_file(self.fn[0], 'ab+')
     self.size = 4048
+    self.start()
 
   def __exit__(self) -> None:
     self.close_file()
+    self.join()
 
   def open_file(self, filename, rwd) -> None:
     self.f = open(filename, rwd)
@@ -96,7 +99,6 @@ class Files:
   def init_data(self, index, database, table, relative, row, col, data, dbi) -> Union[DbData, List]:
     packed: List[Union[bytes, None]] = [None] * 7
     gzd: bytes = gzip.compress(struct.pack('>%dQ' % (len(data)), *data))
-    print('GZD', len(gzd))
     if len(gzd) <= self.size:
       packed[0] = struct.pack('>Q', index)
       packed[1] = struct.pack('>Q', database)
@@ -107,7 +109,7 @@ class Files:
       gzda = bytearray(gzd)
       gzda.extend(bytes([0] * (self.size - len(gzd))))  # Fill out data to be 4048 in size
       packed[6] = gzda
-      return DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6])
+      return [DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6])]
     elif len(gzd) > self.size:
       ret: List = []
       # Calculate diff between length of gz data, if not divisable with self.size, add 1 to j
@@ -124,7 +126,6 @@ class Files:
         gzdd = gzd[i * self.size : (i + 1) * self.size]
         if not len(gzdd) == self.size:
           gzdd = bytearray(gzdd)
-          print('AAAAA', self.size - len(gzdd))
           gzdd.extend(bytes([0] * (self.size - len(gzdd))))  # Fill out data to be 4048 in size
         ret.append(DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], gzdd))
       return ret
@@ -143,7 +144,7 @@ class Files:
     unpacked[8] = struct.unpack('>255s', dbi.file)[0].decode('UTF-8').rstrip(' ')
     return unpacked
 
-  def get_data(self, dbi, dbd) -> Tuple[list, bytes]:
+  def get_data(self, dbi, dbd) -> Tuple[list, Tuple]:
     ret: List = []
     dat: bytes = b''
     for i in range(int(''.join(map(str, dbi.segments)))):
@@ -156,7 +157,8 @@ class Files:
       unpacked[5] = struct.unpack('>Q', dbd[i].col)
       dat += dbd[i].data
       ret.append(unpacked)
-    return ret, dat.rstrip(b'\x00')
+    uncdat = gzip.decompress(dat)
+    return ret, struct.unpack('>%dQ' % (len(uncdat) // 8), uncdat)
 
 
 if __name__ == '__main__':
@@ -169,4 +171,5 @@ if __name__ == '__main__':
   f.get_index(a)
   d1, d2 = f.get_data(a, b)
   print(len(d2))
+  assert list(d2) == [123] * 10000025
   print('time {:.4f}'.format(time.perf_counter() - t))
