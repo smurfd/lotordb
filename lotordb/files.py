@@ -66,9 +66,11 @@ class DbData:
 class Files(threading.Thread):
   def __init__(self, fn) -> None:
     threading.Thread.__init__(self, group=None)
-    self.f: Union[None, BinaryIO] = None
+    self.fi: Union[None, BinaryIO] = None
+    self.fd: Union[None, BinaryIO] = None
     self.fn = (fn + '.dbindex', fn + '.dbdata')
-    self.open_file(self.fn[0], 'ab+')
+    self.open_index_file(self.fn[0], 'ab+')
+    self.open_data_file(self.fn[1], 'ab+')
     self.size = 4048
     self.start()
 
@@ -76,12 +78,17 @@ class Files(threading.Thread):
     self.close_file()
     self.join()
 
-  def open_file(self, filename, rwd) -> None:
-    self.f = open(filename, rwd)
+  def open_index_file(self, filename, rwd) -> None:
+    self.fi = open(filename, rwd)
+
+  def open_data_file(self, filename, rwd) -> None:
+    self.fd = open(filename, rwd)
 
   def close_file(self) -> None:
-    if self.f and not self.f.closed:
-      self.f.close()
+    if self.fi and not self.fi.closed:
+      self.fi.close()
+    if self.fd and not self.fd.closed:
+      self.fd.close()
 
   def init_index(self, index, dbindex, database, table, row, col, segments, seek, file) -> DbIndex:
     packed: List[Union[bytes, None]] = [None] * 9
@@ -140,6 +147,15 @@ class Files(threading.Thread):
     uncdat = gzip.decompress(dat)
     return ret, struct.unpack('>%dQ' % (len(uncdat) // 8), uncdat)
 
+  def write_index(self, dbi) -> None:
+    var: List = [dbi.index, dbi.dbindex, dbi.database, dbi.table, dbi.row, dbi.col, dbi.segments, dbi.seek, dbi.file]
+    [self.fi.write(var[c]) for c in range(9) if self.fi]
+
+  def write_data(self, dbi, dbd) -> None:
+    for i in range(int(''.join(map(str, dbi.segments)))):
+      var: List = [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col, dbd[i].data]
+      [self.fd.write(var[c]) for c in range(7) if self.fd]
+
 
 if __name__ == '__main__':
   print('DB')
@@ -150,6 +166,7 @@ if __name__ == '__main__':
   b = f.init_data(1, 1, 1, 1, 1, 1, [123] * 10000025, a)
   f.get_index(a)
   d1, d2 = f.get_data(a, b)
-  print(len(d2))
   assert list(d2) == [123] * 10000025
+  f.write_index(a)
+  f.write_data(a, b)
   print('time {:.4f}'.format(time.perf_counter() - t))
