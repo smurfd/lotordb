@@ -159,27 +159,16 @@ class Files(threading.Thread):
   def read_index(self) -> Union[DbIndex, None]:
     self.close_file()
     self.open_index_file(self.fn[0], 'rb+')
-    if self.fi:
-      return DbIndex(
-        self.fi.read(8),
-        self.fi.read(8),
-        self.fi.read(8),
-        self.fi.read(8),
-        self.fi.read(8),
-        self.fi.read(8),
-        self.fi.read(8),
-        self.fi.read(8),
-        self.fi.read(255),
-      )
-    return None
+    r: List = [8, 8, 8, 8, 8, 8, 8, 8, 255]
+    return DbIndex(*(self.fi.read(r[c]) for c in range(9) if self.fi))
 
   def read_data(self, dbi) -> List:
     self.close_file()
     self.open_data_file(self.fn[1], 'rb+')
     ret: List = []
-    if self.fd:
-      for i in range(int(''.join(map(str, dbi.segments)))):
-        ret.append(DbData(self.fd.read(8), self.fd.read(8), self.fd.read(8), self.fd.read(8), self.fd.read(8), self.fd.read(8), self.fd.read(4048)))
+    r: List = [8, 8, 8, 8, 8, 8, 4048]
+    for i in range(int(''.join(map(str, dbi.segments)))):
+      ret.append(DbData(*(self.fd.read(r[c]) for c in range(7) if self.fd)))
     return ret
 
 
@@ -196,7 +185,5 @@ if __name__ == '__main__':
   f.write_index(a)
   f.write_data(a, b)
   a2 = f.read_index()
-  # print("a2=", a2)
   b2 = f.read_data(a)
-  # print(b2)
   print('time {:.4f}'.format(time.perf_counter() - t))
