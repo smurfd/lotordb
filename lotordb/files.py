@@ -156,6 +156,32 @@ class Files(threading.Thread):
       var: List = [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col, dbd[i].data]
       [self.fd.write(var[c]) for c in range(7) if self.fd]
 
+  def read_index(self) -> Union[DbIndex, None]:
+    self.close_file()
+    self.open_index_file(self.fn[0], 'rb+')
+    if self.fi:
+      return DbIndex(
+        self.fi.read(8),
+        self.fi.read(8),
+        self.fi.read(8),
+        self.fi.read(8),
+        self.fi.read(8),
+        self.fi.read(8),
+        self.fi.read(8),
+        self.fi.read(8),
+        self.fi.read(255),
+      )
+    return None
+
+  def read_data(self, dbi) -> List:
+    self.close_file()
+    self.open_data_file(self.fn[1], 'rb+')
+    ret: List = []
+    if self.fd:
+      for i in range(int(''.join(map(str, dbi.segments)))):
+        ret.append(DbData(self.fd.read(8), self.fd.read(8), self.fd.read(8), self.fd.read(8), self.fd.read(8), self.fd.read(8), self.fd.read(4048)))
+    return ret
+
 
 if __name__ == '__main__':
   print('DB')
@@ -169,4 +195,8 @@ if __name__ == '__main__':
   assert list(d2) == [123] * 10000025
   f.write_index(a)
   f.write_data(a, b)
+  a2 = f.read_index()
+  # print("a2=", a2)
+  b2 = f.read_data(a)
+  # print(b2)
   print('time {:.4f}'.format(time.perf_counter() - t))
