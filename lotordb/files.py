@@ -85,27 +85,19 @@ class Files(threading.Thread):
 
   def init_index(self, index, dbindex, database, table, row, col, segments, seek, file) -> DbIndex:
     packed: List[Union[bytes, None]] = [None] * 9
-    packed[0] = struct.pack('>Q', index)
-    packed[1] = struct.pack('>Q', dbindex)
-    packed[2] = struct.pack('>Q', database)
-    packed[3] = struct.pack('>Q', table)
-    packed[4] = struct.pack('>Q', row)
-    packed[5] = struct.pack('>Q', col)
-    packed[6] = struct.pack('>Q', segments)
-    packed[7] = struct.pack('>Q', seek)
+    var: List = [index, dbindex, database, table, row, col, segments, seek]
+    for c in range(8):
+      packed[c] = struct.pack('>Q', var[c])
     packed[8] = struct.pack('>255s', bytes(file.ljust(255, ' '), 'UTF-8'))
     return DbIndex(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6], packed[7], packed[8])
 
   def init_data(self, index, database, table, relative, row, col, data, dbi) -> Union[DbData, List]:
     packed: List[Union[bytes, None]] = [None] * 7
     gzd: bytes = gzip.compress(struct.pack('>%dQ' % (len(data)), *data))
+    var: List = [index, database, table, relative, row, col]
     if len(gzd) <= self.size:
-      packed[0] = struct.pack('>Q', index)
-      packed[1] = struct.pack('>Q', database)
-      packed[2] = struct.pack('>Q', table)
-      packed[3] = struct.pack('>Q', relative)
-      packed[4] = struct.pack('>Q', row)
-      packed[5] = struct.pack('>Q', col)
+      for c in range(6):
+        packed[c] = struct.pack('>Q', var[c])
       gzda = bytearray(gzd)
       gzda.extend(bytes([0] * (self.size - len(gzd))))  # Fill out data to be 4048 in size
       packed[6] = gzda
@@ -115,12 +107,8 @@ class Files(threading.Thread):
       # Calculate diff between length of gz data, if not divisable with self.size, add 1 to j
       j: int = (len(gzd) // self.size) if not (len(gzd) - ((len(gzd) // self.size) * self.size) > 0) else (len(gzd) // self.size) + 1
       for i in range(j):
-        packed[0] = struct.pack('>Q', index)
-        packed[1] = struct.pack('>Q', database)
-        packed[2] = struct.pack('>Q', table)
-        packed[3] = struct.pack('>Q', relative)
-        packed[4] = struct.pack('>Q', row)
-        packed[5] = struct.pack('>Q', col)
+        for c in range(6):
+          packed[c] = struct.pack('>Q', var[c])
         if not dbi.segments == j:
           dbi.segments = j.to_bytes(8, 'big')
         gzdd = gzd[i * self.size : (i + 1) * self.size]
@@ -133,14 +121,9 @@ class Files(threading.Thread):
 
   def get_index(self, dbi) -> List:
     unpacked: List[Union[int, Tuple, None]] = [None] * 9
-    unpacked[0] = struct.unpack('>Q', dbi.index)
-    unpacked[1] = struct.unpack('>Q', dbi.dbindex)
-    unpacked[2] = struct.unpack('>Q', dbi.database)
-    unpacked[3] = struct.unpack('>Q', dbi.table)
-    unpacked[4] = struct.unpack('>Q', dbi.row)
-    unpacked[5] = struct.unpack('>Q', dbi.col)
-    unpacked[6] = struct.unpack('>Q', dbi.segments)
-    unpacked[7] = struct.unpack('>Q', dbi.seek)
+    var: List = [dbi.index, dbi.dbindex, dbi.database, dbi.table, dbi.row, dbi.col, dbi.segments, dbi.seek]
+    for c in range(8):
+      unpacked[c] = struct.unpack('>Q', var[c])
     unpacked[8] = struct.unpack('>255s', dbi.file)[0].decode('UTF-8').rstrip(' ')
     return unpacked
 
@@ -149,12 +132,9 @@ class Files(threading.Thread):
     dat: bytes = b''
     for i in range(int(''.join(map(str, dbi.segments)))):
       unpacked: List[Union[int, Tuple, None]] = [None] * 7
-      unpacked[0] = struct.unpack('>Q', dbd[i].index)
-      unpacked[1] = struct.unpack('>Q', dbd[i].database)
-      unpacked[2] = struct.unpack('>Q', dbd[i].table)
-      unpacked[3] = struct.unpack('>Q', dbd[i].relative)
-      unpacked[4] = struct.unpack('>Q', dbd[i].row)
-      unpacked[5] = struct.unpack('>Q', dbd[i].col)
+      var: List = [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col]
+      for c in range(6):
+        unpacked[c] = struct.unpack('>Q', var[c])
       dat += dbd[i].data
       ret.append(unpacked)
     uncdat = gzip.decompress(dat)
