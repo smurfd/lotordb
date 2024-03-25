@@ -102,29 +102,20 @@ class Files(threading.Thread):
     packed: List[Union[bytes, None]] = [None] * 7
     gzd: bytes = gzip.compress(struct.pack('>%dQ' % (len(data)), *data))
     var: List = [index, database, table, relative, row, col]
-    if len(gzd) <= self.size:
+    ret: List = []
+    # Calculate diff between length of gz data, if not divisable with self.size, add 1 to j
+    j: int = (len(gzd) // self.size) if not (len(gzd) - ((len(gzd) // self.size) * self.size) > 0) else (len(gzd) // self.size) + 1
+    for i in range(j):
       for c in range(6):
         packed[c] = struct.pack('>Q', var[c])
-      gzda = bytearray(gzd)
-      gzda.extend(bytes([0] * (self.size - len(gzd))))  # Fill out data to be 4048 in size
-      packed[6] = gzda
-      return [DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6])]
-    elif len(gzd) > self.size:
-      ret: List = []
-      # Calculate diff between length of gz data, if not divisable with self.size, add 1 to j
-      j: int = (len(gzd) // self.size) if not (len(gzd) - ((len(gzd) // self.size) * self.size) > 0) else (len(gzd) // self.size) + 1
-      for i in range(j):
-        for c in range(6):
-          packed[c] = struct.pack('>Q', var[c])
-        if not dbi.segments == j:
-          dbi.segments = j.to_bytes(8, 'big')
-        gzdd = gzd[i * self.size : (i + 1) * self.size]
-        if not len(gzdd) == self.size:
-          gzdd = bytearray(gzdd)
-          gzdd.extend(bytes([0] * (self.size - len(gzdd))))  # Fill out data to be 4048 in size
-        ret.append(DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], gzdd))
-      return ret
-    return []
+      if not dbi.segments == j:
+        dbi.segments = struct.pack('>Q', j)
+      gzdd = gzd[i * self.size : (i + 1) * self.size]
+      if not len(gzdd) == self.size:
+        gzdd = bytearray(gzdd)
+        gzdd.extend(bytes([0] * (self.size - len(gzdd))))  # Fill out data to be 4048 in size
+      ret.append(DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], gzdd))
+    return ret
 
   def get_index(self, dbi) -> List:
     unpacked: List[Union[int, Tuple, None]] = [None] * 9
@@ -137,7 +128,7 @@ class Files(threading.Thread):
   def get_data(self, dbi, dbd) -> Tuple[list, Tuple]:
     ret: List = []
     dat: bytes = b''
-    for i in range(int(''.join(map(str, dbi.segments)))):
+    for i in range(struct.unpack('>Q', dbi.segments)[0]):
       unpacked: List[Union[int, Tuple, None]] = [None] * 7
       var: List = [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col]
       for c in range(6):
@@ -178,10 +169,10 @@ if __name__ == '__main__':
   print('time {:.4f}'.format(time.perf_counter() - t))
   f = Files('.lib/db1')
   a = f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
-  b = f.init_data(1, 1, 1, 1, 1, 1, [123] * 10000025, a)
+  b = f.init_data(1, 1, 1, 1, 1, 1, [123] * 100000025, a)
   f.get_index(a)
   d1, d2 = f.get_data(a, b)
-  assert list(d2) == [123] * 10000025
+  assert list(d2) == [123] * 100000025
   f.write_index(a)
   f.write_data(a, b)
   a2 = f.read_index()
