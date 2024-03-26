@@ -93,8 +93,7 @@ class Files(threading.Thread):
   def init_index(self, index, dbindex, database, table, row, col, segments, seek, file) -> DbIndex:
     packed: List[Union[bytes, None]] = [None] * 9
     var: List = [index, dbindex, database, table, row, col, segments, seek]
-    for c in range(8):
-      packed[c] = struct.pack('>Q', var[c])
+    packed[:7] = [struct.pack('>Q', var[c]) for c in range(8)]
     packed[8] = struct.pack('>255s', bytes(file.ljust(255, ' '), 'UTF-8'))
     return DbIndex(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6], packed[7], packed[8])
 
@@ -106,8 +105,7 @@ class Files(threading.Thread):
     # Calculate diff between length of gz data, if not divisable with self.size, add 1 to j
     j: int = (len(gzd) // self.size) if not (len(gzd) - ((len(gzd) // self.size) * self.size) > 0) else (len(gzd) // self.size) + 1
     for i in range(j):
-      for c in range(6):
-        packed[c] = struct.pack('>Q', var[c])
+      packed[:6] = [struct.pack('>Q', var[c]) for c in range(6)]
       if not dbi.segments == j:
         dbi.segments = struct.pack('>Q', j)
       gzdd = gzd[i * self.size : (i + 1) * self.size]
@@ -120,8 +118,7 @@ class Files(threading.Thread):
   def get_index(self, dbi) -> List:
     unpacked: List[Union[int, Tuple, None]] = [None] * 9
     var: List = [dbi.index, dbi.dbindex, dbi.database, dbi.table, dbi.row, dbi.col, dbi.segments, dbi.seek]
-    for c in range(8):
-      unpacked[c] = struct.unpack('>Q', var[c])
+    unpacked[:7] = [struct.unpack('>Q', var[c]) for c in range(8)]
     unpacked[8] = struct.unpack('>255s', dbi.file)[0].decode('UTF-8').rstrip(' ')
     return unpacked
 
@@ -131,8 +128,7 @@ class Files(threading.Thread):
     for i in range(struct.unpack('>Q', dbi.segments)[0]):
       unpacked: List[Union[int, Tuple, None]] = [None] * 7
       var: List = [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col]
-      for c in range(6):
-        unpacked[c] = struct.unpack('>Q', var[c])
+      unpacked[:6] = [struct.unpack('>Q', var[c]) for c in range(6)]
       dat += dbd[i].data
       ret.append(unpacked)
     uncdat = gzip.decompress(dat)
@@ -156,11 +152,8 @@ class Files(threading.Thread):
   def read_data(self, dbi) -> List:
     self.close_file()
     self.open_data_file(self.fn[1], 'rb+')
-    ret: List = []
     r: List = [8, 8, 8, 8, 8, 8, 4048]
-    for i in range(int(''.join(map(str, dbi.segments)))):
-      ret.append(DbData(*(self.fd.read(r[c]) for c in range(7) if self.fd)))
-    return ret
+    return [DbData(*(self.fd.read(r[c]) for c in range(7) if self.fd)) for i in range(int(''.join(map(str, dbi.segments))))]
 
 
 if __name__ == '__main__':
