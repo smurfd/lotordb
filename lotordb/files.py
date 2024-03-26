@@ -106,13 +106,11 @@ class Files(threading.Thread):
     j: int = (len(gzd) // self.size) if not (len(gzd) - ((len(gzd) // self.size) * self.size) > 0) else (len(gzd) // self.size) + 1
     for i in range(j):
       packed[:6] = [struct.pack('>Q', var[c]) for c in range(6)]
-      if not dbi.segments == j:
-        dbi.segments = struct.pack('>Q', j)
-      gzdd = gzd[i * self.size : (i + 1) * self.size]
-      if not len(gzdd) == self.size:
-        gzdd = bytearray(gzdd)
-        gzdd.extend(bytes([0] * (self.size - len(gzdd))))  # Fill out data to be 4048 in size
-      ret.append(DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], gzdd))
+      ret.append(DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], gzd[i * self.size : (i + 1) * self.size]))
+    if len(ret[len(ret) - 1].data) % self.size:
+      ret[len(ret) - 1].data += bytes([0] * (self.size - len(ret[len(ret) - 1].data)))  # Fill out data to be 4048 in size
+    if not dbi.segments == j:
+      dbi.segments = struct.pack('>Q', j)
     return ret
 
   def get_index(self, dbi) -> List:
@@ -146,14 +144,12 @@ class Files(threading.Thread):
   def read_index(self) -> Union[DbIndex, None]:
     self.close_file()
     self.open_index_file(self.fn[0], 'rb+')
-    r: List = [8, 8, 8, 8, 8, 8, 8, 8, 255]
-    return DbIndex(*(self.fi.read(r[c]) for c in range(9) if self.fi))
+    return DbIndex(*(self.fi.read([8, 8, 8, 8, 8, 8, 8, 8, 255][c]) for c in range(9) if self.fi))
 
   def read_data(self, dbi) -> List:
     self.close_file()
     self.open_data_file(self.fn[1], 'rb+')
-    r: List = [8, 8, 8, 8, 8, 8, 4048]
-    return [DbData(*(self.fd.read(r[c]) for c in range(7) if self.fd)) for i in range(int(''.join(map(str, dbi.segments))))]
+    return [DbData(*(self.fd.read([8, 8, 8, 8, 8, 8, 4048][c]) for c in range(7) if self.fd)) for i in range(int(''.join(map(str, dbi.segments))))]
 
 
 if __name__ == '__main__':
