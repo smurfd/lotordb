@@ -124,11 +124,9 @@ class Files(threading.Thread):
     ret: List = []
     dat: bytes = b''
     for i in range(struct.unpack('>Q', dbi.segments)[0]):
-      unpacked: List[Union[int, Tuple, None]] = [None] * 7
       var: List = [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col]
-      unpacked[:6] = [struct.unpack('>Q', var[c]) for c in range(6)]
       dat += dbd[i].data
-      ret.append(unpacked)
+      ret.append([struct.unpack('>Q', var[c]) for c in range(6)])
     uncdat = gzip.decompress(dat)
     return ret, struct.unpack('>%dQ' % (len(uncdat) // 8), uncdat)
 
@@ -137,7 +135,7 @@ class Files(threading.Thread):
     [self.fi.write(var[c]) for c in range(9) if self.fi]
 
   def write_data(self, dbi, dbd) -> None:
-    for i in range(int(''.join(map(str, dbi.segments)))):
+    for i in range(struct.unpack('>Q', dbi.segments)[0]):
       var: List = [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col, dbd[i].data]
       [self.fd.write(var[c]) for c in range(7) if self.fd]
 
@@ -149,7 +147,7 @@ class Files(threading.Thread):
   def read_data(self, dbi) -> List:
     self.close_file()
     self.open_data_file(self.fn[1], 'rb+')
-    return [DbData(*(self.fd.read([8, 8, 8, 8, 8, 8, 4048][c]) for c in range(7) if self.fd)) for i in range(int(''.join(map(str, dbi.segments))))]
+    return [DbData(*(self.fd.read([8, 8, 8, 8, 8, 8, 4048][c]) for c in range(7) if self.fd)) for i in range(struct.unpack('>Q', dbi.segments)[0])]
 
 
 if __name__ == '__main__':
@@ -166,6 +164,5 @@ if __name__ == '__main__':
   f.write_data(a, b)
   a2 = f.read_index()
   b2 = f.read_data(a)
-  print(f.get_index(a2))
-  print(a)
+  d3, d4 = f.get_data(a2, b2)
   print('time {:.4f}'.format(time.perf_counter() - t))
