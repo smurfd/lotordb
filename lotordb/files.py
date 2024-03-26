@@ -91,7 +91,7 @@ class Files(threading.Thread):
       self.fd.close()
 
   def init_index(self, index, dbindex, database, table, row, col, segments, seek, file) -> DbIndex:
-    packed: List[Union[bytes, None]] = [None] * 9
+    packed: List[Union[bytes, None]] = [None] * 8
     var: List = [index, dbindex, database, table, row, col, segments, seek]
     packed[:7] = [struct.pack('>Q', var[c]) for c in range(8)]
     packed[8] = struct.pack('>255s', bytes(file.ljust(255, ' '), 'UTF-8'))
@@ -114,7 +114,7 @@ class Files(threading.Thread):
     return ret
 
   def get_index(self, dbi) -> List:
-    unpacked: List[Union[int, Tuple, None]] = [None] * 9
+    unpacked: List[Union[int, Tuple, None]] = [None] * 8
     var: List = [dbi.index, dbi.dbindex, dbi.database, dbi.table, dbi.row, dbi.col, dbi.segments, dbi.seek]
     unpacked[:7] = [struct.unpack('>Q', var[c]) for c in range(8)]
     unpacked[8] = struct.unpack('>255s', dbi.file)[0].decode('UTF-8').rstrip(' ')
@@ -166,4 +166,6 @@ if __name__ == '__main__':
   f.write_data(a, b)
   a2 = f.read_index()
   b2 = f.read_data(a)
+  print(f.get_index(a2))
+  print(a)
   print('time {:.4f}'.format(time.perf_counter() - t))
