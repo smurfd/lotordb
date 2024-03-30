@@ -106,12 +106,12 @@ class Files(threading.Thread):
   def init_index(self, index, dbindex, database, table, row, col, segments, seek, file) -> DbIndex:
     packed: List[Union[bytes, None]] = [None] * 8
     var: List = [index, dbindex, database, table, row, col, segments, seek]
-    packed[:7] = [struct.pack('>Q', var[c]) for c in range(8)]
+    packed[:7] = [struct.pack('>Q', c) for c in var]
     packed[8] = struct.pack('>255s', bytes(file.ljust(255, ' '), 'UTF-8'))
     return DbIndex(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6], packed[7], packed[8])
 
   def init_data(self, index, database, table, relative, row, col, data, dbi) -> Union[DbData, List]:
-    var: List = [index, database, table, relative, row, col]
+    pvr: List = [struct.pack('>Q', c) for c in [index, database, table, relative, row, col]]
     ret: List = []
     gzd: bytes = gzip.compress(bytearray(data), compresslevel=3)
     gzd = struct.pack('>%dQ' % len(gzd), *gzd)
@@ -122,17 +122,7 @@ class Files(threading.Thread):
     # Calculate diff between length of gz data, if not divisable with self.size, add 1 to j
     j: int = (len(gzd) // self.size) if not (len(gzd) - ((len(gzd) // self.size) * self.size) > 0) else (len(gzd) // self.size) + 1
     for i in range(j):
-      ret += [
-        DbData(
-          struct.pack('>Q', var[0]),
-          struct.pack('>Q', var[1]),
-          struct.pack('>Q', var[2]),
-          struct.pack('>Q', var[3]),
-          struct.pack('>Q', var[4]),
-          struct.pack('>Q', var[5]),
-          gzd[i * self.size : (i + 1) * self.size],
-        )
-      ]
+      ret += [DbData(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], gzd[i * self.size : (i + 1) * self.size])]
     if len(ret[len(ret) - 1].data) % self.size:
       ret[len(ret) - 1].data += bytes([0] * (self.size - len(ret[len(ret) - 1].data)))  # Fill out data to be 4048 in size
     if not dbi.segments == j:
@@ -150,9 +140,8 @@ class Files(threading.Thread):
     ret: List = []
     dat: bytes = b''
     for i in range(struct.unpack('>Q', dbi.segments)[0]):
-      var: List = [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col]
       dat += dbd[i].data
-      ret += [struct.unpack('>Q', c) for c in var]
+      ret += [struct.unpack('>Q', c) for c in [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col]]
     udat = struct.unpack('>%dQ' % (len(dat) // 8), dat)
     return ret, gzip.decompress(bytearray(udat))
 
