@@ -190,7 +190,6 @@ class Files(threading.Thread):
 if __name__ == '__main__':
   print('DB')
   data: List = [123] * 100000025
-  print('LEN', len(str(data)))
   tot = time.perf_counter()
   t = time.perf_counter()
   f = Files('.lib/db1')
