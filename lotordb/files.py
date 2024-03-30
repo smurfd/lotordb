@@ -39,7 +39,6 @@ retrieving:
 """
 
 
-# TODO: mmap instead of read/write
 @dataclass
 class DbIndex:
   index: Union[bytes, None] = field(default=b'', init=True)
@@ -67,7 +66,12 @@ class DbData:
 # Maby? https://renatocunha.com/2015/11/ctypes-mmap-rwlock/
 # Before mmap : time 6.3838
 # After mmap  : time 6.3694
-# After compress level: time 4.9225
+# After compress level1: time 4.9225
+# 4.4616 python 3.11.7
+# 4.0892 python 3.12.2
+# After compress befor pack: time 0.8563!!!!! (python 3.11.7)
+# After compress befor pack without double get_data: time 0.7963!!!!! (python 3.11.7)
+# gzip command: time 1.539226
 class Files(threading.Thread):
   def __init__(self, fn) -> None:
     threading.Thread.__init__(self, group=None)
@@ -107,14 +111,10 @@ class Files(threading.Thread):
     return DbIndex(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6], packed[7], packed[8])
 
   def init_data(self, index, database, table, relative, row, col, data, dbi) -> Union[DbData, List]:
-    packed: List[Union[bytes, None]] = [None] * 7
-    var: List = [index, database, table, relative, row, col]
     ret: List = []
     t = time.perf_counter()
-    tt = threading.Thread()
-    tt.start()
-    gzd: bytes = gzip.compress(struct.pack('>%dQ' % (len(data)), *data), compresslevel=1)
-    tt.join(timeout=0.1)
+    gzd: bytes = gzip.compress(bytearray(data), compresslevel=1)
+    gzd = struct.pack('>%dQ' % len(gzd), *gzd)
     print('gzip compress time {:.4f}'.format(time.perf_counter() - t))
     if not struct.unpack('>Q', dbi.seek) and self.fd:
       dbi.seek = struct.pack('>Q', self.fd.tell())
@@ -122,11 +122,22 @@ class Files(threading.Thread):
       self.fd.seek(struct.unpack('>Q', dbi.seek)[0], 0)
     # Calculate diff between length of gz data, if not divisable with self.size, add 1 to j
     j: int = (len(gzd) // self.size) if not (len(gzd) - ((len(gzd) // self.size) * self.size) > 0) else (len(gzd) // self.size) + 1
+    t = time.perf_counter()
     for i in range(j):
-      packed[:6] = [struct.pack('>Q', var[c]) for c in range(6)]
-      ret.append(DbData(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], gzd[i * self.size : (i + 1) * self.size]))
+      ret += [
+        DbData(
+          struct.pack('>Q', index),
+          struct.pack('>Q', database),
+          struct.pack('>Q', table),
+          struct.pack('>Q', relative),
+          struct.pack('>Q', row),
+          struct.pack('>Q', col),
+          gzd[i * self.size : (i + 1) * self.size],
+        )
+      ]
     if len(ret[len(ret) - 1].data) % self.size:
       ret[len(ret) - 1].data += bytes([0] * (self.size - len(ret[len(ret) - 1].data)))  # Fill out data to be 4048 in size
+    print('loop time {:.4f}'.format(time.perf_counter() - t))
     if not dbi.segments == j:
       dbi.segments = struct.pack('>Q', j)
     return ret
@@ -138,18 +149,21 @@ class Files(threading.Thread):
     unpacked[8] = struct.unpack('>255s', dbi.file)[0].decode('UTF-8').rstrip(' ')
     return unpacked
 
-  def get_data(self, dbi, dbd) -> Tuple[list, Tuple]:
+  def get_data(self, dbi, dbd) -> Tuple[list, bytes]:
     ret: List = []
     dat: bytes = b''
     for i in range(struct.unpack('>Q', dbi.segments)[0]):
-      var: List = [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col]
       dat += dbd[i].data
-      ret.append([struct.unpack('>Q', var[c]) for c in range(6)])
-    tt = threading.Thread()
-    tt.start()
-    uncdat = gzip.decompress(dat)
-    tt.join(timeout=0.1)
-    return ret, struct.unpack('>%dQ' % (len(uncdat) // 8), uncdat)
+      ret += [
+        struct.unpack('>Q', dbd[i].index),
+        struct.unpack('>Q', dbd[i].database),
+        struct.unpack('>Q', dbd[i].table),
+        struct.unpack('>Q', dbd[i].relative),
+        struct.unpack('>Q', dbd[i].row),
+        struct.unpack('>Q', dbd[i].col),
+      ]
+    udat = struct.unpack('>%dQ' % (len(dat) // 8), dat)
+    return ret, gzip.decompress(bytearray(udat))
 
   def write_index(self, dbi) -> None:
     var: List = [dbi.index, dbi.dbindex, dbi.database, dbi.table, dbi.row, dbi.col, dbi.segments, dbi.seek, dbi.file]
@@ -161,13 +175,11 @@ class Files(threading.Thread):
       [self.fd.write(var[c]) for c in range(7) if self.fd]
 
   def read_index(self) -> Union[DbIndex, None]:
-    # self.close_file()
     self.open_index_file(self.fn[0], 'rb+')
     self.fimm = mmap.mmap(self.fi.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     return DbIndex(*(self.fimm.read([8, 8, 8, 8, 8, 8, 8, 8, 255][c]) for c in range(9) if self.fimm))
 
   def read_data(self, dbi) -> List:
-    # self.close_file()
     self.open_data_file(self.fn[1], 'rb+')
     self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     return [
@@ -177,6 +189,8 @@ class Files(threading.Thread):
 
 if __name__ == '__main__':
   print('DB')
+  data: List = [123] * 100000025
+  print('LEN', len(str(data)))
   tot = time.perf_counter()
   t = time.perf_counter()
   f = Files('.lib/db1')
@@ -185,17 +199,11 @@ if __name__ == '__main__':
   a = f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
   print('init_index time {:.4f}'.format(time.perf_counter() - t))
   t = time.perf_counter()
-  b = f.init_data(1, 1, 1, 1, 1, 1, [123] * 100000025, a)
+  b = f.init_data(1, 1, 1, 1, 1, 1, data, a)  # 500mb
   print('init_data time {:.4f}'.format(time.perf_counter() - t))
   t = time.perf_counter()
   f.get_index(a)
   print('get_index time {:.4f}'.format(time.perf_counter() - t))
-  t = time.perf_counter()
-  d1, d2 = f.get_data(a, b)
-  print('get_data time {:.4f}'.format(time.perf_counter() - t))
-  # t = time.perf_counter()
-  # assert list(d2) == [123] * 100000025
-  # print('assert time {:.4f}'.format(time.perf_counter() - t))
   t = time.perf_counter()
   f.write_index(a)
   print('write_index time {:.4f}'.format(time.perf_counter() - t))
@@ -211,7 +219,4 @@ if __name__ == '__main__':
   t = time.perf_counter()
   d3, d4 = f.get_data(a2, b2)
   print('get_data time {:.4f}'.format(time.perf_counter() - t))
-  # print(f.fd.tell())
-  # print(f.fd.seek(0, io.SEEK_END))
-  # print(f.fd.tell())
   print('time {:.4f}'.format(time.perf_counter() - tot))
