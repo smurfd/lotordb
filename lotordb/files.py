@@ -75,7 +75,6 @@ class DbData:
 class Files(threading.Thread):
   def __init__(self, fn) -> None:
     threading.Thread.__init__(self, group=None)
-    self.thread = threading.Thread()
     self.fi: Union[None, BinaryIO] = None
     self.fd: Union[None, BinaryIO] = None
     self.fimm: Union[None, BinaryIO] = None
@@ -84,12 +83,11 @@ class Files(threading.Thread):
     self.open_index_file(self.fn[0], 'ab+')
     self.open_data_file(self.fn[1], 'ab+')
     self.size = 4048
-    self.thread.start()
     self.start()
 
   def __exit__(self) -> None:
     self.close_file()
-    self.join()
+    self.join(timeout=0.1)
 
   def open_index_file(self, filename, rwd) -> None:
     self.fi = open(filename, rwd)
@@ -115,18 +113,19 @@ class Files(threading.Thread):
     ret: List = []
     gzd: bytes = gzip.compress(bytearray(data), compresslevel=3)
     gzd = struct.pack('>%dQ' % len(gzd), *gzd)
+    gzl: int = len(gzd)
     if not struct.unpack('>Q', dbi.seek) and self.fd:
       dbi.seek = struct.pack('>Q', self.fd.tell())
     if self.fd:
       self.fd.seek(struct.unpack('>Q', dbi.seek)[0], 0)
-    # Calculate diff between length of gz data, if not divisable with self.size, add 1 to j
-    j: int = (len(gzd) // self.size) if not (len(gzd) - ((len(gzd) // self.size) * self.size) > 0) else (len(gzd) // self.size) + 1
-    for i in range(j):
+    # Calculate diff between length of gz data, if not divisable with self.size, add 1 to zlen
+    zlen: int = (gzl // self.size) if not (gzl - ((gzl // self.size) * self.size) > 0) else (gzl // self.size) + 1
+    for i in range(zlen):
       ret += [DbData(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], gzd[i * self.size : (i + 1) * self.size])]
     if len(ret[len(ret) - 1].data) % self.size:
       ret[len(ret) - 1].data += bytes([0] * (self.size - len(ret[len(ret) - 1].data)))  # Fill out data to be 4048 in size
-    if not dbi.segments == j:
-      dbi.segments = struct.pack('>Q', j)
+    if not dbi.segments == zlen:
+      dbi.segments = struct.pack('>Q', zlen)
     return ret
 
   def get_index(self, dbi) -> List:
@@ -145,14 +144,12 @@ class Files(threading.Thread):
     udat = struct.unpack('>%dQ' % (len(dat) // 8), dat)
     return ret, gzip.decompress(bytearray(udat))
 
-  def write_index(self, dbi) -> None:
-    var: List = [dbi.index, dbi.dbindex, dbi.database, dbi.table, dbi.row, dbi.col, dbi.segments, dbi.seek, dbi.file]
-    [self.fi.write(c) for c in var if self.fi]
+  def write_index(self, i) -> None:  # i, dbindex
+    [self.fi.write(c) for c in [i.index, i.dbindex, i.database, i.table, i.row, i.col, i.segments, i.seek, i.file] if self.fi]
 
-  def write_data(self, dbi, dbd) -> None:
-    for i in range(struct.unpack('>Q', dbi.segments)[0]):
-      var: List = [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col, dbd[i].data]
-      [self.fd.write(c) for c in var if self.fd]
+  def write_data(self, i, d) -> None:  # i: DbIndex, d: DbData
+    for b in range(struct.unpack('>Q', i.segments)[0]):
+      [self.fd.write(c) for c in [d[b].index, d[b].database, d[b].table, d[b].relative, d[b].row, d[b].col, d[b].data] if self.fd]
 
   def read_index(self) -> Union[DbIndex, None]:
     self.open_index_file(self.fn[0], 'rb+')
