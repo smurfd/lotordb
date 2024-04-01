@@ -31,7 +31,8 @@ class ClientRunnable(threading.Thread):
         b = f.init_data(1, 1, 1, 1, 1, 1, data, a)[0]  # type: ignore
         f.send_index(self.sock, a)
         f.send_data(self.sock, b)
-      self.thread.join()
+      self.close()
+      self.thread.join(timeout=0.1)
     except Exception as e:
       print('Could not connect to server', e)
 
@@ -42,6 +43,9 @@ class ClientRunnable(threading.Thread):
     self.sock = context.wrap_socket(sock, server_hostname=socket.gethostbyaddr(self.host)[0])  # Get hostname from ip
     self.sock.connect((self.host, self.port))
     return self.sock
+
+  def close(self):
+    self.sock.close()
 
   def send(self, data):
     self.sock.send(data)

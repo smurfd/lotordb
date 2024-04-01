@@ -34,6 +34,7 @@ class ServerRunnable(threading.Thread):
     self.close()
 
   def close(self) -> None:
+    self.ssl_sock.close()
     self.sock.close()
 
   def run(self) -> None:
@@ -41,7 +42,7 @@ class ServerRunnable(threading.Thread):
     if self.type == 'key' and self.test:  # key value server, hack so you can run server in tests
       self.listen()
       self.recv()
-      self.ssl_sock.close()
+      self.close()  # ssl_sock.close()
     elif self.type == 'key':  # key value server
       while not self.event.is_set():
         self.listen()
@@ -55,7 +56,7 @@ class ServerRunnable(threading.Thread):
             else:
               print('Will not write key, hash does not match!')
         finally:
-          self.ssl_sock.close()
+          self.close()  # ssl_sock.close()
     elif self.type == 'db' and self.test:  # database server, hack so you can run server in tests
       print('db test')
       self.listen()
@@ -66,19 +67,19 @@ class ServerRunnable(threading.Thread):
       fd = f.init_data(*data, fi)  # type: ignore
       f.write_index(fi)
       f.write_data(fi, [fd])
-      self.ssl_sock.close()
+      self.close()  # ssl_sock.close()
     elif self.type == 'db':  # database server
       pass
-    elif self.test:  # hack so you can run server in tests
-      self.listen()
-      self.recv()
-    else:
-      while not self.event.is_set():
-        self.listen()
-        try:
-          self.recv()
-        finally:
-          self.ssl_sock.close()
+    # elif self.test:  # hack so you can run server in tests
+    #  self.listen()
+    #  self.recv()
+    # else:
+    #  while not self.event.is_set():
+    #    self.listen()
+    #    try:
+    #      self.recv()
+    #    finally:
+    #      self.ssl_sock.close()
 
   def init_server_socket(self) -> None:
     self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
