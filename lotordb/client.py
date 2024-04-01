@@ -26,7 +26,7 @@ class ClientRunnable(threading.Thread):
         k.send_key(self.sock, k.get_key())
       elif self.type == 'db':  # database client
         data: List = [123] * 125
-        f = Files('/tmp/.lib/db1')
+        f = Files('.lib/db1')
         a = f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
         b = f.init_data(1, 1, 1, 1, 1, 1, data, a)[0]  # type: ignore
         f.send_index(self.sock, a)
