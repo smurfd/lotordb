@@ -102,31 +102,37 @@ class Files(threading.Thread):
       self.fd.close()
 
   def init_index(self, index, dbindex, database, table, row, col, segments, seek, file) -> DbIndex:
-    packed: List[Union[bytes, None]] = [None] * 8
     var: List = [index, dbindex, database, table, row, col, segments, seek]
-    packed[:7] = [struct.pack('>Q', c) for c in var]
-    packed[8] = struct.pack('>255s', bytes(file.ljust(255, ' '), 'UTF-8'))
-    return DbIndex(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6], packed[7], packed[8])
+    if isinstance(index, bytes):  # Assume everything is in bytes
+      return DbIndex(index, dbindex, database, table, row, col, segments, seek, file)
+    else:
+      packed: List[Union[bytes, None]] = [None] * 8
+      packed[:7] = [struct.pack('>Q', c) for c in var]
+      packed[8] = struct.pack('>255s', bytes(file.ljust(255, ' '), 'UTF-8'))
+      return DbIndex(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6], packed[7], packed[8])
 
   def init_data(self, index, database, table, relative, row, col, data, dbi) -> Union[DbData, List]:
-    pvr: List = [struct.pack('>Q', c) for c in [index, database, table, relative, row, col]]
-    ret: List = []
-    gzd: bytes = gzip.compress(bytearray(data), compresslevel=3)
-    gzd = struct.pack('>%dQ' % len(gzd), *gzd)
-    gzl: int = len(gzd)
-    if not struct.unpack('>Q', dbi.seek) and self.fd:
-      dbi.seek = struct.pack('>Q', self.fd.tell())
-    if self.fd:
-      self.fd.seek(struct.unpack('>Q', dbi.seek)[0], 0)
-    # Calculate diff between length of gz data, if not divisable with self.size, add 1 to zlen
-    zlen: int = (gzl // self.size) if not (gzl - ((gzl // self.size) * self.size) > 0) else (gzl // self.size) + 1
-    for i in range(zlen):
-      ret += [DbData(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], gzd[i * self.size : (i + 1) * self.size])]
-    if len(ret[len(ret) - 1].data) % self.size:
-      ret[len(ret) - 1].data += bytes([0] * (self.size - len(ret[len(ret) - 1].data)))  # Fill out data to be 4048 in size
-    if not dbi.segments == zlen:
-      dbi.segments = struct.pack('>Q', zlen)
-    return ret
+    if isinstance(index, bytes):  # Assume everything is in bytes
+      return DbData(index, database, table, relative, row, col, data)
+    else:
+      pvr: List = [struct.pack('>Q', c) for c in [index, database, table, relative, row, col]]
+      gzd: bytes = gzip.compress(bytearray(data), compresslevel=3)
+      gzd = struct.pack('>%dQ' % len(gzd), *gzd)
+      gzl: int = len(gzd)
+      ret: List = []
+      if self.fd:
+        if not struct.unpack('>Q', dbi.seek):
+          dbi.seek = struct.pack('>Q', self.fd.tell())
+        self.fd.seek(struct.unpack('>Q', dbi.seek)[0], 0)
+      # Calculate diff between length of gz data, if not divisable with self.size, add 1 to zlen
+      zlen: int = (gzl // self.size) if not (gzl - ((gzl // self.size) * self.size) > 0) else (gzl // self.size) + 1
+      for i in range(zlen):
+        ret += [DbData(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], gzd[i * self.size : (i + 1) * self.size])]
+      if len(ret[len(ret) - 1].data) % self.size:  # If data is not self.size, fill out data to be self.size
+        ret[len(ret) - 1].data += bytes([0] * (self.size - len(ret[len(ret) - 1].data)))
+      if not dbi.segments == zlen:  # Set number of segments to zlen
+        dbi.segments = struct.pack('>Q', zlen)
+      return ret
 
   def get_index(self, dbi) -> List:
     unpacked: List[Union[int, Tuple, None]] = [None] * 8
@@ -136,13 +142,12 @@ class Files(threading.Thread):
     return unpacked
 
   def get_data(self, dbi, dbd) -> Tuple[list, bytes]:
-    ret: List = []
     dat: bytes = b''
+    ret: List = []
     for i in range(struct.unpack('>Q', dbi.segments)[0]):
       dat += dbd[i].data
       ret += [struct.unpack('>Q', c) for c in [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col]]
-    udat = struct.unpack('>%dQ' % (len(dat) // 8), dat)
-    return ret, gzip.decompress(bytearray(udat))
+    return ret, gzip.decompress(bytearray(struct.unpack('>%dQ' % (len(dat) // 8), dat)))
 
   def write_index(self, i) -> None:  # i, dbindex
     [self.fi.write(c) for c in [i.index, i.dbindex, i.database, i.table, i.row, i.col, i.segments, i.seek, i.file] if self.fi]
@@ -157,10 +162,46 @@ class Files(threading.Thread):
     return DbIndex(*(self.fimm.read([8, 8, 8, 8, 8, 8, 8, 8, 255][c]) for c in range(9) if self.fimm))
 
   def read_data(self, dbi) -> List:
+    lngt: int = struct.unpack('>Q', dbi.segments)[0]
     self.open_data_file(self.fn[1], 'rb+')
     self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
-    lngt: int = struct.unpack('>Q', dbi.segments)[0]
     return [DbData(*(self.fdmm.read([8, 8, 8, 8, 8, 8, 4048][c]) for c in range(7) if self.fdmm)) for i in range(lngt)]
+
+  def send_index(self, sock, index) -> None:
+    sock.send(index.index)
+    sock.send(index.dbindex)
+    sock.send(index.database)
+    sock.send(index.table)
+    sock.send(index.row)
+    sock.send(index.col)
+    sock.send(index.segments)
+    sock.send(index.seek)
+    sock.send(index.file)
+
+  def send_data(self, sock, data) -> None:
+    sock.send(data.index)
+    sock.send(data.database)
+    sock.send(data.table)
+    sock.send(data.relative)
+    sock.send(data.row)
+    sock.send(data.col)
+    sock.send(data.data)
+
+  def recv_index(self, sock, size=256) -> Tuple:
+    return (
+      sock.recv(size),
+      sock.recv(size),
+      sock.recv(size),
+      sock.recv(size),
+      sock.recv(size),
+      sock.recv(size),
+      sock.recv(size),
+      sock.recv(size),
+      sock.recv(size),
+    )
+
+  def recv_data(self, sock, size=4096) -> Tuple:
+    return (sock.recv(size), sock.recv(size), sock.recv(size), sock.recv(size), sock.recv(size), sock.recv(size), sock.recv(size))
 
 
 if __name__ == '__main__':

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import threading, socket, ssl
 from lotordb.keys import Keys
-from typing import Union
+from lotordb.files import Files
+from typing import Union, List
 
 
 class ClientRunnable(threading.Thread):
@@ -24,10 +25,15 @@ class ClientRunnable(threading.Thread):
         k = Keys(k='1122', v='abc', s='/tmp')
         k.send_key(self.sock, k.get_key())
       elif self.type == 'db':  # database client
-        pass
+        data: List = [123] * 125
+        f = Files('/tmp/.lib/db1')
+        a = f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '/tmp/.lib/db1.dbindex')
+        b = f.init_data(1, 1, 1, 1, 1, 1, data, a)[0]  # type: ignore
+        f.send_index(self.sock, a)
+        f.send_data(self.sock, b)
       self.thread.join()
-    except Exception:
-      print('Could not connect to server')
+    except Exception as e:
+      print('Could not connect to server', e)
 
   def connect(self):
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)

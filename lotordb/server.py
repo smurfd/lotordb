@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import threading, signal, socket, ssl
 from lotordb.keys import Keys
+from lotordb.files import Files
 from typing import Union, Any
 
 
@@ -56,7 +57,16 @@ class ServerRunnable(threading.Thread):
         finally:
           self.ssl_sock.close()
     elif self.type == 'db' and self.test:  # database server, hack so you can run server in tests
-      pass
+      print('db test')
+      self.listen()
+      f = Files('/tmp/dbtest')
+      index = f.recv_index(self.ssl_sock)
+      data = f.recv_data(self.ssl_sock)
+      fi = f.init_index(*index)
+      fd = f.init_data(*data, fi)  # type: ignore
+      f.write_index(fi)
+      f.write_data(fi, [fd])
+      self.ssl_sock.close()
     elif self.type == 'db':  # database server
       pass
     elif self.test:  # hack so you can run server in tests
@@ -82,8 +92,7 @@ class ServerRunnable(threading.Thread):
     self.ssl_sock = self.context.wrap_socket(s, server_side=True)
 
   def recv(self) -> bytes:
-    r = self.ssl_sock.recv(2048)
-    return r
+    return self.ssl_sock.recv(4096)
 
   def service_shutdown(self, signum, frame) -> None:
     raise self.ServiceExit
