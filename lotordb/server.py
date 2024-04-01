@@ -58,9 +58,8 @@ class ServerRunnable(threading.Thread):
         finally:
           self.close()  # ssl_sock.close()
     elif self.type == 'db' and self.test:  # database server, hack so you can run server in tests
-      print('db test')
       self.listen()
-      f = Files('/tmp/dbtest')
+      f = Files('.lib/db1')
       index = f.recv_index(self.ssl_sock)
       data = f.recv_data(self.ssl_sock)
       fi = f.init_index(*index)
