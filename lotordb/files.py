@@ -71,6 +71,7 @@ class DbData:
 # 4.0892 python 3.12.2
 # After compress befor pack: time 0.8563!!!!! (python 3.11.7)
 # After compress befor pack without double get_data: time 0.7963!!!!! (python 3.11.7)
+# Sending byte array: time 0.4790!!! (python 3.11.7)
 # gzip command: time 1.539226
 class Files(threading.Thread):
   def __init__(self, fn) -> None:
@@ -167,59 +168,37 @@ class Files(threading.Thread):
     self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     return [DbData(*(self.fdmm.read([8, 8, 8, 8, 8, 8, 4048][c]) for c in range(7) if self.fdmm)) for i in range(lngt)]
 
-  # TODO: Need to send block
   def send_index(self, sock, index) -> None:
-    time.sleep(0.1)
-    sock.send(index.index)
-    time.sleep(0.1)
-    sock.send(index.dbindex)
-    time.sleep(0.1)
-    sock.send(index.database)
-    time.sleep(0.1)
-    sock.send(index.table)
-    time.sleep(0.1)
-    sock.send(index.row)
-    time.sleep(0.1)
-    sock.send(index.col)
-    time.sleep(0.1)
-    sock.send(index.segments)
-    time.sleep(0.1)
-    sock.send(index.seek)
-    time.sleep(0.1)
-    sock.send(index.file)
-    time.sleep(0.1)
+    b = bytearray()
+    b.extend(index.index)
+    b.extend(index.dbindex)
+    b.extend(index.database)
+    b.extend(index.table)
+    b.extend(index.row)
+    b.extend(index.col)
+    b.extend(index.segments)
+    b.extend(index.seek)
+    b.extend(index.file)
+    sock.send(b)
 
   def send_data(self, sock, data) -> None:
-    sock.send(data.index)
-    time.sleep(0.1)
-    sock.send(data.database)
-    time.sleep(0.1)
-    sock.send(data.table)
-    time.sleep(0.1)
-    sock.send(data.relative)
-    time.sleep(0.1)
-    sock.send(data.row)
-    time.sleep(0.1)
-    sock.send(data.col)
-    time.sleep(0.1)
-    sock.send(data.data)
-    time.sleep(0.1)
+    b = bytearray()
+    b.extend(data.index)
+    b.extend(data.database)
+    b.extend(data.table)
+    b.extend(data.relative)
+    b.extend(data.row)
+    b.extend(data.col)
+    b.extend(data.data)
+    sock.send(b)
 
   def recv_index(self, sock, size=256) -> Tuple:
-    return (
-      sock.recv(8),
-      sock.recv(8),
-      sock.recv(8),
-      sock.recv(8),
-      sock.recv(8),
-      sock.recv(8),
-      sock.recv(8),
-      sock.recv(8),
-      sock.recv(255),
-    )
+    x = sock.recv(319)
+    return (x[0:8], x[8:16], x[16:24], x[24:32], x[32:40], x[40:48], x[48:56], x[56:64], x[64:319])
 
   def recv_data(self, sock, size=4096) -> Tuple:
-    return (sock.recv(8), sock.recv(8), sock.recv(8), sock.recv(8), sock.recv(8), sock.recv(8), sock.recv(4048))
+    x = sock.recv(4096)
+    return (x[0:8], x[8:16], x[16:24], x[24:32], x[32:40], x[40:48], x[48:4096])
 
 
 if __name__ == '__main__':
