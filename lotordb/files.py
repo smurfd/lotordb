@@ -170,26 +170,12 @@ class Files(threading.Thread):
 
   def send_index(self, sock, index) -> None:
     b = bytearray()
-    b.extend(index.index)
-    b.extend(index.dbindex)
-    b.extend(index.database)
-    b.extend(index.table)
-    b.extend(index.row)
-    b.extend(index.col)
-    b.extend(index.segments)
-    b.extend(index.seek)
-    b.extend(index.file)
+    [b.extend(i) for i in [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek, index.file]]  # type: ignore
     sock.send(b)
 
   def send_data(self, sock, data) -> None:
     b = bytearray()
-    b.extend(data.index)
-    b.extend(data.database)
-    b.extend(data.table)
-    b.extend(data.relative)
-    b.extend(data.row)
-    b.extend(data.col)
-    b.extend(data.data)
+    [b.extend(i) for i in [data.index, data.database, data.table, data.relative, data.row, data.col, data.data]]  # type: ignore
     sock.send(b)
 
   def recv_index(self, sock, size=256) -> Tuple:
