@@ -167,41 +167,59 @@ class Files(threading.Thread):
     self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     return [DbData(*(self.fdmm.read([8, 8, 8, 8, 8, 8, 4048][c]) for c in range(7) if self.fdmm)) for i in range(lngt)]
 
+  # TODO: Need to send block
   def send_index(self, sock, index) -> None:
+    time.sleep(0.1)
     sock.send(index.index)
+    time.sleep(0.1)
     sock.send(index.dbindex)
+    time.sleep(0.1)
     sock.send(index.database)
+    time.sleep(0.1)
     sock.send(index.table)
+    time.sleep(0.1)
     sock.send(index.row)
+    time.sleep(0.1)
     sock.send(index.col)
+    time.sleep(0.1)
     sock.send(index.segments)
+    time.sleep(0.1)
     sock.send(index.seek)
+    time.sleep(0.1)
     sock.send(index.file)
+    time.sleep(0.1)
 
   def send_data(self, sock, data) -> None:
     sock.send(data.index)
+    time.sleep(0.1)
     sock.send(data.database)
+    time.sleep(0.1)
     sock.send(data.table)
+    time.sleep(0.1)
     sock.send(data.relative)
+    time.sleep(0.1)
     sock.send(data.row)
+    time.sleep(0.1)
     sock.send(data.col)
+    time.sleep(0.1)
     sock.send(data.data)
+    time.sleep(0.1)
 
   def recv_index(self, sock, size=256) -> Tuple:
     return (
-      sock.recv(size),
-      sock.recv(size),
-      sock.recv(size),
-      sock.recv(size),
-      sock.recv(size),
-      sock.recv(size),
-      sock.recv(size),
-      sock.recv(size),
-      sock.recv(size),
+      sock.recv(8),
+      sock.recv(8),
+      sock.recv(8),
+      sock.recv(8),
+      sock.recv(8),
+      sock.recv(8),
+      sock.recv(8),
+      sock.recv(8),
+      sock.recv(255),
     )
 
   def recv_data(self, sock, size=4096) -> Tuple:
-    return (sock.recv(size), sock.recv(size), sock.recv(size), sock.recv(size), sock.recv(size), sock.recv(size), sock.recv(size))
+    return (sock.recv(8), sock.recv(8), sock.recv(8), sock.recv(8), sock.recv(8), sock.recv(8), sock.recv(4048))
 
 
 if __name__ == '__main__':
