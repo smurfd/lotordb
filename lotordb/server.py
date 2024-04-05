@@ -35,7 +35,6 @@ class ServerRunnable(threading.Thread):
 
   def close(self) -> None:
     self.ssl_sock.close()
-    self.sock.close()
 
   def run(self) -> None:
     self.init_server_socket()

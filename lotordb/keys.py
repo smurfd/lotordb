@@ -50,13 +50,12 @@ class Keys:
     return (False,)
 
   def send_key(self, sock, kvsh) -> None:
-    sock.send(kvsh[0].encode('UTF-8'))
-    sock.send(kvsh[1].encode('UTF-8'))
-    sock.send(kvsh[2].encode('UTF-8'))
-    sock.send(kvsh[3].encode('UTF-8'))
+    b = bytearray()
+    [b.extend((i + '\n').encode('UTF-8')) for i in kvsh]  # type: ignore
+    sock.send(b)
 
   def recv_key(self, sock, size=2048) -> Tuple:
-    return (sock.recv(size), sock.recv(size), sock.recv(size), sock.recv(size))
+    return tuple(sock.recv(4096).strip(b'\n').split(b'\n', 3))
 
 
 if __name__ == '__main__':
