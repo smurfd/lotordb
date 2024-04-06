@@ -5,10 +5,10 @@ from lotordb.files import Files
 from typing import Union, List
 
 
-class ClientRunnable(threading.Thread):
+class Client(threading.Thread):
   def __init__(self, dbhost, dbport, dbmaster=True, dbnode=0, dbtype=False) -> None:
     threading.Thread.__init__(self, group=None)
-    self.client = Union[None, ClientRunnable]
+    self.client = Union[None, Client]
     self.event = threading.Event()
     self.host = dbhost
     self.port = dbport
@@ -56,4 +56,4 @@ class ClientRunnable(threading.Thread):
 
 if __name__ == '__main__':
   print('Client')
-  ClientRunnable('127.0.0.1', 1337, dbtype='key')
+  Client('127.0.0.1', 1337, dbtype='key')

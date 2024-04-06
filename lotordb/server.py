@@ -5,7 +5,7 @@ from lotordb.files import Files
 from typing import Union, Any
 
 
-class ServerRunnable(threading.Thread):
+class Server(threading.Thread):
   class ServiceExit(Exception):
     pass
 
@@ -89,4 +89,4 @@ class ServerRunnable(threading.Thread):
 
 if __name__ == '__main__':
   print('Server')
-  ServerRunnable('127.0.0.1', 1337, dbtype='key')
+  Server('127.0.0.1', 1337, dbtype='key')
