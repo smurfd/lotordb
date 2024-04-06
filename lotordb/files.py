@@ -63,6 +63,9 @@ class DbData:
   data: Union[bytes, None] = field(default=b'', init=True)
 
 
+# TODO: Rename Files?
+
+
 # Maby? https://renatocunha.com/2015/11/ctypes-mmap-rwlock/
 # Before mmap : time 6.3838
 # After mmap  : time 6.3694
@@ -84,6 +87,8 @@ class Files(threading.Thread):
     self.open_index_file(self.fn[0], 'ab+')
     self.open_data_file(self.fn[1], 'ab+')
     self.size = 4048
+    self.index = None
+    self.data = None
     self.start()
 
   def __exit__(self) -> None:
@@ -185,6 +190,10 @@ class Files(threading.Thread):
   def recv_data(self, sock, size=4096) -> Tuple:
     r = sock.recv(4096)  # Size of DbData, below separate per variable
     return (r[0:8], r[8:16], r[16:24], r[24:32], r[32:40], r[40:48], r[48:4096])
+
+  def set_index_data(self, dbi, dbd):
+    self.index = dbi
+    self.data = dbd
 
 
 if __name__ == '__main__':

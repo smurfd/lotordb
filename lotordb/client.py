@@ -2,7 +2,7 @@
 import threading, socket, ssl
 from lotordb.keys import Keys
 from lotordb.files import Files
-from typing import Union, List
+from typing import Union
 
 
 class Client(threading.Thread):
@@ -15,6 +15,7 @@ class Client(threading.Thread):
     self.sock = None
     self.type = dbtype
     self.key: Union[None, Keys] = None
+    self.files: Union[None, Files] = None
     self.thread = threading.Thread()
 
   def run(self) -> None:
@@ -23,13 +24,9 @@ class Client(threading.Thread):
       self.connect()
       if self.type == 'key' and self.key:  # key value client
         self.key.send_key(self.sock, self.key.get_key())
-      elif self.type == 'db':  # database client
-        data: List = [123] * 125
-        f = Files('.lib/db1')
-        a = f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
-        b = f.init_data(1, 1, 1, 1, 1, 1, data, a)[0]  # type: ignore
-        f.send_index(self.sock, a)
-        f.send_data(self.sock, b)
+      elif self.type == 'db' and self.files:  # database client
+        self.files.send_index(self.sock, self.files.index)
+        self.files.send_data(self.sock, self.files.data)
       self.close()
       self.thread.join(timeout=0.1)
     except Exception as e:
@@ -54,6 +51,9 @@ class Client(threading.Thread):
 
   def set_key(self, key):
     self.key = key
+
+  def set_files(self, files):
+    self.files = files
 
 
 if __name__ == '__main__':
