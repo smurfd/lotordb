@@ -14,16 +14,15 @@ class Client(threading.Thread):
     self.port = dbport
     self.sock = None
     self.type = dbtype
+    self.key: Union[None, Keys] = None
     self.thread = threading.Thread()
-    self.start()
 
   def run(self) -> None:
     try:
       self.thread.start()
       self.connect()
-      if self.type == 'key':  # key value client
-        k = Keys(k='1122', v='abc', s='/tmp')
-        k.send_key(self.sock, k.get_key())
+      if self.type == 'key' and self.key:  # key value client
+        self.key.send_key(self.sock, self.key.get_key())
       elif self.type == 'db':  # database client
         data: List = [123] * 125
         f = Files('.lib/db1')
@@ -53,7 +52,12 @@ class Client(threading.Thread):
   def receive(self, data):
     self.sock.recv(data)
 
+  def set_key(self, key):
+    self.key = key
+
 
 if __name__ == '__main__':
   print('Client')
-  Client('127.0.0.1', 1337, dbtype='key')
+  cli = Client('127.0.0.1', 1337, dbtype='key')
+  cli.set_key(Keys(k='1122', v='abc', s='/tmp'))
+  cli.start()

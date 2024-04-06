@@ -169,22 +169,22 @@ class Files(threading.Thread):
     return [DbData(*(self.fdmm.read([8, 8, 8, 8, 8, 8, 4048][c]) for c in range(7) if self.fdmm)) for i in range(lngt)]
 
   def send_index(self, sock, index) -> None:
-    b = bytearray()
+    b: bytes = bytearray()
     [b.extend(i) for i in [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek, index.file]]  # type: ignore
     sock.send(b)
 
   def send_data(self, sock, data) -> None:
-    b = bytearray()
+    b: bytes = bytearray()
     [b.extend(i) for i in [data.index, data.database, data.table, data.relative, data.row, data.col, data.data]]  # type: ignore
     sock.send(b)
 
   def recv_index(self, sock, size=256) -> Tuple:
-    x = sock.recv(319)
-    return (x[0:8], x[8:16], x[16:24], x[24:32], x[32:40], x[40:48], x[48:56], x[56:64], x[64:319])
+    r = sock.recv(319)  # Size of DbIndex, below separate per variable
+    return (r[0:8], r[8:16], r[16:24], r[24:32], r[32:40], r[40:48], r[48:56], r[56:64], r[64:319])
 
   def recv_data(self, sock, size=4096) -> Tuple:
-    x = sock.recv(4096)
-    return (x[0:8], x[8:16], x[16:24], x[24:32], x[32:40], x[40:48], x[48:4096])
+    r = sock.recv(4096)  # Size of DbData, below separate per variable
+    return (r[0:8], r[8:16], r[16:24], r[24:32], r[32:40], r[40:48], r[48:4096])
 
 
 if __name__ == '__main__':
