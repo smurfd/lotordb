@@ -69,9 +69,6 @@ class DbData:
     return (getattr(self, f.name) for f in fields(self))
 
 
-# TODO: Rename Files?
-
-
 # Maby? https://renatocunha.com/2015/11/ctypes-mmap-rwlock/
 # Before mmap : time 6.3838
 # After mmap  : time 6.3694
@@ -82,7 +79,7 @@ class DbData:
 # After compress befor pack without double get_data: time 0.7963!!!!! (python 3.11.7)
 # Sending byte array: time 0.4790!!! (python 3.11.7)
 # gzip command: time 1.539226
-class Files(threading.Thread):
+class Tables(threading.Thread):  # Table store
   def __init__(self, fn) -> None:
     threading.Thread.__init__(self, group=None)
     self.fi: Union[None, BinaryIO] = None
@@ -203,10 +200,10 @@ class Files(threading.Thread):
 
 
 if __name__ == '__main__':
-  print('DB')
+  print('Table')
   data: List = [123] * 100000025
   tot = time.perf_counter()
-  f = Files('.lib/db1')
+  f = Tables('.lib/db1')
   a = f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
   b = f.init_data(1, 1, 1, 1, 1, 1, data, a)  # 500mb
   f.get_index(a)

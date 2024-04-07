@@ -13,7 +13,7 @@ class Key:
   hash: str = field(default='', init=False)
 
 
-class Keys:
+class Keys:  # Key Value Store
   def __init__(self, k='', v='', s='') -> None:
     self.k = Key()
     if k and v and s:

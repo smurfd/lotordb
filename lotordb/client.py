@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import threading, socket, ssl
 from lotordb.keys import Keys
-from lotordb.files import Files
+from lotordb.tables import Tables
 from typing import Union
 
 
@@ -15,7 +15,7 @@ class Client(threading.Thread):
     self.sock = None
     self.type = dbtype
     self.key: Union[None, Keys] = None
-    self.files: Union[None, Files] = None
+    self.files: Union[None, Tables] = None
     self.thread = threading.Thread()
 
   def run(self) -> None:
