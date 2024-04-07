@@ -2,7 +2,7 @@
 import threading, socket, ssl
 from lotordb.keys import Keys
 from lotordb.tables import Tables
-from typing import Union
+from typing import Union, Self
 
 
 class Client(threading.Thread):
@@ -40,20 +40,23 @@ class Client(threading.Thread):
     self.sock.connect((self.host, self.port))
     return self.sock
 
-  def close(self):
-    self.sock.close()
+  def close(self) -> None:
+    if self.sock:
+      self.sock.close()
 
-  def send(self, data):
-    self.sock.send(data)
+  def send(self, data: bytes) -> None:
+    if self.sock:
+      self.sock.send(data)
 
-  def receive(self, data):
-    self.sock.recv(data)
+  def receive(self, data: bytes) -> None:
+    if self.sock:
+      self.sock.recv(data)
 
-  def set_key(self, key):
+  def set_key(self, key: Union[None, Keys]) -> Self:
     self.key = key
     return self
 
-  def set_tables(self, tables):
+  def set_tables(self, tables: Union[None, Tables]) -> Self:
     self.tables = tables
     return self
 
