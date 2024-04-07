@@ -4,7 +4,7 @@ from typing import Union
 
 
 class Hash(threading.Thread):
-  def __init__(self, s) -> None:
+  def __init__(self, s: Union[str, bytes]) -> None:
     threading.Thread.__init__(self, group=None)
     self.s: Union[str, bytes] = s
     self.h: Union[str, None] = None
