@@ -12,9 +12,7 @@ def test_lotordb_key() -> None:
   t = time.perf_counter()
   Server('127.0.0.1', 1337, test=True, dbtype='key')
   time.sleep(0.1)
-  cli = Client('127.0.0.1', 1337, dbtype='key')
-  cli.set_key(Keys(k='1122', v='abc', s='/tmp'))
-  cli.start()
+  Client('127.0.0.1', 1337, dbtype='key').set_key(Keys(k='1122', v='abc', s='/tmp')).start()
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
@@ -29,10 +27,8 @@ def test_lotordb_table() -> None:
   f = Tables('.lib/db1')
   a = f.init_index(*index)
   b = f.init_data(*ddata, a)[0]  # type: ignore
-  cli = Client('127.0.0.1', 1337, dbtype='db')
   f.set_index_data(a, b)
-  cli.set_files(f)
-  cli.start()
+  Client('127.0.0.1', 1337, dbtype='db').set_tables(f).start()
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 

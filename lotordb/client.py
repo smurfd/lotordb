@@ -15,7 +15,7 @@ class Client(threading.Thread):
     self.sock = None
     self.type = dbtype
     self.key: Union[None, Keys] = None
-    self.files: Union[None, Tables] = None
+    self.tables: Union[None, Tables] = None
     self.thread = threading.Thread()
 
   def run(self) -> None:
@@ -24,9 +24,9 @@ class Client(threading.Thread):
       self.connect()
       if self.type == 'key' and self.key:  # key value client
         self.key.send_key(self.sock, self.key.get_key())
-      elif self.type == 'db' and self.files:  # database client
-        self.files.send_index(self.sock, self.files.index)
-        self.files.send_data(self.sock, self.files.data)
+      elif self.type == 'db' and self.tables:  # database client
+        self.tables.send_index(self.sock, self.tables.index)
+        self.tables.send_data(self.sock, self.tables.data)
       self.close()
       self.thread.join(timeout=0.1)
     except Exception as e:
@@ -51,13 +51,14 @@ class Client(threading.Thread):
 
   def set_key(self, key):
     self.key = key
+    return self
 
-  def set_files(self, files):
-    self.files = files
+  def set_tables(self, tables):
+    self.tables = tables
+    return self
 
 
 if __name__ == '__main__':
   print('Client')
   cli = Client('127.0.0.1', 1337, dbtype='key')
-  cli.set_key(Keys(k='1122', v='abc', s='/tmp'))
-  cli.start()
+  cli.set_key(Keys(k='1122', v='abc', s='/tmp')).start()

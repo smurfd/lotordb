@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass, field, fields
-from typing import List, Union, BinaryIO, Tuple
+from typing import List, Union, BinaryIO, Tuple, IO
 import struct, gzip, time, threading, mmap
 
 # Thinking out loud about how to do a database
@@ -82,26 +82,26 @@ class DbData:
 class Tables(threading.Thread):  # Table store
   def __init__(self, fn) -> None:
     threading.Thread.__init__(self, group=None)
-    self.fi: Union[None, BinaryIO] = None
-    self.fd: Union[None, BinaryIO] = None
+    self.fi: Union[None, BinaryIO, IO] = None
+    self.fd: Union[None, BinaryIO, IO] = None
     self.fimm: Union[None, BinaryIO] = None
     self.fdmm: Union[None, BinaryIO] = None
     self.fn = (fn + '.dbindex', fn + '.dbdata')
     self.open_index_file(self.fn[0], 'ab+')
     self.open_data_file(self.fn[1], 'ab+')
-    self.size = 4048
-    self.index = None
-    self.data = None
+    self.size: int = 4048
+    self.index: Union[DbIndex, None] = None
+    self.data: Union[DbData, None] = None
     self.start()
 
   def __exit__(self) -> None:
     self.close_file()
     self.join(timeout=0.1)
 
-  def open_index_file(self, filename, rwd) -> None:
+  def open_index_file(self, filename: str, rwd: str) -> None:
     self.fi = open(filename, rwd)
 
-  def open_data_file(self, filename, rwd) -> None:
+  def open_data_file(self, filename: str, rwd: str) -> None:
     self.fd = open(filename, rwd)
 
   def close_file(self) -> None:
