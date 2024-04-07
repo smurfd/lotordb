@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from lotordb.server import Server
 from lotordb.client import Client
-from lotordb.files import Files
+from lotordb.files import Files, DbIndex, DbData
 from lotordb.keys import Keys
 from typing import List
 import time
@@ -24,9 +24,11 @@ def test_lotordb_db() -> None:
   Server('127.0.0.1', 1337, test=True, dbtype='db')
   time.sleep(0.1)
   data: List = [123] * 125
+  index = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
+  ddata = DbData(1, 1, 1, 1, 1, 1, data)
   f = Files('.lib/db1')
-  a = f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
-  b = f.init_data(1, 1, 1, 1, 1, 1, data, a)[0]  # type: ignore
+  a = f.init_index(*index)
+  b = f.init_data(*ddata, a)[0]  # type: ignore
   cli = Client('127.0.0.1', 1337, dbtype='db')
   f.set_index_data(a, b)
   cli.set_files(f)

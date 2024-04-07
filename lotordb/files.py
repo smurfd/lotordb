@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import List, Union, BinaryIO, Tuple
 import struct, gzip, time, threading, mmap
 
@@ -41,26 +41,32 @@ retrieving:
 
 @dataclass
 class DbIndex:
-  index: Union[bytes, None] = field(default=b'', init=True)
-  dbindex: Union[bytes, None] = field(default=b'', init=True)
-  database: Union[bytes, None] = field(default=b'', init=True)
-  table: Union[bytes, None] = field(default=b'', init=True)
-  row: Union[bytes, None] = field(default=b'', init=True)
-  col: Union[bytes, None] = field(default=b'', init=True)
-  segments: Union[bytes, None] = field(default=b'', init=True)
-  seek: Union[bytes, None] = field(default=b'', init=True)
-  file: Union[bytes, None] = field(default=b'db.dbindex', init=True)
+  index: Union[bytes, int, None] = field(default=b'', init=True)
+  dbindex: Union[bytes, int, None] = field(default=b'', init=True)
+  database: Union[bytes, int, None] = field(default=b'', init=True)
+  table: Union[bytes, int, None] = field(default=b'', init=True)
+  row: Union[bytes, int, None] = field(default=b'', init=True)
+  col: Union[bytes, int, None] = field(default=b'', init=True)
+  segments: Union[bytes, int, None] = field(default=b'', init=True)
+  seek: Union[bytes, int, None] = field(default=b'', init=True)
+  file: Union[bytes, str, None] = field(default=b'db.dbindex', init=True)
+
+  def __iter__(self):
+    return (getattr(self, f.name) for f in fields(self))
 
 
 @dataclass
 class DbData:
-  index: Union[bytes, None] = field(default=b'', init=True)
-  database: Union[bytes, None] = field(default=b'', init=True)
-  table: Union[bytes, None] = field(default=b'', init=True)
-  relative: Union[bytes, None] = field(default=b'', init=True)
-  row: Union[bytes, None] = field(default=b'', init=True)
-  col: Union[bytes, None] = field(default=b'', init=True)
-  data: Union[bytes, None] = field(default=b'', init=True)
+  index: Union[bytes, int, None] = field(default=b'', init=True)
+  database: Union[bytes, int, None] = field(default=b'', init=True)
+  table: Union[bytes, int, None] = field(default=b'', init=True)
+  relative: Union[bytes, int, None] = field(default=b'', init=True)
+  row: Union[bytes, int, None] = field(default=b'', init=True)
+  col: Union[bytes, int, None] = field(default=b'', init=True)
+  data: Union[bytes, list, None] = field(default=b'', init=True)
+
+  def __iter__(self):
+    return (getattr(self, f.name) for f in fields(self))
 
 
 # TODO: Rename Files?
