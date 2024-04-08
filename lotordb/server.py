@@ -9,7 +9,7 @@ class Server(threading.Thread):
   class ServiceExit(Exception):
     pass
 
-  def __init__(self, dbhost, dbport, dbmaster=True, dbnode=0, test=False, dbtype=False) -> None:
+  def __init__(self, dbhost: str, dbport: int, dbmaster: bool = True, dbnode: int = 0, test: bool = False, dbtype: Union[bool, str] = False) -> None:
     signal.signal(signal.SIGTERM, self.service_shutdown)
     signal.signal(signal.SIGINT, self.service_shutdown)
     threading.Thread.__init__(self)

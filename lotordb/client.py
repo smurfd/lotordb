@@ -6,7 +6,7 @@ from typing import Union, Self
 
 
 class Client(threading.Thread):
-  def __init__(self, dbhost, dbport, dbmaster=True, dbnode=0, dbtype=False) -> None:
+  def __init__(self, dbhost: str, dbport: int, dbmaster: bool = True, dbnode: int = 0, dbtype: Union[bool, str] = False) -> None:
     threading.Thread.__init__(self, group=None)
     self.client = Union[None, Client]
     self.event = threading.Event()
