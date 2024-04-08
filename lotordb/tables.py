@@ -110,57 +110,56 @@ class Tables(threading.Thread):  # Table store
     if self.fd and not self.fd.closed:
       self.fd.close()
 
-  def init_index(self, inx: Union[DbIndex, Tuple, None]) -> DbIndex:
-    if isinstance(inx, DbIndex) and inx and isinstance(inx.file, str):
-      var: List = [inx.index, inx.dbindex, inx.database, inx.table, inx.row, inx.col, inx.segments, inx.seek]
+  def init_index(self, index: Union[DbIndex, Tuple, None]) -> DbIndex:
+    if isinstance(index, DbIndex) and index and isinstance(index.file, str):
+      var: List = [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek]
       packed: List[Union[bytes, None]] = [None] * 8
       packed[:7] = [struct.pack('>Q', c) for c in var]
-      packed[8] = struct.pack('>255s', bytes(inx.file.ljust(255, ' '), 'UTF-8'))
+      packed[8] = struct.pack('>255s', bytes(index.file.ljust(255, ' '), 'UTF-8'))
       return DbIndex(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6], packed[7], packed[8])
-    return DbIndex(*inx)  # type: ignore
+    return DbIndex(*index)  # type: ignore
 
-  def init_data(self, dbd: Union[DbData, Tuple, None], dbi: DbIndex) -> Union[DbData, List]:
-    if isinstance(dbd, DbData) and dbd and dbd.data:
-      pvr: List = [struct.pack('>Q', c) for c in [dbd.index, dbd.database, dbd.table, dbd.relative, dbd.row, dbd.col]]
-      gzd: bytes = gzip.compress(bytearray(dbd.data), compresslevel=3)
+  def init_data(self, data: Union[DbData, Tuple, None], index: DbIndex) -> Union[DbData, List]:
+    if isinstance(data, DbData) and data and data.data:
+      pvr: List = [struct.pack('>Q', c) for c in [data.index, data.database, data.table, data.relative, data.row, data.col]]
+      gzd: bytes = gzip.compress(bytearray(data.data), compresslevel=3)
       gzd = struct.pack('>%dQ' % len(gzd), *gzd)
       gzl: int = len(gzd)
       ret: List = []
-      if isinstance(dbi.seek, bytes) and self.fd:
-        if not struct.unpack('>Q', dbi.seek):
-          dbi.seek = struct.pack('>Q', self.fd.tell())
-        self.fd.seek(struct.unpack('>Q', dbi.seek)[0], 0)
+      if isinstance(index.seek, bytes) and self.fd:
+        if not struct.unpack('>Q', index.seek):
+          index.seek = struct.pack('>Q', self.fd.tell())
+        self.fd.seek(struct.unpack('>Q', index.seek)[0], 0)
       # Calculate diff between length of gz data, if not divisable with self.size, add 1 to zlen
       zlen: int = (gzl // self.size) if not (gzl - ((gzl // self.size) * self.size) > 0) else (gzl // self.size) + 1
       for i in range(zlen):
         ret += [DbData(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], gzd[i * self.size : (i + 1) * self.size])]
       if len(ret[len(ret) - 1].data) % self.size:  # If data is not self.size, fill out data to be self.size
         ret[len(ret) - 1].data += bytes([0] * (self.size - len(ret[len(ret) - 1].data)))
-      if not dbi.segments == zlen:  # Set number of segments to zlen
-        dbi.segments = struct.pack('>Q', zlen)
+      if not index.segments == zlen:  # Set number of segments to zlen
+        index.segments = struct.pack('>Q', zlen)
       return ret
-    return DbData(*dbd)  # type: ignore
+    return DbData(*data)  # type: ignore
 
-  def get_index(self, dbi: DbIndex) -> List:
+  def get_index(self, index: DbIndex) -> List:
     unpacked: List[Union[int, Tuple, None]] = [None] * 8
-    var: List = [dbi.index, dbi.dbindex, dbi.database, dbi.table, dbi.row, dbi.col, dbi.segments, dbi.seek]
+    var: List = [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek]
     unpacked[:7] = [struct.unpack('>Q', var[c]) for c in range(8)]
-    if isinstance(dbi.file, bytes):
-      unpacked[8] = struct.unpack('>255s', dbi.file)[0].decode('UTF-8').rstrip(' ')
+    if isinstance(index.file, bytes):
+      unpacked[8] = struct.unpack('>255s', index.file)[0].decode('UTF-8').rstrip(' ')
     return unpacked
 
-  def get_data(self, dbi: DbIndex, dbd: List) -> Tuple[list, bytes]:
+  def get_data(self, index: DbIndex, data: List) -> Tuple[list, bytes]:
     dat: bytes = b''
     ret: List = []
-    if isinstance(dbi.segments, bytes):
-      for i in range(struct.unpack('>Q', dbi.segments)[0]):
-        dat += dbd[i].data
-        ret += [struct.unpack('>Q', c) for c in [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col]]
+    if isinstance(index.segments, bytes):
+      for i in range(struct.unpack('>Q', index.segments)[0]):
+        dat += data[i].data
+        ret += [struct.unpack('>Q', c) for c in [data[i].index, data[i].database, data[i].table, data[i].relative, data[i].row, data[i].col]]
     return ret, gzip.decompress(bytearray(struct.unpack('>%dQ' % (len(dat) // 8), dat)))
 
   def write_index(self, i: DbIndex) -> None:
-    if i:
-      [self.fi.write(c) for c in [i.index, i.dbindex, i.database, i.table, i.row, i.col, i.segments, i.seek, i.file] if self.fi]  # type: ignore
+    [self.fi.write(c) for c in [i.index, i.dbindex, i.database, i.table, i.row, i.col, i.segments, i.seek, i.file] if self.fi]  # type: ignore
 
   def write_data(self, i: DbIndex, d: List) -> None:
     if i and isinstance(i.segments, bytes):
