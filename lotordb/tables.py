@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass, field, fields
 from typing import List, Union, BinaryIO, Tuple, IO
-import struct, gzip, time, threading, mmap
+import struct, gzip, time, threading, mmap, socket
 
 # Thinking out loud about how to do a database
 """
@@ -110,7 +110,18 @@ class Tables(threading.Thread):  # Table store
     if self.fd and not self.fd.closed:
       self.fd.close()
 
-  def init_index(self, index, dbindex, database, table, row, col, segments, seek, file) -> DbIndex:
+  def init_index(
+    self,
+    index: Union[int, bytes],
+    dbindex: Union[int, bytes],
+    database: Union[int, bytes],
+    table: Union[int, bytes],
+    row: Union[int, bytes],
+    col: Union[int, bytes],
+    segments: Union[int, bytes],
+    seek: Union[int, bytes],
+    file: str,
+  ) -> DbIndex:
     var: List = [index, dbindex, database, table, row, col, segments, seek]
     if isinstance(index, bytes):  # Assume everything is in bytes
       return DbIndex(index, dbindex, database, table, row, col, segments, seek, file)
@@ -120,7 +131,17 @@ class Tables(threading.Thread):  # Table store
       packed[8] = struct.pack('>255s', bytes(file.ljust(255, ' '), 'UTF-8'))
       return DbIndex(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6], packed[7], packed[8])
 
-  def init_data(self, index, database, table, relative, row, col, data, dbi) -> Union[DbData, List]:
+  def init_data(
+    self,
+    index: Union[int, bytes],
+    database: Union[int, bytes],
+    table: Union[int, bytes],
+    relative: Union[int, bytes],
+    row: Union[int, bytes],
+    col: Union[int, bytes],
+    data: Union[list, bytes],
+    dbi: DbIndex,
+  ) -> Union[DbData, List]:
     if isinstance(index, bytes):  # Assume everything is in bytes
       return DbData(index, database, table, relative, row, col, data)
     else:
@@ -129,7 +150,7 @@ class Tables(threading.Thread):  # Table store
       gzd = struct.pack('>%dQ' % len(gzd), *gzd)
       gzl: int = len(gzd)
       ret: List = []
-      if self.fd:
+      if isinstance(dbi.seek, bytes) and self.fd:
         if not struct.unpack('>Q', dbi.seek):
           dbi.seek = struct.pack('>Q', self.fd.tell())
         self.fd.seek(struct.unpack('>Q', dbi.seek)[0], 0)
@@ -143,58 +164,62 @@ class Tables(threading.Thread):  # Table store
         dbi.segments = struct.pack('>Q', zlen)
       return ret
 
-  def get_index(self, dbi) -> List:
+  def get_index(self, dbi: DbIndex) -> List:
     unpacked: List[Union[int, Tuple, None]] = [None] * 8
     var: List = [dbi.index, dbi.dbindex, dbi.database, dbi.table, dbi.row, dbi.col, dbi.segments, dbi.seek]
     unpacked[:7] = [struct.unpack('>Q', var[c]) for c in range(8)]
-    unpacked[8] = struct.unpack('>255s', dbi.file)[0].decode('UTF-8').rstrip(' ')
+    if isinstance(dbi.file, bytes):
+      unpacked[8] = struct.unpack('>255s', dbi.file)[0].decode('UTF-8').rstrip(' ')
     return unpacked
 
-  def get_data(self, dbi, dbd) -> Tuple[list, bytes]:
+  def get_data(self, dbi: DbIndex, dbd: List) -> Tuple[list, bytes]:
     dat: bytes = b''
     ret: List = []
-    for i in range(struct.unpack('>Q', dbi.segments)[0]):
-      dat += dbd[i].data
-      ret += [struct.unpack('>Q', c) for c in [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col]]
+    if isinstance(dbi.segments, bytes):
+      for i in range(struct.unpack('>Q', dbi.segments)[0]):
+        dat += dbd[i].data
+        ret += [struct.unpack('>Q', c) for c in [dbd[i].index, dbd[i].database, dbd[i].table, dbd[i].relative, dbd[i].row, dbd[i].col]]
     return ret, gzip.decompress(bytearray(struct.unpack('>%dQ' % (len(dat) // 8), dat)))
 
-  def write_index(self, i) -> None:  # i, dbindex
-    [self.fi.write(c) for c in [i.index, i.dbindex, i.database, i.table, i.row, i.col, i.segments, i.seek, i.file] if self.fi]
+  def write_index(self, i: DbIndex) -> None:
+    [self.fi.write(c) for c in [i.index, i.dbindex, i.database, i.table, i.row, i.col, i.segments, i.seek, i.file] if self.fi]  # type: ignore
 
-  def write_data(self, i, d) -> None:  # i: DbIndex, d: DbData
-    for b in range(struct.unpack('>Q', i.segments)[0]):
-      [self.fd.write(c) for c in [d[b].index, d[b].database, d[b].table, d[b].relative, d[b].row, d[b].col, d[b].data] if self.fd]
+  def write_data(self, i: DbIndex, d: List) -> None:
+    if isinstance(i.segments, bytes):
+      for b in range(struct.unpack('>Q', i.segments)[0]):
+        [self.fd.write(c) for c in [d[b].index, d[b].database, d[b].table, d[b].relative, d[b].row, d[b].col, d[b].data] if self.fd]
 
   def read_index(self) -> Union[DbIndex, None]:
     self.open_index_file(self.fn[0], 'rb+')
     self.fimm = mmap.mmap(self.fi.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     return DbIndex(*(self.fimm.read([8, 8, 8, 8, 8, 8, 8, 8, 255][c]) for c in range(9) if self.fimm))
 
-  def read_data(self, dbi) -> List:
-    lngt: int = struct.unpack('>Q', dbi.segments)[0]
+  def read_data(self, dbi: DbIndex) -> List:
+    if isinstance(dbi.segments, bytes):
+      lngt: int = struct.unpack('>Q', dbi.segments)[0]
     self.open_data_file(self.fn[1], 'rb+')
     self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     return [DbData(*(self.fdmm.read([8, 8, 8, 8, 8, 8, 4048][c]) for c in range(7) if self.fdmm)) for i in range(lngt)]
 
-  def send_index(self, sock, index) -> None:
+  def send_index(self, sock: socket.socket, index: DbIndex) -> None:
     b: bytes = bytearray()
     [b.extend(i) for i in [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek, index.file]]  # type: ignore
     sock.send(b)
 
-  def send_data(self, sock, data) -> None:
+  def send_data(self, sock: socket.socket, data: DbData) -> None:
     b: bytes = bytearray()
     [b.extend(i) for i in [data.index, data.database, data.table, data.relative, data.row, data.col, data.data]]  # type: ignore
     sock.send(b)
 
-  def recv_index(self, sock, size=256) -> Tuple:
-    r = sock.recv(319)  # Size of DbIndex, below separate per variable
+  def recv_index(self, sock: socket.socket, size: int = 319) -> Tuple:
+    r = sock.recv(size)  # Size of DbIndex, below separate per variable
     return (r[0:8], r[8:16], r[16:24], r[24:32], r[32:40], r[40:48], r[48:56], r[56:64], r[64:319])
 
-  def recv_data(self, sock, size=4096) -> Tuple:
-    r = sock.recv(4096)  # Size of DbData, below separate per variable
+  def recv_data(self, sock: socket.socket, size: int = 4096) -> Tuple:
+    r = sock.recv(size)  # Size of DbData, below separate per variable
     return (r[0:8], r[8:16], r[16:24], r[24:32], r[32:40], r[40:48], r[48:4096])
 
-  def set_index_data(self, dbi, dbd):
+  def set_index_data(self, dbi: DbIndex, dbd: DbData):
     self.index = dbi
     self.data = dbd
 
@@ -204,12 +229,15 @@ if __name__ == '__main__':
   data: List = [123] * 100000025
   tot = time.perf_counter()
   f = Tables('.lib/db1')
-  a = f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
+  a: DbIndex = f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
   b = f.init_data(1, 1, 1, 1, 1, 1, data, a)  # 500mb
-  f.get_index(a)
-  f.write_index(a)
-  f.write_data(a, b)
-  a2 = f.read_index()
-  b2 = f.read_data(a)
-  d3, d4 = f.get_data(a2, b2)
+  if isinstance(a, DbIndex):
+    f.get_index(a)
+    f.write_index(a)
+    if isinstance(b, list):
+      f.write_data(a, b)
+      a2 = f.read_index()
+      b2 = f.read_data(a)
+      if isinstance(a2, DbIndex):
+        d3, d4 = f.get_data(a2, b2)
   print('time {:.4f}'.format(time.perf_counter() - tot))

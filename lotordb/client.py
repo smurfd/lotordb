@@ -24,7 +24,7 @@ class Client(threading.Thread):
       self.connect()
       if self.type == 'key' and self.key:  # key value client
         self.key.send_key(self.sock, self.key.get_key())
-      elif self.type == 'db' and self.tables:  # database client
+      elif self.type == 'db' and self.tables and self.sock:  # database client
         self.tables.send_index(self.sock, self.tables.index)
         self.tables.send_data(self.sock, self.tables.data)
       self.close()
