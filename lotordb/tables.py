@@ -171,9 +171,9 @@ class Tables(threading.Thread):  # Table store
     self.fimm = mmap.mmap(self.fi.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     return DbIndex(*(self.fimm.read([8, 8, 8, 8, 8, 8, 8, 8, 255][c]) for c in range(9) if self.fimm))
 
-  def read_data(self, dbi: DbIndex) -> List:
-    if isinstance(dbi.segments, bytes):
-      lngt: int = struct.unpack('>Q', dbi.segments)[0]
+  def read_data(self, index: DbIndex) -> List:
+    if isinstance(index.segments, bytes):
+      lngt: int = struct.unpack('>Q', index.segments)[0]
     self.open_data_file(self.fn[1], 'rb+')
     self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     return [DbData(*(self.fdmm.read([8, 8, 8, 8, 8, 8, 4048][c]) for c in range(7) if self.fdmm)) for i in range(lngt)]
@@ -196,27 +196,27 @@ class Tables(threading.Thread):  # Table store
     r = sock.recv(size)  # Size of DbData, below separate per variable
     return (r[0:8], r[8:16], r[16:24], r[24:32], r[32:40], r[40:48], r[48:4096])
 
-  def set_index_data(self, dbi: DbIndex, dbd: DbData):
-    self.index = dbi
-    self.data = dbd
+  def set_index_data(self, index: DbIndex, data: DbData):
+    self.index = index
+    self.data = data
 
 
 if __name__ == '__main__':
   print('Table')
-  data: List = [123] * 100000025
+  context: List = [123] * 100000025
   tot = time.perf_counter()
-  f = Tables('.lib/db1')
+  tables = Tables('.lib/db1')
   ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
-  dad: DbData = DbData(1, 1, 1, 1, 1, 1, data)
-  a: DbIndex = f.init_index(ind)
-  b = f.init_data(dad, a)  # 500mb
-  if isinstance(a, DbIndex):
-    f.get_index(a)
-    f.write_index(a)
-    if isinstance(b, list):
-      f.write_data(a, b)
-      a2 = f.read_index()
-      b2 = f.read_data(a)
-      if isinstance(a2, DbIndex):
-        d3, d4 = f.get_data(a2, b2)
+  dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
+  index: DbIndex = tables.init_index(ind)
+  data = tables.init_data(dad, index)  # 500mb
+  if isinstance(index, DbIndex):
+    tables.get_index(index)
+    tables.write_index(index)
+    if isinstance(data, list):
+      tables.write_data(index, data)
+      index2 = tables.read_index()
+      data2 = tables.read_data(index)
+      if isinstance(index2, DbIndex):
+        tables.get_data(index2, data2)
   print('time {:.4f}'.format(time.perf_counter() - tot))

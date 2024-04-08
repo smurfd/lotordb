@@ -11,7 +11,6 @@
 
 ### lotordb
 Database and Key value store written in Python. No dependencies.
-Key value store works now
 
 ### test
 ```
@@ -22,5 +21,7 @@ python3 -m pytest lotordb/test
 The database
 
 ### Usage
-Start server in one terminal: `PYTHONPATH="." python3 lotordb/server.py`<br>
-Start client in one terminal: `PYTHONPATH="." python3 lotordb/client.py`<br>
+Start Table server in one terminal: `PYTHONPATH="." python3 lotordb/server.py table`<br>
+Start Key server in one terminal: `PYTHONPATH="." python3 lotordb/server.py key`<br>
+Start Table client in one terminal: `PYTHONPATH="." python3 lotordb/client.py table`<br>
+Start Key client in one terminal: `PYTHONPATH="." python3 lotordb/client.py key`<br>

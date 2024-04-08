@@ -3,6 +3,7 @@ import threading, signal, socket, ssl
 from lotordb.keys import Keys
 from lotordb.tables import Tables
 from typing import Union, Any
+import sys
 
 
 class Server(threading.Thread):
@@ -56,18 +57,29 @@ class Server(threading.Thread):
               print('Will not write key, hash does not match!')
         finally:
           self.close()
-    elif self.type == 'db' and self.test:  # database server, hack so you can run server in tests
+    elif self.type == 'table' and self.test:  # database server, hack so you can run server in tests
       self.listen()
-      f = Tables('.lib/db1')
-      index = f.recv_index(self.ssl_sock)
-      data = f.recv_data(self.ssl_sock)
-      fi = f.init_index(index)
-      fd = f.init_data(data, fi)  # type: ignore
-      f.write_index(fi)
-      f.write_data(fi, [fd])
+      table = Tables('.lib/db1')
+      index = table.recv_index(self.ssl_sock)
+      data = table.recv_data(self.ssl_sock)
+      fi = table.init_index(index)
+      fd = table.init_data(data, fi)  # type: ignore
+      table.write_index(fi)
+      table.write_data(fi, [fd])
       self.close()
-    elif self.type == 'db':  # database server
-      pass
+    elif self.type == 'table':  # database server
+      while not self.event.is_set():
+        self.listen()
+        try:
+          table = Tables('.lib/db1')
+          index = table.recv_index(self.ssl_sock)
+          data = table.recv_data(self.ssl_sock)
+          fi = table.init_index(index)
+          fd = table.init_data(data, fi)  # type: ignore
+          table.write_index(fi)
+          table.write_data(fi, [fd])
+        finally:
+          self.close()
 
   def init_server_socket(self) -> None:
     self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -89,4 +101,7 @@ class Server(threading.Thread):
 
 if __name__ == '__main__':
   print('Server')
-  Server('127.0.0.1', 1337, dbtype='key')
+  if sys.argv[1] and sys.argv[1] == 'table':
+    Server('127.0.0.1', 1337, dbtype='table')
+  else:
+    Server('127.0.0.1', 1337, dbtype='key')

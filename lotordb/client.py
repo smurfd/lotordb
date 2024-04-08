@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import threading, socket, ssl
 from lotordb.keys import Keys
-from lotordb.tables import Tables
-from typing import Union, Self
+from lotordb.tables import Tables, DbIndex, DbData
+from typing import Union, Self, List
+import sys
 
 
 class Client(threading.Thread):
@@ -24,7 +25,7 @@ class Client(threading.Thread):
       self.connect()
       if self.type == 'key' and self.key:  # key value client
         self.key.send_key(self.sock, self.key.get_key())
-      elif self.type == 'db' and self.tables and self.sock:  # database client
+      elif self.type == 'table' and self.tables and self.sock:  # database client
         self.tables.send_index(self.sock, self.tables.index)
         self.tables.send_data(self.sock, self.tables.data)
       self.close()
@@ -63,5 +64,14 @@ class Client(threading.Thread):
 
 if __name__ == '__main__':
   print('Client')
-  cli = Client('127.0.0.1', 1337, dbtype='key')
-  cli.set_key(Keys(k='1122', v='abc', s='/tmp')).start()
+  if sys.argv[1] and sys.argv[1] == 'table':
+    context: List = [123] * 125
+    dindex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
+    ddata = DbData(1, 1, 1, 1, 1, 1, context)
+    table = Tables('.lib/db1')
+    index = table.init_index(dindex)
+    data = table.init_data(ddata, index)[0]  # type: ignore
+    table.set_index_data(index, data)
+    Client('127.0.0.1', 1337, dbtype='table').set_tables(table).start()
+  else:
+    Client('127.0.0.1', 1337, dbtype='key').set_key(Keys(k='1122', v='abc', s='/tmp')).start()
