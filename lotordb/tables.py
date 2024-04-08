@@ -110,43 +110,19 @@ class Tables(threading.Thread):  # Table store
     if self.fd and not self.fd.closed:
       self.fd.close()
 
-  def init_index(
-    self,
-    index: Union[int, bytes],
-    dbindex: Union[int, bytes],
-    database: Union[int, bytes],
-    table: Union[int, bytes],
-    row: Union[int, bytes],
-    col: Union[int, bytes],
-    segments: Union[int, bytes],
-    seek: Union[int, bytes],
-    file: str,
-  ) -> DbIndex:
-    var: List = [index, dbindex, database, table, row, col, segments, seek]
-    if isinstance(index, bytes):  # Assume everything is in bytes
-      return DbIndex(index, dbindex, database, table, row, col, segments, seek, file)
-    else:
+  def init_index(self, inx: Union[DbIndex, Tuple, None]) -> DbIndex:
+    if isinstance(inx, DbIndex) and inx and isinstance(inx.file, str):
+      var: List = [inx.index, inx.dbindex, inx.database, inx.table, inx.row, inx.col, inx.segments, inx.seek]
       packed: List[Union[bytes, None]] = [None] * 8
       packed[:7] = [struct.pack('>Q', c) for c in var]
-      packed[8] = struct.pack('>255s', bytes(file.ljust(255, ' '), 'UTF-8'))
+      packed[8] = struct.pack('>255s', bytes(inx.file.ljust(255, ' '), 'UTF-8'))
       return DbIndex(packed[0], packed[1], packed[2], packed[3], packed[4], packed[5], packed[6], packed[7], packed[8])
+    return DbIndex(*inx)  # type: ignore
 
-  def init_data(
-    self,
-    index: Union[int, bytes],
-    database: Union[int, bytes],
-    table: Union[int, bytes],
-    relative: Union[int, bytes],
-    row: Union[int, bytes],
-    col: Union[int, bytes],
-    data: Union[list, bytes],
-    dbi: DbIndex,
-  ) -> Union[DbData, List]:
-    if isinstance(index, bytes):  # Assume everything is in bytes
-      return DbData(index, database, table, relative, row, col, data)
-    else:
-      pvr: List = [struct.pack('>Q', c) for c in [index, database, table, relative, row, col]]
-      gzd: bytes = gzip.compress(bytearray(data), compresslevel=3)
+  def init_data(self, dbd: Union[DbData, Tuple, None], dbi: DbIndex) -> Union[DbData, List]:
+    if isinstance(dbd, DbData) and dbd and dbd.data:
+      pvr: List = [struct.pack('>Q', c) for c in [dbd.index, dbd.database, dbd.table, dbd.relative, dbd.row, dbd.col]]
+      gzd: bytes = gzip.compress(bytearray(dbd.data), compresslevel=3)
       gzd = struct.pack('>%dQ' % len(gzd), *gzd)
       gzl: int = len(gzd)
       ret: List = []
@@ -163,6 +139,7 @@ class Tables(threading.Thread):  # Table store
       if not dbi.segments == zlen:  # Set number of segments to zlen
         dbi.segments = struct.pack('>Q', zlen)
       return ret
+    return DbData(*dbd)  # type: ignore
 
   def get_index(self, dbi: DbIndex) -> List:
     unpacked: List[Union[int, Tuple, None]] = [None] * 8
@@ -182,10 +159,11 @@ class Tables(threading.Thread):  # Table store
     return ret, gzip.decompress(bytearray(struct.unpack('>%dQ' % (len(dat) // 8), dat)))
 
   def write_index(self, i: DbIndex) -> None:
-    [self.fi.write(c) for c in [i.index, i.dbindex, i.database, i.table, i.row, i.col, i.segments, i.seek, i.file] if self.fi]  # type: ignore
+    if i:
+      [self.fi.write(c) for c in [i.index, i.dbindex, i.database, i.table, i.row, i.col, i.segments, i.seek, i.file] if self.fi]  # type: ignore
 
   def write_data(self, i: DbIndex, d: List) -> None:
-    if isinstance(i.segments, bytes):
+    if i and isinstance(i.segments, bytes):
       for b in range(struct.unpack('>Q', i.segments)[0]):
         [self.fd.write(c) for c in [d[b].index, d[b].database, d[b].table, d[b].relative, d[b].row, d[b].col, d[b].data] if self.fd]
 
@@ -229,8 +207,10 @@ if __name__ == '__main__':
   data: List = [123] * 100000025
   tot = time.perf_counter()
   f = Tables('.lib/db1')
-  a: DbIndex = f.init_index(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
-  b = f.init_data(1, 1, 1, 1, 1, 1, data, a)  # 500mb
+  ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
+  dad: DbData = DbData(1, 1, 1, 1, 1, 1, data)
+  a: DbIndex = f.init_index(ind)
+  b = f.init_data(dad, a)  # 500mb
   if isinstance(a, DbIndex):
     f.get_index(a)
     f.write_index(a)

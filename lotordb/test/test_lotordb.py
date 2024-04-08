@@ -25,8 +25,8 @@ def test_lotordb_table() -> None:
   index = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
   ddata = DbData(1, 1, 1, 1, 1, 1, data)
   f = Tables('.lib/db1')
-  a = f.init_index(*index)
-  b = f.init_data(*ddata, a)[0]  # type: ignore
+  a = f.init_index(index)
+  b = f.init_data(ddata, a)[0]  # type: ignore
   f.set_index_data(a, b)
   Client('127.0.0.1', 1337, dbtype='db').set_tables(f).start()
   print('time {:.4f}'.format(time.perf_counter() - t))

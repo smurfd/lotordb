@@ -61,8 +61,8 @@ class Server(threading.Thread):
       f = Tables('.lib/db1')
       index = f.recv_index(self.ssl_sock)
       data = f.recv_data(self.ssl_sock)
-      fi = f.init_index(*index)
-      fd = f.init_data(*data, fi)  # type: ignore
+      fi = f.init_index(index)
+      fd = f.init_data(data, fi)  # type: ignore
       f.write_index(fi)
       f.write_data(fi, [fd])
       self.close()
