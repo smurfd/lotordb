@@ -2,7 +2,7 @@
 import threading, socket, ssl
 from lotordb.keys import Keys
 from lotordb.tables import Tables, DbIndex, DbData
-from typing import Union, Self, List
+from typing import Union, Self, List, Any
 import sys
 
 
@@ -11,10 +11,10 @@ class Client(threading.Thread):
     threading.Thread.__init__(self, group=None)
     self.client = Union[None, Client]
     self.event = threading.Event()
-    self.host = dbhost
-    self.port = dbport
-    self.sock = None
-    self.type = dbtype
+    self.host: str = dbhost
+    self.port: int = dbport
+    self.sock: Union[socket.socket, Any] = None
+    self.type: Union[bool, str] = dbtype
     self.key: Union[None, Keys] = None
     self.tables: Union[None, Tables] = None
     self.thread = threading.Thread()
@@ -25,7 +25,7 @@ class Client(threading.Thread):
       self.connect()
       if self.type == 'key' and self.key:  # key value client
         self.key.send_key(self.sock, self.key.get_key())
-      elif self.type == 'table' and self.tables and self.sock:  # database client
+      elif self.type == 'table' and self.tables and self.sock and self.tables.index and self.tables.data:  # database client
         self.tables.send_index(self.sock, self.tables.index)
         self.tables.send_data(self.sock, self.tables.data)
       self.close()
@@ -49,7 +49,7 @@ class Client(threading.Thread):
     if self.sock:
       self.sock.send(data)
 
-  def receive(self, data: bytes) -> None:
+  def receive(self, data: int) -> None:
     if self.sock:
       self.sock.recv(data)
 

@@ -14,14 +14,14 @@ class Server(threading.Thread):
     signal.signal(signal.SIGTERM, self.service_shutdown)
     signal.signal(signal.SIGINT, self.service_shutdown)
     threading.Thread.__init__(self)
-    self.host = dbhost
-    self.port = dbport
+    self.host: str = dbhost
+    self.port: int = dbport
     self.sock: Union[socket.socket, Any] = None
     self.ssl_sock: Union[socket.socket, Any] = None
     self.context: Union[ssl.SSLContext, Any] = None
     self.event = threading.Event()
-    self.test = test
-    self.type = dbtype
+    self.test: bool = test
+    self.type: Union[bool, str] = dbtype
     self.thread = threading.Thread()
     try:
       self.thread.start()
