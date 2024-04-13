@@ -11,7 +11,7 @@ exclude = [
   ".venv",
   "__pycache__",
   "venv",
-  "lotordb/cipher.py",
+  "lotordb/vars.py",
 ]
 
 line-length = 150
