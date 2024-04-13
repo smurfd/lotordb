@@ -22,12 +22,14 @@ class Cipher(threading.Thread):
   def sub_bytes(self, s):
     for i in range(4):
       for j in range(4):
-        s[i][j] = self.vars.SBOX[s[i][j]]
+        print(s[i][j])
+        s[i][j] = self.vars.SBOX[s[i][j] // 16][s[i][j] % 16]
 
   def invsub_bytes(self, s):
     for i in range(4):
       for j in range(4):
-        s[i][j] = self.vars.SBOXINV[s[i][j]]
+        s[i][j] = self.vars.SBOX[s[i][j] // 16][s[i][j] % 16]
+        # s[i][j] = self.vars.SBOXINV[s[i][j]]
 
   def mix_columns(self, s):
     for i in range(4):
@@ -45,9 +47,10 @@ class Cipher(threading.Thread):
           s[i][j] ^= self.vars.GF[self.vars.MIXINV[i][k]][s[k][j]]
 
   def add_roundkey(self, s, w):
+    # print(len(s), len(s[0]), len(s[0][0]))
     for i in range(4):
       for j in range(4):
-        s[i][j] ^= w[i][j]
+        s[i][j] ^= w[i + 4 * j]  # w[i][j]
 
   def rcon(self, w, a):
     c = 1
@@ -56,107 +59,153 @@ class Cipher(threading.Thread):
     w[0] = c
     w[1] = w[2] = w[3] = 0
 
+  def xor(self, ret, x, y, ln):
+    print(ln)
+    print(len(ret), len(x), len(y))
+    for i in range(ln):
+      ret[i] = x[i] ^ y[i]
+
+  def rot_word(self, w):
+    temp = w[0]
+    for i in range(4):
+      w[i] = w[i + 1]
+      if i == 3:
+        w[3] = temp
+
+  def sub_word(self, w):
+    for i in range(4):
+      w[i] = self.vars.SBOX[w[i] // 16][w[i] % 16]
+
+  def state_from_arr(self, s, ina):
+    s = [list(ina[i : i + 4]) for i in range(0, len(ina), 4)]
+    if s:
+      pass
+
+  def arr_from_state(self, s, ina):
+    s = bytes(sum(ina, []))
+    if s:
+      pass
+
+  def key_expansion(self, w, key):
+    rc = [0] * 4
+    for i in range(32, 240, 4):
+      if (i // 4 % 8) == 0:
+        self.rot_word(w)
+        self.sub_word(w)
+        self.rcon(rc, i // 32)
+        for k in range(4):
+          w[k] = w[k] ^ rc[k]
+      elif i // 4 % 8 == 4:
+        self.sub_word(w)
+      for j in range(4):
+        w[i + j] = w[i + j - 32] ^ w[j]
+
+  def encrypt_block(self, out, ina, rk):
+    s = [[0] * 4] * 4  # [[0,0,0,0],[0,0,0,0]]
+    print(s, s[1][1])
+    self.state_from_arr(s, ina)
+    self.add_roundkey(s, rk)
+    for i in range(14):
+      self.sub_bytes(s)
+      self.shift_rows(s)
+      self.mix_columns(s)
+      self.add_roundkey(s, rk)  # + i * 16)
+    self.sub_bytes(s)
+    self.shift_rows(s)
+    self.add_roundkey(s, rk)  # + 14 * 16)
+    self.arr_from_state(out, s)
+
+  def decrypt_block(self, out, ina, rk):
+    s = [[0] * 4] * 4  # [[0,0,0,0],[0,0,0,0]]
+    self.state_from_arr(s, ina)
+    self.add_roundkey(s, rk)  # + 224)
+    for i in range(14, 0, -1):
+      self.invsub_bytes(s)
+      self.invshift_rows(s)
+      self.add_roundkey(s, rk)  # + i * 16)
+      self.invmix_columns(s)
+    self.invsub_bytes(s)
+    self.invshift_rows(s)
+    self.add_roundkey(s, rk)
+    self.arr_from_state(out, s)
+
+  # [4 * NB * (NR + 1)] 4 * 4 * (14+1)
+  def ciph_crypt(self, out, ina, key, iv, cbc, dec):
+    b, eb, rk = [0] * 56, [0] * 56, [0] * 240
+    self.key_expansion(rk, key)
+    b = list(iv)
+    if cbc:
+      for i in range(0, 16, 16):
+        if dec:
+          self.decrypt_block(out, ina, rk)  # out[:i], ina[:i], rk)
+          self.xor(out, b, out, 16)  # out[:i], b, out[:i], 16)
+          b = ina  # ina[:i]
+        else:
+          print(len(ina), len(ina[:i]))
+          self.xor(b, b, ina, 16)  # ina[:i], 16)# ina[:i], 128)
+          self.encrypt_block(out, b, rk)  # out[:i], b, rk)
+          b = out[:i]
+    else:
+      for i in range(0, 16, 16):
+        self.encrypt_block(eb, b, rk)
+        self.xor(out, ina, eb, 16)  # out[:i], ina[:i], eb, 16)
+        if dec:
+          b = ina  # b = ina[:i]
+        else:
+          b = out
+          # b = out[:i]
+
 
 if __name__ == '__main__':
   print('Cipher')
   c = Cipher()
+  plain = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
+  iv = [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]
+  key = [
+    0x00,
+    0x01,
+    0x02,
+    0x03,
+    0x04,
+    0x05,
+    0x06,
+    0x07,
+    0x08,
+    0x09,
+    0x0A,
+    0x0B,
+    0x0C,
+    0x0D,
+    0x0E,
+    0x0F,
+    0x10,
+    0x11,
+    0x12,
+    0x13,
+    0x14,
+    0x15,
+    0x16,
+    0x17,
+    0x18,
+    0x19,
+    0x1A,
+    0x1B,
+    0x1C,
+    0x1D,
+    0x1E,
+    0x1F,
+  ]
+  ina, out = [0] * 16, [0] * 16
 
+  c.ciph_crypt(out, plain, key, iv, True, False)
+  c.ciph_crypt(ina, out, key, iv, True, True)
+  print(ina)
+  print(plain)
 
 """
+// NK=8, NR=14, NK4=8*4
 //
-//
-static void key_expansion(uint8_t w[], const uint8_t key[]) {
-  uint8_t tmp[4], rc[4];
 
-  memcpy(w, key, NK4 * sizeof(uint8_t));
-  for (int i = NK4; i < 4 * NB * (NR + 1); i += 4) {
-    memcpy(tmp, w, 4 * sizeof(uint8_t));
-    if (i / 4 % NK == 0) {
-      rot_word(tmp);
-      sub_word(tmp);
-      rcon(rc, i / (4 * NK));
-      for (int k = 0; k < 4; k++)
-        tmp[k] = tmp[k] ^ rc[k];
-    } else if (NK > 6 && i / 4 % NK == 4)
-      sub_word(tmp);
-    for (int j = 0; j < 4; ++j)
-      w[i + j] = w[i + j - 4 * NK] ^ tmp[j];
-  }
-}
-
-//
-// xor two arrays
-static void xor(uint8_t *c, const uint8_t *a, const uint8_t *b, const uint32_t len) {
-  for (uint32_t i = 0; i < len; i++)
-    c[i] = a[i] ^ b[i];
-}
-
-//
-// Encrypt a block of data
-static void encrypt_block(uint8_t out[], const uint8_t in[], const uint8_t *rk) {
-  uint8_t state[4][NB] = {{0}, {0}};
-
-  state_from_arr(state, in);
-  add_roundkey(state, rk);
-  for (uint32_t round = 1; round <= NR - 1; round++) {
-    sub_bytes(state);
-    shift_rows(state);
-    mix_columns(state);
-    add_roundkey(state, rk + round * 4 * NB);
-  }
-  sub_bytes(state);
-  shift_rows(state);
-  add_roundkey(state, rk + NR * 4 * NB);
-  arr_from_state(out, state);
-}
-
-//
-// Decrypt a block of data
-static void decrypt_block(uint8_t out[], const uint8_t in[], const uint8_t *rk) {
-  uint8_t state[4][NB] = {{0}, {0}};
-
-  state_from_arr(state, in);
-  add_roundkey(state, rk + NR * 4 * NB);
-  for (uint32_t round = NR - 1; round >= 1; round--) {
-    invsub_bytes(state);
-    invshift_rows(state);
-    add_roundkey(state, rk + round * 4 * NB);
-    invmix_columns(state);
-  }
-  invsub_bytes(state);
-  invshift_rows(state);
-  add_roundkey(state, rk);
-  arr_from_state(out, state);
-}
-
-//
-// k = key, o = out, cbc = cbc(true) or cfb, dec = decrypt(true) or encrypt
-// https://medium.com/asecuritysite-when-bob-met-alice/a-bluffers-guide-to-aes-modes-ecb-cbc-cfb-and-all-that-jazz-4180f1882e16
-void ciph_crypt(uint8_t out[], const uint8_t in[], const uint8_t key[], const uint8_t *iv, const bool cbc, bool dec) {
-  uint8_t block[NB * NR] = {0}, encryptedblock[NB * NR] = {0}, roundkeys[4 * NB * (NR + 1)] = {0};
-
-  key_expansion(roundkeys, key);
-  memcpy(block, iv, BBL);
-  if (cbc) // CBC
-    for (uint32_t i = 0; i < BBL; i += BBL) {
-      if (dec) {
-        decrypt_block((out + i), (in + i), roundkeys);
-        xor((out + i), block, (out + i), BBL);
-        memcpy(block, in + i, BBL);
-      } else {
-        xor(block, block, (in + i), BBL);
-        encrypt_block((out + i), block, roundkeys);
-        memcpy(block, (out + i), BBL);
-      }
-    }
-  else // CFB
-    for (uint32_t i = 0; i < BBL; i += BBL) {
-      encrypt_block(encryptedblock, block, roundkeys);
-      xor((out + i), (in + i), encryptedblock, BBL);
-      if (dec) memcpy(block, in + i, BBL);
-      else memcpy(block, (out + i), BBL);
-    }
-}
 
 
 int main(void) {
