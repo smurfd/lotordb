@@ -11,6 +11,7 @@ exclude = [
   ".venv",
   "__pycache__",
   "venv",
+  "lotordb/cipher.py",
 ]
 
 line-length = 150
@@ -21,7 +22,7 @@ target-version = "py311"
 
 [lint]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
-ignore = ["E111", "E401", "E114"]
+ignore = ["E111", "E401", "E114", "E501"]
 select = [
   "F",
   "E",
