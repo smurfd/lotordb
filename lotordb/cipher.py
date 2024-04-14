@@ -28,7 +28,7 @@ class Cipher(threading.Thread):
   def invsub_bytes(self, s):
     for i in range(4):
       for j in range(4):
-        s[i][j] = self.vars.SBOX[s[i][j] // 16][s[i][j] % 16]
+        s[i][j] = self.vars.SBOXINV[s[i][j] // 16][s[i][j] % 16]
         # s[i][j] = self.vars.SBOXINV[s[i][j]]
 
   def mix_columns(self, s):
@@ -78,13 +78,20 @@ class Cipher(threading.Thread):
 
   def state_from_arr(self, s, ina):
     s = [list(ina[i : i + 4]) for i in range(0, len(ina), 4)]
-    if s:
-      pass
+    print('sa', s, '---', ina)
+    # if s:
+    #  pass
+    # return s
 
   def arr_from_state(self, s, ina):
-    s = bytes(sum(ina, []))
-    if s:
-      pass
+    print('ina', ina)
+    # print("ina", set(ina))
+    s = sum(ina, [])
+    # s = list(set(ina))#bytes(sum(ina, []))
+    print('sb', s, '---', ina)
+    # if s:
+    #  pass
+    # return s
 
   def key_expansion(self, w, key):
     rc = [0] * 4
@@ -103,57 +110,76 @@ class Cipher(threading.Thread):
   def encrypt_block(self, out, ina, rk):
     s = [[0] * 4] * 4  # [[0,0,0,0],[0,0,0,0]]
     print(s, s[1][1])
+    print('rk', len(rk))
     self.state_from_arr(s, ina)
     self.add_roundkey(s, rk)
-    for i in range(14):
+    for i in range(1, 14):
       self.sub_bytes(s)
       self.shift_rows(s)
       self.mix_columns(s)
-      self.add_roundkey(s, rk)  # + i * 16)
+      self.add_roundkey(s, rk[: i * 16])  # + i * 16)
     self.sub_bytes(s)
     self.shift_rows(s)
-    self.add_roundkey(s, rk)  # + 14 * 16)
+    print(s)
+    self.add_roundkey(s, rk[: 14 * 16])  # + 14 * 16)
+    print(s)
     self.arr_from_state(out, s)
+    print('arrfromstate', out)
+    # return out
 
   def decrypt_block(self, out, ina, rk):
+    print('rk', len(rk))
     s = [[0] * 4] * 4  # [[0,0,0,0],[0,0,0,0]]
     self.state_from_arr(s, ina)
-    self.add_roundkey(s, rk)  # + 224)
+    self.add_roundkey(s, rk[:224])  # + 224)
     for i in range(14, 0, -1):
       self.invsub_bytes(s)
       self.invshift_rows(s)
-      self.add_roundkey(s, rk)  # + i * 16)
+      self.add_roundkey(s, rk[: i * 16])  # + i * 16)
       self.invmix_columns(s)
     self.invsub_bytes(s)
     self.invshift_rows(s)
     self.add_roundkey(s, rk)
     self.arr_from_state(out, s)
+    print('arry', out)
+    # return out
 
   # [4 * NB * (NR + 1)] 4 * 4 * (14+1)
   def ciph_crypt(self, out, ina, key, iv, cbc, dec):
     b, eb, rk = [0] * 56, [0] * 56, [0] * 240
     self.key_expansion(rk, key)
-    b = list(iv)
+    b = iv  # list(iv)
     if cbc:
       for i in range(0, 16, 16):
         if dec:
           self.decrypt_block(out, ina, rk)  # out[:i], ina[:i], rk)
           self.xor(out, b, out, 16)  # out[:i], b, out[:i], 16)
-          b = ina  # ina[:i]
+          b = ina[i:]
+          # self.decrypt_block(out[i:], ina[i:], rk)  # out[:i], ina[:i], rk)
+          # self.xor(out[i:], b[i:], out, 16)  # out[:i], b, out[:i], 16)
+          # print("i", ina[i:], ina[:i])
+          # b[0:i] = ina[i:]
         else:
           print(len(ina), len(ina[:i]))
           self.xor(b, b, ina, 16)  # ina[:i], 16)# ina[:i], 128)
           self.encrypt_block(out, b, rk)  # out[:i], b, rk)
-          b = out[:i]
+          print('o', out)
+          b = out[i:]
+          # print(len(ina), len(ina[:i]))
+          # self.xor(b, b, ina[i:], 16)  # ina[:i], 16)# ina[:i], 128)
+          # self.encrypt_block(out[i:], b, rk)  # out[:i], b, rk)
+          # print("o", out[i:], out[:i])
+          # b[0:i] = out[i:]#[:i]
     else:
       for i in range(0, 16, 16):
         self.encrypt_block(eb, b, rk)
         self.xor(out, ina, eb, 16)  # out[:i], ina[:i], eb, 16)
         if dec:
-          b = ina  # b = ina[:i]
+          b = ina  # [i:]  # b = ina[:i]
         else:
-          b = out
+          b = out  # [i:]
           # b = out[:i]
+    print('out', out)
 
 
 if __name__ == '__main__':
@@ -198,7 +224,11 @@ if __name__ == '__main__':
   ina, out = [0] * 16, [0] * 16
 
   c.ciph_crypt(out, plain, key, iv, True, False)
+  o = out
   c.ciph_crypt(ina, out, key, iv, True, True)
+  print('----')
+  print(o)
+  print(out)
   print(ina)
   print(plain)
 
