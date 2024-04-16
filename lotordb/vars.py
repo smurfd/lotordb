@@ -4,8 +4,8 @@ from typing import List
 
 @dataclass
 class Vars:
-  SBOX: list = field(default=list, init=False)
-  SBOXINV: list = field(default=list, init=False)
+  SBOX: list = field(default=list, init=False)  # type: ignore
+  SBOXINV: list = field(default=list, init=False)  # type: ignore
   # https://en.wikipedia.org/wiki/Rijndael_MixColumns
   # https://en.wikipedia.org/wiki/Rijndael_MixColumns & Matrix representation
   # https://en.wikipedia.org/wiki/Rijndael_MixColumns & InverseMixColumns

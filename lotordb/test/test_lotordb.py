@@ -2,6 +2,7 @@
 from lotordb.tables import Tables, DbIndex, DbData
 from lotordb.server import Server
 from lotordb.client import Client
+from lotordb.cipher import Cipher
 from lotordb.keys import Keys
 from lotordb.hash import Hash
 from typing import List
@@ -37,6 +38,22 @@ def test_lotordb_hash():
   t = time.perf_counter()
   has = Hash('smurfd').get()
   assert has == hashlib.sha3_512('smurfd'.encode('UTF-8')).hexdigest()
+  print('time {:.4f}'.format(time.perf_counter() - t))
+
+
+def test_lotordb_cipher():
+  t = time.perf_counter()
+  c = Cipher()
+  plain = [i for i in range(ord('a'), ord('q'))]
+  key = [i for i in range(0x20)]
+  ina, out = [0] * 16, [0] * 16
+  plain *= 100  # big "text" to encrypt / decrypt
+  out = c.ciph_crypt(plain, key, [0xFF for _ in range(16)], True, False)
+  ina = c.ciph_crypt(out, key, [0xFF for _ in range(16)], True, True)
+  assert plain == ina
+  out = c.ciph_crypt(plain, key, [0xFF for _ in range(16)], False, False)
+  ina = c.ciph_crypt(out, key, [0xFF for _ in range(16)], False, True)
+  assert plain == ina
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 

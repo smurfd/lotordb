@@ -151,7 +151,7 @@ class Cipher(threading.Thread):
     rk = self.key_expansion(key)
     b = iv
     if cbc:
-      for i in range(0, 16, 16):
+      for i in range(0, len(ina), 16):
         if dec:
           out[i:] = self.decrypt_block(ina[i:], rk)
           out[i:] = self.xor(b, out[i:], 16)
@@ -161,9 +161,9 @@ class Cipher(threading.Thread):
           out[i:] = self.encrypt_block(b, rk)
           b = out[i:]
     else:
-      for i in range(0, 16, 16):
+      for i in range(0, len(ina), 16):
         eb = self.encrypt_block(b, rk)
-        out = self.xor(ina, eb, 16)
+        out[i:] = self.xor(ina[i:], eb, 16)
         b = out[i:] if not dec else ina[i:]
     return out
 
@@ -171,20 +171,15 @@ class Cipher(threading.Thread):
 if __name__ == '__main__':
   print('Cipher')
   c = Cipher()
-  plain = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF]
+  plain = [i for i in range(ord('a'), ord('q'))]
   key = [i for i in range(0x20)]
   ina, out = [0] * 16, [0] * 16
-
+  plain *= 100  # big "text" to encrypt / decrypt
   out = c.ciph_crypt(plain, key, [0xFF for _ in range(16)], True, False)
   ina = c.ciph_crypt(out, key, [0xFF for _ in range(16)], True, True)
-  print(ina)
-  print(plain)
   assert plain == ina
-
   out = c.ciph_crypt(plain, key, [0xFF for _ in range(16)], False, False)
   ina = c.ciph_crypt(out, key, [0xFF for _ in range(16)], False, True)
-  print(ina)
-  print(plain)
   assert plain == ina
 
 """
