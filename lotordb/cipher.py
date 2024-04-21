@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from hmac import new as new_hmac, compare_digest
 from hashlib import pbkdf2_hmac
+from typing import Union, List
 from lotordb.vars import Vars
 import threading, secrets
 
@@ -155,12 +156,15 @@ class Cipher(threading.Thread):
     return aes_key, hmac_key, stretched[: self.vars.KEY]
 
   def get_encrypt(self, key, ina, out):
+    s = False
     if isinstance(key, str):
       key = key.encode('utf-8')
     if isinstance(key, list):
       key = bytes(key)
     if isinstance(ina, str):
       ina = ina.encode('utf-8')
+    if isinstance(ina, (str, bytes)):
+      s = True
     if isinstance(ina, list):
       ina = bytes(ina)
     salt = secrets.token_bytes(self.vars.SALT)
@@ -168,23 +172,26 @@ class Cipher(threading.Thread):
     out = bytes(out)
     hmac = new_hmac(hmac_key, salt + out, 'sha256').digest()
     assert len(hmac) == self.vars.HMAC
-    return hmac + salt + out
+    return hmac + salt + out + int(s).to_bytes(1, 'big')
 
   def get_decrypt(self, key, ina):
     if isinstance(key, str):
       key = key.encode('utf-8')
     if isinstance(key, list):
       key = bytes(key)
-    hmac, ina = ina[: self.vars.HMAC], ina[self.vars.HMAC :]
+    s = ina[len(ina) - 1]
+    hmac, ina = ina[: self.vars.HMAC], ina[self.vars.HMAC : len(ina) - 1]
     salt, ina = ina[: self.vars.SALT], ina[self.vars.SALT :]
     key, hmac_key, _ = self.get_key_hmac_iv(key, salt, 100000)
     expected_hmac = new_hmac(hmac_key, salt + ina, 'sha256').digest()
     assert compare_digest(hmac, expected_hmac), 'cipher incorrect'
-    return ina
+    return ina, s
 
   # CBC
   def encrypt_cbc(self, ina, key, iv):
     b, rk, out = [0] * 56, [0] * 240, [0] * 16
+    if isinstance(ina, str):
+      ina = ina.encode('UTF-8')
     rk = self.key_expansion(key)
     b = iv
     for i in range(0, len(ina), 16):
@@ -198,16 +205,20 @@ class Cipher(threading.Thread):
     b, rk, out = [0] * 56, [0] * 240, [0] * 16
     rk = self.key_expansion(key)
     b = iv
-    ina = self.get_decrypt(key, ina)
+    ina, s = self.get_decrypt(key, ina)
     for i in range(0, len(ina), 16):
       out[i:] = self.decrypt_block(ina[i:], rk)
       out[i:] = self.xor(b, out[i:], 16)
       b = ina[i:]
+    if s:
+      out = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8')
     return out
 
   # CFB
   def encrypt_cfb(self, ina, key, iv):
     b, eb, rk, out = [0] * 56, [0] * 56, [0] * 240, [0] * 16
+    if isinstance(ina, str):
+      ina = ina.encode('UTF-8')
     rk = self.key_expansion(key)
     b = iv
     for i in range(0, len(ina), 16):
@@ -221,18 +232,20 @@ class Cipher(threading.Thread):
     b, eb, rk, out = [0] * 56, [0] * 56, [0] * 240, [0] * 16
     rk = self.key_expansion(key)
     b = iv
-    ina = self.get_decrypt(key, ina)
+    ina, s = self.get_decrypt(key, ina)
     for i in range(0, len(ina), 16):
       eb = self.encrypt_block(b, rk)
       out[i:] = self.xor(ina[i:], eb, 16)
       b = ina[i:]
+    if s:
+      out = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8')
     return out
 
 
 if __name__ == '__main__':
   print('Cipher')
   cipher = Cipher()
-
+  plain: Union[List, bytes]
   plain = [i for i in range(ord('a'), ord('q'))]
   key = [i for i in range(0x20)]
   ina, out = [0] * 16, [0] * 16
@@ -253,8 +266,27 @@ if __name__ == '__main__':
   print(ina)
   assert plain == ina
 
-"""
+  plain = 'sometextiwanttoX'.encode('utf-8')
+  key = [i for i in range(0x20)]
+  ina, out = [0] * 16, [0] * 16
+  plain *= 100  # big "text" to encrypt / decrypt
+  out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])
+  ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])
+  print(plain)
+  print(ina)
+  assert plain == ina
 
+  plain = 'sometextiwanttoX'.encode('utf-8')
+  key = [i for i in range(0x20)]
+  ina, out = [0] * 16, [0] * 16
+  plain *= 100  # big "text" to encrypt / decrypt
+  out = cipher.encrypt_cfb(plain, key, [0xFF for _ in range(16)])
+  ina = cipher.decrypt_cfb(out, key, [0xFF for _ in range(16)])
+  print(plain)
+  print(ina)
+  assert plain == ina
+
+"""
 // AES
 // https://en.wikipedia.org/wiki/Advanced_Encryption_Standard
 // https://www.rfc-editor.org/rfc/rfc3565

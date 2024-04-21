@@ -67,5 +67,31 @@ def test_lotordb_cipher_cfb():
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
+def test_lotordb_cipher_bytes():
+  t = time.perf_counter()
+  cipher = Cipher()
+  plain = 'sometextiwanttoX'.encode('utf-8')
+  key = [i for i in range(0x20)]
+  ina, out = [0] * 16, [0] * 16
+  plain *= 100  # big "text" to encrypt / decrypt
+  out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])
+  ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])
+  assert plain == ina
+  print('time {:.4f}'.format(time.perf_counter() - t))
+
+
+def test_lotordb_cipher_string():
+  t = time.perf_counter()
+  cipher = Cipher()
+  plain = 'sometextiwanttoX'
+  key = [i for i in range(0x20)]
+  ina, out = [0] * 16, [0] * 16
+  plain *= 100  # big "text" to encrypt / decrypt
+  out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])
+  ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])
+  assert plain == ina.decode('UTF-8')
+  print('time {:.4f}'.format(time.perf_counter() - t))
+
+
 if __name__ == '__main__':
   print('OK')
