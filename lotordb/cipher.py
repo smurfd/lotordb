@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
+from hmac import new as new_hmac, compare_digest
+from hashlib import pbkdf2_hmac
 from lotordb.vars import Vars
-import threading
+import threading, secrets
 
 # From https://raw.githubusercontent.com/smurfd/lightssl/master/src/lightciphers.c
 
@@ -146,6 +148,40 @@ class Cipher(threading.Thread):
     s = self.add_roundkey(s, rk)
     return self.arr_from_state(s)
 
+  def get_key_hmac_iv(self, password, salt, workload=100000):
+    stretched = pbkdf2_hmac('sha256', password, salt, workload, self.vars.KEY + self.vars.KEY + self.vars.HMAC)
+    aes_key, stretched = stretched[: self.vars.KEY], stretched[self.vars.KEY :]
+    hmac_key, stretched = stretched[: self.vars.HMAC], stretched[self.vars.HMAC :]
+    return aes_key, hmac_key, stretched[: self.vars.KEY]
+
+  def get_encrypt(self, key, ina, out):
+    if isinstance(key, str):
+      key = key.encode('utf-8')
+    if isinstance(key, list):
+      key = bytes(key)
+    if isinstance(ina, str):
+      ina = ina.encode('utf-8')
+    if isinstance(ina, list):
+      ina = bytes(ina)
+    salt = secrets.token_bytes(self.vars.SALT)
+    key, hmac_key, _ = self.get_key_hmac_iv(key, salt, 100000)
+    out = bytes(out)
+    hmac = new_hmac(hmac_key, salt + out, 'sha256').digest()
+    assert len(hmac) == self.vars.HMAC
+    return hmac + salt + out
+
+  def get_decrypt(self, key, ina):
+    if isinstance(key, str):
+      key = key.encode('utf-8')
+    if isinstance(key, list):
+      key = bytes(key)
+    hmac, ina = ina[: self.vars.HMAC], ina[self.vars.HMAC :]
+    salt, ina = ina[: self.vars.SALT], ina[self.vars.SALT :]
+    key, hmac_key, _ = self.get_key_hmac_iv(key, salt, 100000)
+    expected_hmac = new_hmac(hmac_key, salt + ina, 'sha256').digest()
+    assert compare_digest(hmac, expected_hmac), 'cipher incorrect'
+    return ina
+
   # CBC
   def encrypt_cbc(self, ina, key, iv):
     b, rk, out = [0] * 56, [0] * 240, [0] * 16
@@ -155,13 +191,14 @@ class Cipher(threading.Thread):
       b = self.xor(b, ina[i:], 16)
       out[i:] = self.encrypt_block(b, rk)
       b = out[i:]
-    return out
+    return self.get_encrypt(key, ina, out)
 
   # CBC
   def decrypt_cbc(self, ina, key, iv):
     b, rk, out = [0] * 56, [0] * 240, [0] * 16
     rk = self.key_expansion(key)
     b = iv
+    ina = self.get_decrypt(key, ina)
     for i in range(0, len(ina), 16):
       out[i:] = self.decrypt_block(ina[i:], rk)
       out[i:] = self.xor(b, out[i:], 16)
@@ -177,13 +214,14 @@ class Cipher(threading.Thread):
       eb = self.encrypt_block(b, rk)
       out[i:] = self.xor(ina[i:], eb, 16)
       b = out[i:]
-    return out
+    return self.get_encrypt(key, ina, out)
 
   # CFB
   def decrypt_cfb(self, ina, key, iv):
     b, eb, rk, out = [0] * 56, [0] * 56, [0] * 240, [0] * 16
     rk = self.key_expansion(key)
     b = iv
+    ina = self.get_decrypt(key, ina)
     for i in range(0, len(ina), 16):
       eb = self.encrypt_block(b, rk)
       out[i:] = self.xor(ina[i:], eb, 16)

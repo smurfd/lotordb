@@ -6,6 +6,10 @@ from typing import List
 class Vars:
   SBOX: list = field(default=list, init=False)  # type: ignore
   SBOXINV: list = field(default=list, init=False)  # type: ignore
+  KEY: int = field(default=16, init=False)
+  SALT: int = field(default=16, init=False)
+  HMAC: int = field(default=32, init=False)
+
   # https://en.wikipedia.org/wiki/Rijndael_MixColumns
   # https://en.wikipedia.org/wiki/Rijndael_MixColumns & Matrix representation
   # https://en.wikipedia.org/wiki/Rijndael_MixColumns & InverseMixColumns
