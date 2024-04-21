@@ -146,40 +146,73 @@ class Cipher(threading.Thread):
     s = self.add_roundkey(s, rk)
     return self.arr_from_state(s)
 
-  def ciph_crypt(self, ina, key, iv, cbc, dec):
+  # CBC
+  def encrypt_cbc(self, ina, key, iv):
+    b, rk, out = [0] * 56, [0] * 240, [0] * 16
+    rk = self.key_expansion(key)
+    b = iv
+    for i in range(0, len(ina), 16):
+      b = self.xor(b, ina[i:], 16)
+      out[i:] = self.encrypt_block(b, rk)
+      b = out[i:]
+    return out
+
+  # CBC
+  def decrypt_cbc(self, ina, key, iv):
+    b, rk, out = [0] * 56, [0] * 240, [0] * 16
+    rk = self.key_expansion(key)
+    b = iv
+    for i in range(0, len(ina), 16):
+      out[i:] = self.decrypt_block(ina[i:], rk)
+      out[i:] = self.xor(b, out[i:], 16)
+      b = ina[i:]
+    return out
+
+  # CFB
+  def encrypt_cfb(self, ina, key, iv):
     b, eb, rk, out = [0] * 56, [0] * 56, [0] * 240, [0] * 16
     rk = self.key_expansion(key)
     b = iv
-    if cbc:
-      for i in range(0, len(ina), 16):
-        if dec:
-          out[i:] = self.decrypt_block(ina[i:], rk)
-          out[i:] = self.xor(b, out[i:], 16)
-          b = ina[i:]
-        else:
-          b = self.xor(b, ina[i:], 16)
-          out[i:] = self.encrypt_block(b, rk)
-          b = out[i:]
-    else:
-      for i in range(0, len(ina), 16):
-        eb = self.encrypt_block(b, rk)
-        out[i:] = self.xor(ina[i:], eb, 16)
-        b = out[i:] if not dec else ina[i:]
+    for i in range(0, len(ina), 16):
+      eb = self.encrypt_block(b, rk)
+      out[i:] = self.xor(ina[i:], eb, 16)
+      b = out[i:]
+    return out
+
+  # CFB
+  def decrypt_cfb(self, ina, key, iv):
+    b, eb, rk, out = [0] * 56, [0] * 56, [0] * 240, [0] * 16
+    rk = self.key_expansion(key)
+    b = iv
+    for i in range(0, len(ina), 16):
+      eb = self.encrypt_block(b, rk)
+      out[i:] = self.xor(ina[i:], eb, 16)
+      b = ina[i:]
     return out
 
 
 if __name__ == '__main__':
   print('Cipher')
-  c = Cipher()
+  cipher = Cipher()
+
   plain = [i for i in range(ord('a'), ord('q'))]
   key = [i for i in range(0x20)]
   ina, out = [0] * 16, [0] * 16
   plain *= 100  # big "text" to encrypt / decrypt
-  out = c.ciph_crypt(plain, key, [0xFF for _ in range(16)], True, False)
-  ina = c.ciph_crypt(out, key, [0xFF for _ in range(16)], True, True)
+  out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])
+  ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])
+  print(plain)
+  print(ina)
   assert plain == ina
-  out = c.ciph_crypt(plain, key, [0xFF for _ in range(16)], False, False)
-  ina = c.ciph_crypt(out, key, [0xFF for _ in range(16)], False, True)
+
+  plain = [i for i in range(ord('a'), ord('q'))]
+  key = [i for i in range(0x20)]
+  ina, out = [0] * 16, [0] * 16
+  plain *= 100  # big "text" to encrypt / decrypt
+  out = cipher.encrypt_cfb(plain, key, [0xFF for _ in range(16)])
+  ina = cipher.decrypt_cfb(out, key, [0xFF for _ in range(16)])
+  print(plain)
+  print(ina)
   assert plain == ina
 
 """

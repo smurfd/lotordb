@@ -41,18 +41,28 @@ def test_lotordb_hash():
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
-def test_lotordb_cipher():
+def test_lotordb_cipher_cbc():
   t = time.perf_counter()
-  c = Cipher()
+  cipher = Cipher()
   plain = [i for i in range(ord('a'), ord('q'))]
   key = [i for i in range(0x20)]
   ina, out = [0] * 16, [0] * 16
   plain *= 100  # big "text" to encrypt / decrypt
-  out = c.ciph_crypt(plain, key, [0xFF for _ in range(16)], True, False)
-  ina = c.ciph_crypt(out, key, [0xFF for _ in range(16)], True, True)
+  out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])
+  ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])
   assert plain == ina
-  out = c.ciph_crypt(plain, key, [0xFF for _ in range(16)], False, False)
-  ina = c.ciph_crypt(out, key, [0xFF for _ in range(16)], False, True)
+  print('time {:.4f}'.format(time.perf_counter() - t))
+
+
+def test_lotordb_cipher_cfb():
+  t = time.perf_counter()
+  cipher = Cipher()
+  plain = [i for i in range(ord('a'), ord('q'))]
+  key = [i for i in range(0x20)]
+  ina, out = [0] * 16, [0] * 16
+  plain *= 100  # big "text" to encrypt / decrypt
+  out = cipher.encrypt_cfb(plain, key, [0xFF for _ in range(16)])
+  ina = cipher.decrypt_cfb(out, key, [0xFF for _ in range(16)])
   assert plain == ina
   print('time {:.4f}'.format(time.perf_counter() - t))
 
