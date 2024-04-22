@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from hmac import new as new_hmac, compare_digest
 from hashlib import pbkdf2_hmac
-from typing import Union, List
+from typing import Union, List, Tuple, Any
 from lotordb.vars import Vars
 import threading, secrets
 
@@ -9,52 +9,52 @@ import threading, secrets
 
 
 class Cipher(threading.Thread):
-  def __init__(self):
+  def __init__(self) -> None:
     self.vars = Vars()
 
-  def shift_row(self, s, i):
+  def shift_row(self, s, i) -> List:
     return s[i][1:] + s[i][:1]
 
-  def invshift_row(self, s, i):
+  def invshift_row(self, s, i) -> List:
     return [s[i][-1]] + s[i][:-1]
 
-  def shift_rows(self, s):
+  def shift_rows(self, s) -> List:
     s[1] = self.shift_row(s, 1)
     s[2] = self.shift_row(s, 2)
     s[3] = self.shift_row(s, 3)
     return s
 
-  def invshift_rows(self, s):
+  def invshift_rows(self, s) -> List:
     s[1] = self.invshift_row(s, 1)
     s[2] = self.invshift_row(s, 2)
     s[3] = self.invshift_row(s, 3)
     return s
 
-  def sub_bytes(self, s):
+  def sub_bytes(self, s) -> List:
     for i in range(4):
       for j in range(4):
         st = s[i][j]
         s[i][j] = self.vars.SBOX[st // 16][st % 16]
     return s
 
-  def invsub_bytes(self, s):
+  def invsub_bytes(self, s) -> List:
     for i in range(4):
       for j in range(4):
         st = s[i][j]
         s[i][j] = self.vars.SBOXINV[st // 16][st % 16]
     return s
 
-  def add_roundkey(self, s, w):
+  def add_roundkey(self, s, w) -> List:
     for j in range(4):
       for i in range(4):
         s[i][j] ^= w[i + 4 * j]
     return s
 
-  def xt(self, a):
+  def xt(self, a) -> int:
     return (((a << 1) ^ 0x1B) & 0xFF) if (a & 0x80) else (a << 1)
 
   # "borrowed" from https://github.com/boppreh/aes
-  def mix_single_column(self, a):
+  def mix_single_column(self, a) -> List:
     # see Sec 4.1.2 in The Design of Rijndael
     t = a[0] ^ a[1] ^ a[2] ^ a[3]
     u = a[0]
@@ -65,11 +65,11 @@ class Cipher(threading.Thread):
     return a
 
   # "borrowed" from https://github.com/boppreh/aes
-  def mix_columns(self, s):
+  def mix_columns(self, s) -> List:
     return [self.mix_single_column(s[i]) for i in range(4)]
 
   # "borrowed" from https://github.com/boppreh/aes
-  def invmix_columns(self, s):
+  def invmix_columns(self, s) -> List:
     # see Sec 4.1.3 in The Design of Rijndael
     for i in range(4):
       u = self.xt(self.xt(s[i][0] ^ s[i][2]))
@@ -80,31 +80,31 @@ class Cipher(threading.Thread):
       s[i][3] ^= v
     return self.mix_columns(s)
 
-  def rcon(self, w, a):
+  def rcon(self, w, a) -> List:
     c = 1
     for _ in range(a - 1):
       c = self.xt(c)
     return [c, 0, 0, 0]
 
-  def xor(self, x, y, ln):
+  def xor(self, x, y, ln) -> List:
     return [x[i] ^ y[i] for i in range(ln)]
 
-  def rot_word(self, w):
+  def rot_word(self, w) -> List:
     temp = w[0]
     w[:3] = [w[i + 1] for i in range(3)]
     w[3] = temp
     return w
 
-  def sub_word(self, w):
+  def sub_word(self, w) -> List:
     return [self.vars.SBOX[w[i] // 16][w[i] % 16] for i in range(4)]
 
-  def state_from_arr(self, ina):
+  def state_from_arr(self, ina) -> List:
     return [list(ina[i : i + 4]) for i in range(0, len(ina), 4)]
 
-  def arr_from_state(self, ina):
+  def arr_from_state(self, ina) -> List:
     return sum(ina, [])
 
-  def key_expansion(self, key):
+  def key_expansion(self, key) -> List:
     rc, tmp, w = [0] * 4, [0] * 4, [0] * 240
     w[:32] = key[:32]
     for i in range(32, 240, 4):
@@ -121,7 +121,7 @@ class Cipher(threading.Thread):
         w[i + j] = w[i + j - 32] ^ tmp[j]
     return w
 
-  def encrypt_block(self, ina, rk):
+  def encrypt_block(self, ina, rk) -> List:
     s = [[0] * 4] * 4
     s = self.state_from_arr(ina)
     s = self.add_roundkey(s, rk)
@@ -135,7 +135,7 @@ class Cipher(threading.Thread):
     s = self.add_roundkey(s, rk[: 14 * 16])
     return self.arr_from_state(s)
 
-  def decrypt_block(self, ina, rk):
+  def decrypt_block(self, ina, rk) -> List:
     s = [[0] * 4] * 4
     s = self.state_from_arr(ina)
     s = self.add_roundkey(s, rk[:224])
@@ -149,13 +149,13 @@ class Cipher(threading.Thread):
     s = self.add_roundkey(s, rk)
     return self.arr_from_state(s)
 
-  def get_key_hmac_iv(self, password, salt, workload=100000):
+  def get_key_hmac_iv(self, password, salt, workload=100000) -> Tuple:
     stretched = pbkdf2_hmac('sha256', password, salt, workload, self.vars.KEY + self.vars.KEY + self.vars.HMAC)
     aes_key, stretched = stretched[: self.vars.KEY], stretched[self.vars.KEY :]
     hmac_key, stretched = stretched[: self.vars.HMAC], stretched[self.vars.HMAC :]
     return aes_key, hmac_key, stretched[: self.vars.KEY]
 
-  def get_encrypt(self, key, ina, out):
+  def get_encrypt(self, key, ina, out) -> bytes:
     s = False
     if isinstance(key, str):
       key = key.encode('utf-8')
@@ -174,7 +174,7 @@ class Cipher(threading.Thread):
     assert len(hmac) == self.vars.HMAC
     return hmac + salt + out + int(s).to_bytes(1, 'big')
 
-  def get_decrypt(self, key, ina):
+  def get_decrypt(self, key, ina) -> Tuple:
     if isinstance(key, str):
       key = key.encode('utf-8')
     if isinstance(key, list):
@@ -188,8 +188,9 @@ class Cipher(threading.Thread):
     return ina, s
 
   # CBC
-  def encrypt_cbc(self, ina, key, iv):
-    b, rk, out = [0] * 56, [0] * 240, [0] * 16
+  def encrypt_cbc(self, ina: Union[List, bytes, str, Tuple], key: Union[List, bytes], iv) -> Union[Tuple, bytes, List]:
+    rk, out = [0] * 240, [0] * 16
+    b: Union[List[Any], bytes, str] = [0] * 56
     if isinstance(ina, str):
       ina = ina.encode('UTF-8')
     rk = self.key_expansion(key)
@@ -201,8 +202,9 @@ class Cipher(threading.Thread):
     return self.get_encrypt(key, ina, out)
 
   # CBC
-  def decrypt_cbc(self, ina, key, iv):
-    b, rk, out = [0] * 56, [0] * 240, [0] * 16
+  def decrypt_cbc(self, ina: Union[List, bytes, str, Tuple], key: Union[List, bytes], iv) -> Union[bytes, List]:
+    rk, out = [0] * 240, [0] * 16
+    b: Union[List[Any], bytes, str, Tuple] = [0] * 56
     rk = self.key_expansion(key)
     b = iv
     ina, s = self.get_decrypt(key, ina)
@@ -210,13 +212,12 @@ class Cipher(threading.Thread):
       out[i:] = self.decrypt_block(ina[i:], rk)
       out[i:] = self.xor(b, out[i:], 16)
       b = ina[i:]
-    if s:
-      out = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8')
-    return out
+    return ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
 
   # CFB
-  def encrypt_cfb(self, ina, key, iv):
-    b, eb, rk, out = [0] * 56, [0] * 56, [0] * 240, [0] * 16
+  def encrypt_cfb(self, ina: Union[List, bytes, str, Tuple], key: Union[List, bytes], iv) -> Union[Tuple, bytes, List]:
+    eb, rk, out = [0] * 56, [0] * 240, [0] * 16
+    b: Union[List[Any], bytes, str] = [0] * 56
     if isinstance(ina, str):
       ina = ina.encode('UTF-8')
     rk = self.key_expansion(key)
@@ -228,8 +229,9 @@ class Cipher(threading.Thread):
     return self.get_encrypt(key, ina, out)
 
   # CFB
-  def decrypt_cfb(self, ina, key, iv):
-    b, eb, rk, out = [0] * 56, [0] * 56, [0] * 240, [0] * 16
+  def decrypt_cfb(self, ina: Union[List, bytes, str, Tuple], key: Union[List, bytes], iv) -> Union[bytes, List]:
+    eb, rk, out = [0] * 56, [0] * 240, [0] * 16
+    b: Union[List[Any], bytes, str, Tuple] = [0] * 56
     rk = self.key_expansion(key)
     b = iv
     ina, s = self.get_decrypt(key, ina)
@@ -237,23 +239,20 @@ class Cipher(threading.Thread):
       eb = self.encrypt_block(b, rk)
       out[i:] = self.xor(ina[i:], eb, 16)
       b = ina[i:]
-    if s:
-      out = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8')
-    return out
+    return ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
 
 
 if __name__ == '__main__':
   print('Cipher')
   cipher = Cipher()
-  plain: Union[List, bytes]
+  plain: Union[List, bytes, str]
   plain = [i for i in range(ord('a'), ord('q'))]
   key = [i for i in range(0x20)]
-  ina, out = [0] * 16, [0] * 16
+  ina: Union[bytes, List] = [0] * 16
+  out: Union[bytes, List, Tuple] = [0] * 16
   plain *= 100  # big "text" to encrypt / decrypt
   out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])
   ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])
-  print(plain)
-  print(ina)
   assert plain == ina
 
   plain = [i for i in range(ord('a'), ord('q'))]
@@ -262,8 +261,6 @@ if __name__ == '__main__':
   plain *= 100  # big "text" to encrypt / decrypt
   out = cipher.encrypt_cfb(plain, key, [0xFF for _ in range(16)])
   ina = cipher.decrypt_cfb(out, key, [0xFF for _ in range(16)])
-  print(plain)
-  print(ina)
   assert plain == ina
 
   plain = 'sometextiwanttoX'.encode('utf-8')
@@ -272,8 +269,6 @@ if __name__ == '__main__':
   plain *= 100  # big "text" to encrypt / decrypt
   out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])
   ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])
-  print(plain)
-  print(ina)
   assert plain == ina
 
   plain = 'sometextiwanttoX'.encode('utf-8')
@@ -282,9 +277,25 @@ if __name__ == '__main__':
   plain *= 100  # big "text" to encrypt / decrypt
   out = cipher.encrypt_cfb(plain, key, [0xFF for _ in range(16)])
   ina = cipher.decrypt_cfb(out, key, [0xFF for _ in range(16)])
-  print(plain)
-  print(ina)
   assert plain == ina
+
+  plain = 'sometextiwanttoX'
+  key = [i for i in range(0x20)]
+  ina, out = [0] * 16, [0] * 16
+  plain *= 100  # big "text" to encrypt / decrypt
+  out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])
+  ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])
+  if isinstance(ina, str):
+    assert plain == ina.decode('UTF-8')
+
+  plain = 'sometextiwanttoX'
+  key = [i for i in range(0x20)]
+  ina, out = [0] * 16, [0] * 16
+  plain *= 100  # big "text" to encrypt / decrypt
+  out = cipher.encrypt_cfb(plain, key, [0xFF for _ in range(16)])
+  ina = cipher.decrypt_cfb(out, key, [0xFF for _ in range(16)])
+  if isinstance(ina, str):
+    assert plain == ina.decode('UTF-8')
 
 """
 // AES
