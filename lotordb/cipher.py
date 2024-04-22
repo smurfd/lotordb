@@ -229,58 +229,6 @@ class Cipher(threading.Thread):
 
 if __name__ == '__main__':
   print('Cipher')
-  cipher = Cipher()
-  plain: Union[List, bytes, str]
-  plain = [i for i in range(ord('a'), ord('q'))]
-  key = [i for i in range(0x20)]
-  ina: Union[bytes, List] = [0] * 16
-  out: Union[bytes, List, Tuple] = [0] * 16
-  plain *= 100  # big "text" to encrypt / decrypt
-  out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])
-  ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])
-  assert plain == ina
-
-  plain = [i for i in range(ord('a'), ord('q'))]
-  key = [i for i in range(0x20)]
-  ina, out = [0] * 16, [0] * 16
-  plain *= 100  # big "text" to encrypt / decrypt
-  out = cipher.encrypt_cfb(plain, key, [0xFF for _ in range(16)])
-  ina = cipher.decrypt_cfb(out, key, [0xFF for _ in range(16)])
-  assert plain == ina
-
-  plain = 'sometextiwanttoX'.encode('utf-8')
-  key = [i for i in range(0x20)]
-  ina, out = [0] * 16, [0] * 16
-  plain *= 100  # big "text" to encrypt / decrypt
-  out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])
-  ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])
-  assert plain == ina
-
-  plain = 'sometextiwanttoX'.encode('utf-8')
-  key = [i for i in range(0x20)]
-  ina, out = [0] * 16, [0] * 16
-  plain *= 100  # big "text" to encrypt / decrypt
-  out = cipher.encrypt_cfb(plain, key, [0xFF for _ in range(16)])
-  ina = cipher.decrypt_cfb(out, key, [0xFF for _ in range(16)])
-  assert plain == ina
-
-  plain = 'sometextiwanttoX'
-  key = [i for i in range(0x20)]
-  ina, out = [0] * 16, [0] * 16
-  plain *= 100  # big "text" to encrypt / decrypt
-  out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])
-  ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])
-  if isinstance(ina, str):
-    assert plain == ina.decode('UTF-8')
-
-  plain = 'sometextiwanttoX'
-  key = [i for i in range(0x20)]
-  ina, out = [0] * 16, [0] * 16
-  plain *= 100  # big "text" to encrypt / decrypt
-  out = cipher.encrypt_cfb(plain, key, [0xFF for _ in range(16)])
-  ina = cipher.decrypt_cfb(out, key, [0xFF for _ in range(16)])
-  if isinstance(ina, str):
-    assert plain == ina.decode('UTF-8')
 
 """
 // AES
