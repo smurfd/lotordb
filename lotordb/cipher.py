@@ -5,9 +5,8 @@ from typing import Union, List, Tuple, Any
 from lotordb.vars import Vars
 import threading, secrets
 
+
 # From https://raw.githubusercontent.com/smurfd/lightssl/master/src/lightciphers.c
-
-
 class Cipher(threading.Thread):
   def __init__(self) -> None:
     self.vars = Vars()
@@ -82,8 +81,7 @@ class Cipher(threading.Thread):
 
   def rcon(self, w, a) -> List:
     c = 1
-    for _ in range(a - 1):
-      c = self.xt(c)
+    (c := self.xt(c) for _ in range(a - 1))
     return [c, 0, 0, 0]
 
   def xor(self, x, y, ln) -> List:
@@ -91,9 +89,7 @@ class Cipher(threading.Thread):
 
   def rot_word(self, w) -> List:
     temp = w[0]
-    w[:3] = [w[i + 1] for i in range(3)]
-    w[3] = temp
-    return w
+    return [w[i + 1] for i in range(3)] + [temp]
 
   def sub_word(self, w) -> List:
     return [self.vars.SBOX[w[i] // 16][w[i] % 16] for i in range(4)]
@@ -156,17 +152,9 @@ class Cipher(threading.Thread):
     return aes_key, hmac_key, stretched[: self.vars.KEY]
 
   def get_encrypt(self, key, ina, out) -> bytes:
-    s = False
-    if isinstance(key, str):
-      key = key.encode('utf-8')
-    if isinstance(key, list):
-      key = bytes(key)
-    if isinstance(ina, str):
-      ina = ina.encode('utf-8')
-    if isinstance(ina, (str, bytes)):
-      s = True
-    if isinstance(ina, list):
-      ina = bytes(ina)
+    s = False if not isinstance(ina, (str, bytes)) else True
+    key = bytes(key) if isinstance(key, (bytes, list)) else key.encode('utf-8')
+    ina = bytes(ina) if isinstance(ina, (bytes, list)) else ina.encode('utf-8')
     salt = secrets.token_bytes(self.vars.SALT)
     key, hmac_key, _ = self.get_key_hmac_iv(key, salt, 100000)
     out = bytes(out)
@@ -175,10 +163,7 @@ class Cipher(threading.Thread):
     return hmac + salt + out + int(s).to_bytes(1, 'big')
 
   def get_decrypt(self, key, ina) -> Tuple:
-    if isinstance(key, str):
-      key = key.encode('utf-8')
-    if isinstance(key, list):
-      key = bytes(key)
+    key = bytes(key) if isinstance(key, (bytes, list)) else key.encode('utf-8')
     s = ina[len(ina) - 1]
     hmac, ina = ina[: self.vars.HMAC], ina[self.vars.HMAC : len(ina) - 1]
     salt, ina = ina[: self.vars.SALT], ina[self.vars.SALT :]
