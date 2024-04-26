@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field, fields
 from typing import List, Union, BinaryIO, Tuple, IO
 import struct, gzip, time, threading, mmap, socket
+from lotordb.cipher import Cipher
 
 # Thinking out loud about how to do a database
 """
@@ -158,25 +159,106 @@ class Tables(threading.Thread):  # Table store
         ret += [struct.unpack('>Q', c) for c in [data[i].index, data[i].database, data[i].table, data[i].relative, data[i].row, data[i].col]]
     return ret, gzip.decompress(bytearray(struct.unpack('>%dQ' % (len(dat) // 8), dat)))
 
+  # aes encrypt when writing?
   def write_index(self, i: DbIndex) -> None:
-    [self.fi.write(c) for c in [i.index, i.dbindex, i.database, i.table, i.row, i.col, i.segments, i.seek, i.file] if self.fi]  # type: ignore
+    iv = [0xFF for _ in range(16)]
+    c = Cipher()
+    key = [i for i in range(0x20)]
+    # ina, out = [0] * 16, [0] * 16
+    cip = [
+      c.encrypt_cbc(i.index, key, iv),  # type: ignore
+      c.encrypt_cbc(i.dbindex, key, iv),  # type: ignore
+      c.encrypt_cbc(i.database, key, iv),  # type: ignore
+      c.encrypt_cbc(i.table, key, iv),  # type: ignore
+      c.encrypt_cbc(i.row, key, iv),  # type: ignore
+      c.encrypt_cbc(i.col, key, iv),  # type: ignore
+      c.encrypt_cbc(i.segments, key, iv),  # type: ignore
+      c.encrypt_cbc(i.seek, key, iv),  # type: ignore
+      c.encrypt_cbc(i.file, key, iv),  # type: ignore
+    ]
+    print('index cip', cip, len(cip))
+    [self.fi.write(x) for x in cip if self.fi]  # type: ignore
 
   def write_data(self, i: DbIndex, d: List) -> None:
+    iv = [0xFF for _ in range(16)]
+    c = Cipher()
+    key = [i for i in range(0x20)]
+    # ina, out = [0] * 16, [0] * 16
     if i and isinstance(i.segments, bytes):
       for b in range(struct.unpack('>Q', i.segments)[0]):
-        [self.fd.write(c) for c in [d[b].index, d[b].database, d[b].table, d[b].relative, d[b].row, d[b].col, d[b].data] if self.fd]
+        cip = [
+          c.encrypt_cbc(d[b].index, key, iv),
+          c.encrypt_cbc(d[b].database, key, iv),
+          c.encrypt_cbc(d[b].table, key, iv),
+          c.encrypt_cbc(d[b].relative, key, iv),
+          c.encrypt_cbc(d[b].row, key, iv),
+          c.encrypt_cbc(d[b].col, key, iv),
+          c.encrypt_cbc(d[b].data, key, iv),
+        ]
+        print('data cip', cip, len(cip))
+        [self.fd.write(x) for x in cip if self.fd]  # type: ignore
 
+  # aes decrypt when reading?
   def read_index(self) -> Union[DbIndex, None]:
+    c = Cipher()
+    key = [i for i in range(0x20)]
+    # ina, out = [0] * 16, [0] * 16
+    # ina = c.decrypt_cbc(out, key, [0xFF for _ in range(16)])
     self.open_index_file(self.fn[0], 'rb+')
     self.fimm = mmap.mmap(self.fi.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
-    return DbIndex(*(self.fimm.read([8, 8, 8, 8, 8, 8, 8, 8, 255][c]) for c in range(9) if self.fimm))
+    rd = [0] * 9
+    x = [8, 8, 8, 8, 8, 8, 8, 8, 255]
+    # if self.fdmm:
+    #  for j in range(9):
+    #    rd[j] = c.decrypt_cbc(self.fdmm.read(x[j]), key, [0xFF for _ in range(16)])
+
+    if self.fdmm:
+      for j in range(9):
+        ln = x[j]
+        print('LEN, ', ln)
+        if ln % 16:
+          ln = ln + (ln % 16)
+        print('LEN, ', ln)
+        ln = ln + c.vars.SALT + c.vars.HMAC + 2
+        print('LEN, ', ln)
+        rr = self.fdmm.read(ln)
+        rd[j] = c.decrypt_cbc(rr, key, [0xFF for _ in range(16)])  # type: ignore
+    print('RDRED', *(rd))
+    return DbIndex(*(rd))  # type: ignore
+    # return DbIndex(*(self.fimm.read([8, 8, 8, 8, 8, 8, 8, 8, 255][c]) for c in range(9) if self.fimm))
 
   def read_data(self, index: DbIndex) -> List:
+    c = Cipher()
+    key = [i for i in range(0x20)]
+    # ina, out = [0] * 16, [0] * 16
     if isinstance(index.segments, bytes):
       lngt: int = struct.unpack('>Q', index.segments)[0]
     self.open_data_file(self.fn[1], 'rb+')
     self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
-    return [DbData(*(self.fdmm.read([8, 8, 8, 8, 8, 8, 4048][c]) for c in range(7) if self.fdmm)) for i in range(lngt)]
+
+    r = [0] * lngt
+    for k in range(lngt):
+      key = [i for i in range(0x20)]
+      print('k', k, lngt)
+      rd = [0] * 7
+      x = [8, 8, 8, 8, 8, 8, 4048]
+      if self.fdmm:
+        for j in range(7):
+          ln = x[j]
+          print('LEN, ', ln)
+          if ln % 16:
+            ln = ln + (ln % 16)
+          print('LEN, ', ln)
+          ln = ln + c.vars.SALT + c.vars.HMAC + 2
+          print('LEN, ', ln)
+          rr = self.fdmm.read(ln)  # x[j])
+          # print(rr)
+          rd[j] = c.decrypt_cbc(rr, key, [0xFF for _ in range(16)])  # type: ignore
+      r.extend(DbData(*(rd)))  # type: ignore
+    # print("RRRRRR", r)
+    return r
+
+    # return [DbData(*(self.fdmm.read([8, 8, 8, 8, 8, 8, 4048][c]) for c in range(7) if self.fdmm)) for i in range(lngt)]
 
   def send_index(self, sock: socket.socket, index: DbIndex) -> None:
     b: bytes = bytearray()
@@ -203,7 +285,7 @@ class Tables(threading.Thread):  # Table store
 
 if __name__ == '__main__':
   print('Table')
-  context: List = [123] * 100000025
+  context: List = [123] * 12  # 100000025
   tot = time.perf_counter()
   tables = Tables('.lib/db1')
   ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
