@@ -82,7 +82,7 @@ class Cipher(threading.Thread):
     return self.mix_columns(s)
 
   def rcon(self, w, a) -> List:
-    c = 1
+    c: int = 1
     (c := self.xt(c) for _ in range(a - 1))
     return [c, 0, 0, 0]
 
@@ -102,7 +102,12 @@ class Cipher(threading.Thread):
   def arr_from_state(self, ina) -> List:
     return sum(ina, [])
 
-  def key_expansion(self, key) -> List:
+  def len_salt_hash(self, ln) -> int:
+    if ln % 16:  # handle padded data
+      ln += ln % 16
+    return ln + self.vars.SALT + self.vars.HMAC + 2  # the 2 is for padding byte and string
+
+  def key_expansion_and_iv(self, key) -> Tuple:
     rc, tmp, w = [0] * 4, [0] * 4, [0] * 240
     w[:32] = key[:32]
     for i in range(32, 240, 4):
@@ -117,7 +122,7 @@ class Cipher(threading.Thread):
         tmp = self.sub_word(tmp)
       for j in range(4):
         w[i + j] = w[i + j - 32] ^ tmp[j]
-    return w
+    return w, self.iv
 
   def encrypt_block(self, ina, rk) -> List:
     s = [[0] * 4] * 4
@@ -166,9 +171,7 @@ class Cipher(threading.Thread):
 
   def get_decrypt(self, key, ina) -> Tuple:
     key = bytes(key) if isinstance(key, (bytes, list)) else key.encode('utf-8')
-    s = ina[len(ina) - 1]
-    p = ina[len(ina) - 2 : len(ina) - 1][0]
-    ina = ina[: len(ina) - 2]
+    s, p, ina = ina[len(ina) - 1], ina[len(ina) - 2 : len(ina) - 1][0], ina[: len(ina) - 2]  # handle padded byte and string byte
     hmac, ina = ina[: self.vars.HMAC], ina[self.vars.HMAC : len(ina)]
     salt, ina = ina[: self.vars.SALT], ina[self.vars.SALT :]
     if type(key) != type(salt):
@@ -182,10 +185,7 @@ class Cipher(threading.Thread):
     assert compare_digest(hmac, expected_hmac), 'cipher incorrect'
     return ina, s, p
 
-  # CBC
-  def encrypt_cbc(self, ina: Union[List, bytes, str, Tuple], key: Union[List, bytes], iv) -> Union[Tuple, bytes, List]:
-    rk, out = [0] * 240, [0] * 16
-    b: Union[List[Any], bytes, str] = [0] * 56
+  def pad_data(self, ina) -> Tuple:
     pad: int = 0
     if len(ina) % 16:
       pad = 16 - (len(ina) % 16)
@@ -195,73 +195,58 @@ class Cipher(threading.Thread):
         ina = ina + bytes([0] * pad)
     if isinstance(ina, str):
       ina = ina.encode('UTF-8')
-    rk = self.key_expansion(key)
-    b = iv
-    for i in range(0, len(ina), 16):
-      b = self.xor(b, ina[i:], 16)
-      out[i:] = self.encrypt_block(b, rk)
-      b = out[i:]
-    return self.get_encrypt(key, ina, out, pad)
+    return pad, ina
 
   # CBC
-  def decrypt_cbc(self, ina: Union[List, bytes, str, Tuple], key: Union[List, bytes], iv) -> Union[bytes, List]:
+  def encrypt_cbc(self, ina: Union[List, bytes, str, Tuple]) -> Union[Tuple, bytes, List]:
     rk, out = [0] * 240, [0] * 16
-    b: Union[List[Any], bytes, str, Tuple] = [0] * 56
-    rk = self.key_expansion(key)
-    b = iv
-    ina, s, p = self.get_decrypt(key, ina)
+    iv: Union[List[Any], bytes, str] = [0] * 56
+    pad, ina = self.pad_data(ina)
+    rk, iv = self.key_expansion_and_iv(self.key)
     for i in range(0, len(ina), 16):
-      out[i:] = self.decrypt_block(ina[i:], rk)
-      out[i:] = self.xor(b, out[i:], 16)
-      b = ina[i:]
+      out[i:] = self.encrypt_block(self.xor(iv, ina[i:], 16), rk)
+      iv = out[i:]
+    return self.get_encrypt(self.key, ina, out, pad)
+
+  # CBC
+  def decrypt_cbc(self, ina: Union[List, bytes, str, Tuple]) -> Union[bytes, List]:
+    rk, out = [0] * 240, [0] * 16
+    iv: Union[List[Any], bytes, str, Tuple] = [0] * 56
+    rk, iv = self.key_expansion_and_iv(self.key)
+    ina, s, p = self.get_decrypt(self.key, ina)
+    for i in range(0, len(ina), 16):
+      out[i:] = self.xor(iv, self.decrypt_block(ina[i:], rk), 16)
+      iv = ina[i:]
     out = out[: len(out) - p if isinstance(p, int) else int.from_bytes(p, 'big')]
     return ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
 
   # CFB
-  def encrypt_cfb(self, ina: Union[List, bytes, str, Tuple], key: Union[List, bytes], iv) -> Union[Tuple, bytes, List]:
-    eb, rk, out = [0] * 56, [0] * 240, [0] * 16
-    b: Union[List[Any], bytes, str] = [0] * 56
-    pad: int = 0
-    if len(ina) % 16:
-      pad = 16 - (len(ina) % 16)
-      if isinstance(ina, list):
-        ina = ina + ([0] * pad)
-      elif isinstance(ina, bytes):
-        ina = ina + bytes([0] * pad)
-    if isinstance(ina, str):
-      ina = ina.encode('UTF-8')
-    rk = self.key_expansion(key)
-    b = iv
+  def encrypt_cfb(self, ina: Union[List, bytes, str, Tuple]) -> Union[Tuple, bytes, List]:
+    rk, out = [0] * 240, [0] * 16
+    iv: Union[List[Any], bytes, str] = [0] * 56
+    pad, ina = self.pad_data(ina)
+    rk, iv = self.key_expansion_and_iv(self.key)
     for i in range(0, len(ina), 16):
-      eb = self.encrypt_block(b, rk)
-      out[i:] = self.xor(ina[i:], eb, 16)
-      b = out[i:]
-    return self.get_encrypt(key, ina, out, pad)
+      out[i:] = self.xor(ina[i:], self.encrypt_block(iv, rk), 16)
+      iv = out[i:]
+    return self.get_encrypt(self.key, ina, out, pad)
 
   # CFB
-  def decrypt_cfb(self, ina: Union[List, bytes, str, Tuple], key: Union[List, bytes], iv) -> Union[bytes, List]:
-    eb, rk, out = [0] * 56, [0] * 240, [0] * 16
-    b: Union[List[Any], bytes, str, Tuple] = [0] * 56
-    rk = self.key_expansion(key)
-    b = iv
-    ina, s, p = self.get_decrypt(key, ina)
+  def decrypt_cfb(self, ina: Union[List, bytes, str, Tuple]) -> Union[bytes, List]:
+    rk, out = [0] * 240, [0] * 16
+    iv: Union[List[Any], bytes, str, Tuple] = [0] * 56
+    rk, iv = self.key_expansion_and_iv(self.key)
+    ina, s, p = self.get_decrypt(self.key, ina)
     for i in range(0, len(ina), 16):
-      eb = self.encrypt_block(b, rk)
-      out[i:] = self.xor(ina[i:], eb, 16)
-      b = ina[i:]
+      out[i:] = self.xor(ina[i:], self.encrypt_block(iv, rk), 16)
+      iv = ina[i:]
     out = out[: len(out) - p if isinstance(p, int) else int.from_bytes(p, 'big')]
     return ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
 
 
 if __name__ == '__main__':
   print('Cipher')
-  cipher = Cipher()
-  plain = [i for i in range(ord('b'))]
-  ina, out = [0] * 16, [0] * 16
-  plain *= 100  # big "text" to encrypt / decrypt
-  out = cipher.encrypt_cbc(plain, cipher.key, cipher.iv)  # type: ignore
-  ina = cipher.decrypt_cbc(out, cipher.key, cipher.iv)  # type: ignore
-  assert plain == ina
+
 
 """
 // AES

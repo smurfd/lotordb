@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass, field, fields
 from typing import List, Union, BinaryIO, Tuple, IO
-import struct, gzip, time, threading, mmap, socket, secrets
+import struct, gzip, threading, mmap, socket, secrets
 from lotordb.cipher import Cipher
 
 # Thinking out loud about how to do a database
@@ -162,15 +162,15 @@ class Tables(threading.Thread):  # Table store
 
   def write_index(self, i: DbIndex) -> None:
     cip = [
-      self.cip.encrypt_cbc(i.index, self.cip.key, self.cip.iv),  # type: ignore
-      self.cip.encrypt_cbc(i.dbindex, self.cip.key, self.cip.iv),  # type: ignore
-      self.cip.encrypt_cbc(i.database, self.cip.key, self.cip.iv),  # type: ignore
-      self.cip.encrypt_cbc(i.table, self.cip.key, self.cip.iv),  # type: ignore
-      self.cip.encrypt_cbc(i.row, self.cip.key, self.cip.iv),  # type: ignore
-      self.cip.encrypt_cbc(i.col, self.cip.key, self.cip.iv),  # type: ignore
-      self.cip.encrypt_cbc(i.segments, self.cip.key, self.cip.iv),  # type: ignore
-      self.cip.encrypt_cbc(i.seek, self.cip.key, self.cip.iv),  # type: ignore
-      self.cip.encrypt_cbc(i.file, self.cip.key, self.cip.iv),  # type: ignore
+      self.cip.encrypt_cbc(i.index),  # type: ignore
+      self.cip.encrypt_cbc(i.dbindex),  # type: ignore
+      self.cip.encrypt_cbc(i.database),  # type: ignore
+      self.cip.encrypt_cbc(i.table),  # type: ignore
+      self.cip.encrypt_cbc(i.row),  # type: ignore
+      self.cip.encrypt_cbc(i.col),  # type: ignore
+      self.cip.encrypt_cbc(i.segments),  # type: ignore
+      self.cip.encrypt_cbc(i.seek),  # type: ignore
+      self.cip.encrypt_cbc(i.file),  # type: ignore
     ]
     [self.fi.write(x) for x in cip if self.fi]  # type: ignore
 
@@ -178,21 +178,15 @@ class Tables(threading.Thread):  # Table store
     if i and isinstance(i.segments, bytes):
       for b in range(struct.unpack('>Q', i.segments)[0]):
         cip = [
-          self.cip.encrypt_cbc(d[b].index, self.cip.key, self.cip.iv),
-          self.cip.encrypt_cbc(d[b].database, self.cip.key, self.cip.iv),
-          self.cip.encrypt_cbc(d[b].table, self.cip.key, self.cip.iv),
-          self.cip.encrypt_cbc(d[b].relative, self.cip.key, self.cip.iv),
-          self.cip.encrypt_cbc(d[b].row, self.cip.key, self.cip.iv),
-          self.cip.encrypt_cbc(d[b].col, self.cip.key, self.cip.iv),
-          self.cip.encrypt_cbc(d[b].data, self.cip.key, self.cip.iv),
+          self.cip.encrypt_cbc(d[b].index),
+          self.cip.encrypt_cbc(d[b].database),
+          self.cip.encrypt_cbc(d[b].table),
+          self.cip.encrypt_cbc(d[b].relative),
+          self.cip.encrypt_cbc(d[b].row),
+          self.cip.encrypt_cbc(d[b].col),
+          self.cip.encrypt_cbc(d[b].data),
         ]
         [self.fd.write(x) for x in cip if self.fd]  # type: ignore
-
-  def len_salt_hash(self, ln, c) -> int:
-    if ln % 16:  # handle padded data
-      ln += ln % 16
-    ln += self.cip.vars.SALT + self.cip.vars.HMAC + 2
-    return ln
 
   def read_index(self) -> Union[DbIndex, None]:
     self.open_index_file(self.fn[0], 'rb+')
@@ -200,7 +194,7 @@ class Tables(threading.Thread):  # Table store
     rd = [0] * 9
     if self.fdmm:
       for j in range(9):
-        rd[j] = self.cip.decrypt_cbc(self.fdmm.read(self.len_salt_hash([8, 8, 8, 8, 8, 8, 8, 8, 255][j], self.cip)), self.cip.key, self.cip.iv)  # type: ignore
+        rd[j] = self.cip.decrypt_cbc(self.fdmm.read(self.cip.len_salt_hash([8, 8, 8, 8, 8, 8, 8, 8, 255][j])))  # type: ignore
     return DbIndex(*(rd))  # type: ignore
 
   def read_data(self, index: DbIndex) -> List:
@@ -213,7 +207,7 @@ class Tables(threading.Thread):  # Table store
       rd = [0] * 7
       if self.fdmm:
         for j in range(7):
-          rd[j] = self.cip.decrypt_cbc(self.fdmm.read(self.len_salt_hash([8, 8, 8, 8, 8, 8, 4048][j], self.cip)), self.cip.key, self.cip.iv)  # type: ignore
+          rd[j] = self.cip.decrypt_cbc(self.fdmm.read(self.cip.len_salt_hash([8, 8, 8, 8, 8, 8, 4048][j])))  # type: ignore
       r.extend(DbData(*(rd)))  # type: ignore
     return r
 
@@ -242,20 +236,3 @@ class Tables(threading.Thread):  # Table store
 
 if __name__ == '__main__':
   print('Table')
-  context: List = [123] * 124  # 100000025
-  tot = time.perf_counter()
-  tables = Tables('.lib/db1')
-  ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
-  dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
-  index: DbIndex = tables.init_index(ind)
-  data = tables.init_data(dad, index)  # 500mb
-  if isinstance(index, DbIndex):
-    tables.get_index(index)
-    tables.write_index(index)
-    if isinstance(data, list):
-      tables.write_data(index, data)
-      index2 = tables.read_index()
-      data2 = tables.read_data(index)
-      if isinstance(index2, DbIndex):
-        tables.get_data(index2, data2)
-  print('time {:.4f}'.format(time.perf_counter() - tot))
