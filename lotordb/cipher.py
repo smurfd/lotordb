@@ -8,8 +8,10 @@ import threading, secrets
 
 # From https://raw.githubusercontent.com/smurfd/lightssl/master/src/lightciphers.c
 class Cipher(threading.Thread):
-  def __init__(self) -> None:
+  def __init__(self, key: List = [i for i in range(0x20)], iv: List = [0xFF for _ in range(16)]) -> None:
     self.vars = Vars()
+    self.key = key
+    self.iv = iv
 
   def shift_row(self, s, i) -> List:
     return s[i][1:] + s[i][:1]
@@ -254,12 +256,11 @@ class Cipher(threading.Thread):
 if __name__ == '__main__':
   print('Cipher')
   cipher = Cipher()
-  plain = [i for i in range(ord('b'))]  # , ord('p'))]
-  key = [i for i in range(0x20)]
+  plain = [i for i in range(ord('b'))]
   ina, out = [0] * 16, [0] * 16
   plain *= 100  # big "text" to encrypt / decrypt
-  out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])  # type: ignore
-  ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])  # type: ignore
+  out = cipher.encrypt_cbc(plain, cipher.key, cipher.iv)  # type: ignore
+  ina = cipher.decrypt_cbc(out, cipher.key, cipher.iv)  # type: ignore
   assert plain == ina
 
 """

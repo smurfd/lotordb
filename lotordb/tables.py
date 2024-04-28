@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass, field, fields
 from typing import List, Union, BinaryIO, Tuple, IO
-import struct, gzip, time, threading, mmap, socket
+import struct, gzip, time, threading, mmap, socket, secrets
 from lotordb.cipher import Cipher
 
 # Thinking out loud about how to do a database
@@ -93,6 +93,7 @@ class Tables(threading.Thread):  # Table store
     self.size: int = 4048
     self.index: Union[DbIndex, None] = None
     self.data: Union[DbData, None] = None
+    self.cip = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
     self.start()
 
   def __exit__(self) -> None:
@@ -160,70 +161,59 @@ class Tables(threading.Thread):  # Table store
     return ret, gzip.decompress(bytearray(struct.unpack('>%dQ' % (len(dat) // 8), dat)))
 
   def write_index(self, i: DbIndex) -> None:
-    iv = [0xFF for _ in range(16)]
-    c = Cipher()
-    key = [i for i in range(0x20)]
     cip = [
-      c.encrypt_cbc(i.index, key, iv),  # type: ignore
-      c.encrypt_cbc(i.dbindex, key, iv),  # type: ignore
-      c.encrypt_cbc(i.database, key, iv),  # type: ignore
-      c.encrypt_cbc(i.table, key, iv),  # type: ignore
-      c.encrypt_cbc(i.row, key, iv),  # type: ignore
-      c.encrypt_cbc(i.col, key, iv),  # type: ignore
-      c.encrypt_cbc(i.segments, key, iv),  # type: ignore
-      c.encrypt_cbc(i.seek, key, iv),  # type: ignore
-      c.encrypt_cbc(i.file, key, iv),  # type: ignore
+      self.cip.encrypt_cbc(i.index, self.cip.key, self.cip.iv),  # type: ignore
+      self.cip.encrypt_cbc(i.dbindex, self.cip.key, self.cip.iv),  # type: ignore
+      self.cip.encrypt_cbc(i.database, self.cip.key, self.cip.iv),  # type: ignore
+      self.cip.encrypt_cbc(i.table, self.cip.key, self.cip.iv),  # type: ignore
+      self.cip.encrypt_cbc(i.row, self.cip.key, self.cip.iv),  # type: ignore
+      self.cip.encrypt_cbc(i.col, self.cip.key, self.cip.iv),  # type: ignore
+      self.cip.encrypt_cbc(i.segments, self.cip.key, self.cip.iv),  # type: ignore
+      self.cip.encrypt_cbc(i.seek, self.cip.key, self.cip.iv),  # type: ignore
+      self.cip.encrypt_cbc(i.file, self.cip.key, self.cip.iv),  # type: ignore
     ]
     [self.fi.write(x) for x in cip if self.fi]  # type: ignore
 
   def write_data(self, i: DbIndex, d: List) -> None:
-    iv = [0xFF for _ in range(16)]
-    c = Cipher()
-    key = [i for i in range(0x20)]
     if i and isinstance(i.segments, bytes):
       for b in range(struct.unpack('>Q', i.segments)[0]):
         cip = [
-          c.encrypt_cbc(d[b].index, key, iv),
-          c.encrypt_cbc(d[b].database, key, iv),
-          c.encrypt_cbc(d[b].table, key, iv),
-          c.encrypt_cbc(d[b].relative, key, iv),
-          c.encrypt_cbc(d[b].row, key, iv),
-          c.encrypt_cbc(d[b].col, key, iv),
-          c.encrypt_cbc(d[b].data, key, iv),
+          self.cip.encrypt_cbc(d[b].index, self.cip.key, self.cip.iv),
+          self.cip.encrypt_cbc(d[b].database, self.cip.key, self.cip.iv),
+          self.cip.encrypt_cbc(d[b].table, self.cip.key, self.cip.iv),
+          self.cip.encrypt_cbc(d[b].relative, self.cip.key, self.cip.iv),
+          self.cip.encrypt_cbc(d[b].row, self.cip.key, self.cip.iv),
+          self.cip.encrypt_cbc(d[b].col, self.cip.key, self.cip.iv),
+          self.cip.encrypt_cbc(d[b].data, self.cip.key, self.cip.iv),
         ]
         [self.fd.write(x) for x in cip if self.fd]  # type: ignore
 
   def len_salt_hash(self, ln, c) -> int:
     if ln % 16:  # handle padded data
       ln += ln % 16
-    ln += c.vars.SALT + c.vars.HMAC + 2
+    ln += self.cip.vars.SALT + self.cip.vars.HMAC + 2
     return ln
 
   def read_index(self) -> Union[DbIndex, None]:
-    c = Cipher()
-    key = [i for i in range(0x20)]
     self.open_index_file(self.fn[0], 'rb+')
     self.fimm = mmap.mmap(self.fi.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     rd = [0] * 9
     if self.fdmm:
       for j in range(9):
-        rd[j] = c.decrypt_cbc(self.fdmm.read(self.len_salt_hash([8, 8, 8, 8, 8, 8, 8, 8, 255][j], c)), key, [0xFF for _ in range(16)])  # type: ignore
+        rd[j] = self.cip.decrypt_cbc(self.fdmm.read(self.len_salt_hash([8, 8, 8, 8, 8, 8, 8, 8, 255][j], self.cip)), self.cip.key, self.cip.iv)  # type: ignore
     return DbIndex(*(rd))  # type: ignore
 
   def read_data(self, index: DbIndex) -> List:
-    c = Cipher()
-    key = [i for i in range(0x20)]
     if isinstance(index.segments, bytes):
       lngt: int = struct.unpack('>Q', index.segments)[0]
     self.open_data_file(self.fn[1], 'rb+')
     self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     r = [0] * lngt
     for k in range(lngt):
-      key = [i for i in range(0x20)]
       rd = [0] * 7
       if self.fdmm:
         for j in range(7):
-          rd[j] = c.decrypt_cbc(self.fdmm.read(self.len_salt_hash([8, 8, 8, 8, 8, 8, 4048][j], c)), key, [0xFF for _ in range(16)])  # type: ignore
+          rd[j] = self.cip.decrypt_cbc(self.fdmm.read(self.len_salt_hash([8, 8, 8, 8, 8, 8, 4048][j], self.cip)), self.cip.key, self.cip.iv)  # type: ignore
       r.extend(DbData(*(rd)))  # type: ignore
     return r
 

@@ -6,7 +6,7 @@ from lotordb.cipher import Cipher
 from lotordb.keys import Keys
 from lotordb.hash import Hash
 from typing import List
-import time, hashlib
+import time, hashlib, secrets
 
 
 def test_lotordb_key() -> None:
@@ -43,56 +43,56 @@ def test_lotordb_hash():
 
 def test_lotordb_cipher_cbc():
   t = time.perf_counter()
-  cipher = Cipher()
+  cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
   plain = [i for i in range(ord('a'), ord('q'))]
-  key = [i for i in range(0x20)]
   ina, out = [0] * 16, [0] * 16
   plain *= 100  # big "text" to encrypt / decrypt
-  out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])
-  ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])
+  out = cipher.encrypt_cbc(plain, cipher.key, cipher.iv)
+  ina = cipher.decrypt_cbc(out, cipher.key, cipher.iv)
   assert plain == ina
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
 def test_lotordb_cipher_cfb():
   t = time.perf_counter()
-  cipher = Cipher()
+  cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
   plain = [i for i in range(ord('a'), ord('q'))]
-  key = [i for i in range(0x20)]
   ina, out = [0] * 16, [0] * 16
   plain *= 100  # big "text" to encrypt / decrypt
-  out = cipher.encrypt_cfb(plain, key, [0xFF for _ in range(16)])
-  ina = cipher.decrypt_cfb(out, key, [0xFF for _ in range(16)])
+  out = cipher.encrypt_cfb(plain, cipher.key, cipher.iv)
+  ina = cipher.decrypt_cfb(out, cipher.key, cipher.iv)
   assert plain == ina
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
 def test_lotordb_cipher_bytes():
   t = time.perf_counter()
-  cipher = Cipher()
+  cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
   plain = 'sometextiwanttoX'.encode('utf-8')
-  key = [i for i in range(0x20)]
   ina, out = [0] * 16, [0] * 16
   plain *= 100  # big "text" to encrypt / decrypt
-  out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])
-  ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])
+  out = cipher.encrypt_cbc(plain, cipher.key, cipher.iv)
+  ina = cipher.decrypt_cbc(out, cipher.key, cipher.iv)
   assert plain == ina
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
 def test_lotordb_cipher_string():
   t = time.perf_counter()
-  cipher = Cipher()
+  cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
   plain = 'sometextiwanttoX'
-  key = [i for i in range(0x20)]
   ina, out = [0] * 16, [0] * 16
   plain *= 100  # big "text" to encrypt / decrypt
-  out = cipher.encrypt_cbc(plain, key, [0xFF for _ in range(16)])
-  ina = cipher.decrypt_cbc(out, key, [0xFF for _ in range(16)])
+  out = cipher.encrypt_cbc(plain, cipher.key, cipher.iv)
+  ina = cipher.decrypt_cbc(out, cipher.key, cipher.iv)
   if isinstance(ina, str):
     assert plain == ina.decode('UTF-8')
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
 if __name__ == '__main__':
+  test_lotordb_cipher_cbc()
+  test_lotordb_cipher_cfb()
+  test_lotordb_cipher_bytes()
+  test_lotordb_cipher_string()
   print('OK')
