@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass, field, fields
-from typing import List, Union, BinaryIO, Tuple, IO
+from typing import List, Union, BinaryIO, Tuple, IO, Any
 import struct, gzip, threading, mmap, socket, secrets
 from lotordb.cipher import Cipher
 
@@ -94,6 +94,7 @@ class Tables(threading.Thread):  # Table store
     self.index: Union[DbIndex, None] = None
     self.data: Union[DbData, None] = None
     self.cip = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
+    self.ssl_sock: Union[socket.socket, None] = None
     self.start()
 
   def __exit__(self) -> None:
@@ -191,10 +192,9 @@ class Tables(threading.Thread):  # Table store
   def read_index(self) -> Union[DbIndex, None]:
     self.open_index_file(self.fn[0], 'rb+')
     self.fimm = mmap.mmap(self.fi.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
-    rd = [0] * 9
+    rd: List[Any] = [0] * 9
     if self.fdmm:
-      for j in range(9):
-        rd[j] = self.cip.decrypt_cbc(self.fdmm.read(self.cip.len_salt_hash([8, 8, 8, 8, 8, 8, 8, 8, 255][j])))  # type: ignore
+      rd = [self.cip.decrypt_cbc(self.fdmm.read(self.cip.len_salt_hash([8, 8, 8, 8, 8, 8, 8, 8, 255][j]))) for j in range(9)]
     return DbIndex(*(rd))  # type: ignore
 
   def read_data(self, index: DbIndex) -> List:
@@ -204,34 +204,40 @@ class Tables(threading.Thread):  # Table store
     self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     r = [0] * lngt
     for k in range(lngt):
-      rd = [0] * 7
+      rd: List[Any] = [0] * 7
       if self.fdmm:
-        for j in range(7):
-          rd[j] = self.cip.decrypt_cbc(self.fdmm.read(self.cip.len_salt_hash([8, 8, 8, 8, 8, 8, 4048][j])))  # type: ignore
+        rd = [self.cip.decrypt_cbc(self.fdmm.read(self.cip.len_salt_hash([8, 8, 8, 8, 8, 8, 4048][j]))) for j in range(7)]
       r.extend(DbData(*(rd)))  # type: ignore
     return r
 
-  def send_index(self, sock: socket.socket, index: DbIndex) -> None:
+  def send_index(self, index: DbIndex) -> None:
     b: bytes = bytearray()
     [b.extend(i) for i in [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek, index.file]]  # type: ignore
-    sock.send(b)
+    if self.ssl_sock:
+      self.ssl_sock.send(b)
 
-  def send_data(self, sock: socket.socket, data: DbData) -> None:
+  def send_data(self, data: DbData) -> None:
     b: bytes = bytearray()
     [b.extend(i) for i in [data.index, data.database, data.table, data.relative, data.row, data.col, data.data]]  # type: ignore
-    sock.send(b)
+    if self.ssl_sock:
+      self.ssl_sock.send(b)
 
-  def recv_index(self, sock: socket.socket, size: int = 319) -> Tuple:
-    r = sock.recv(size)  # Size of DbIndex, below separate per variable
+  def recv_index(self, size: int = 319) -> Tuple:
+    if self.ssl_sock:
+      r = self.ssl_sock.recv(size)  # Size of DbIndex, below separate per variable
     return (r[0:8], r[8:16], r[16:24], r[24:32], r[32:40], r[40:48], r[48:56], r[56:64], r[64:319])
 
-  def recv_data(self, sock: socket.socket, size: int = 4096) -> Tuple:
-    r = sock.recv(size)  # Size of DbData, below separate per variable
+  def recv_data(self, size: int = 4096) -> Tuple:
+    if self.ssl_sock:
+      r = self.ssl_sock.recv(size)  # Size of DbData, below separate per variable
     return (r[0:8], r[8:16], r[16:24], r[24:32], r[32:40], r[40:48], r[48:4096])
 
   def set_index_data(self, index: DbIndex, data: DbData):
     self.index = index
     self.data = data
+
+  def set_ssl_socket(self, sslsock):
+    self.ssl_sock = sslsock
 
 
 if __name__ == '__main__':

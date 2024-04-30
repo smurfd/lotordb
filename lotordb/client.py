@@ -24,10 +24,11 @@ class Client(threading.Thread):
       self.thread.start()
       self.connect()
       if self.type == 'key' and self.key:  # key value client
-        self.key.send_key(self.sock, self.key.get_key())
+        self.key.send_key(self.sock, self.key.get_key_value_store())
       elif self.type == 'table' and self.tables and self.sock and self.tables.index and self.tables.data:  # database client
-        self.tables.send_index(self.sock, self.tables.index)
-        self.tables.send_data(self.sock, self.tables.data)
+        self.tables.set_ssl_socket(self.sock)
+        self.tables.send_index(self.tables.index)
+        self.tables.send_data(self.tables.data)
       self.close()
       self.thread.join(timeout=0.1)
     except Exception as e:

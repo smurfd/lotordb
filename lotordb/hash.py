@@ -14,10 +14,9 @@ class Hash(threading.Thread):
     self.join()
 
   def run(self) -> None:
-    if isinstance(self.string, bytes):
-      self.hash = hashlib.sha3_512(self.string).hexdigest()
-    else:
-      self.hash = hashlib.sha3_512(self.string.encode('UTF-8')).hexdigest()
+    self.hash = (
+      hashlib.sha3_512(self.string).hexdigest() if isinstance(self.string, bytes) else hashlib.sha3_512(self.string.encode('UTF-8')).hexdigest()
+    )
 
   def get(self) -> str:
     self.join()

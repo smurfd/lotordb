@@ -51,7 +51,7 @@ class Server(threading.Thread):
           print('serv', k, v, s, h)
           if k and v and s:
             kvs = Keys(k, v, s)
-            if h.decode('UTF-8') == kvs.get_key()[3]:  # Check that the serverside hash is the same as received hash from client
+            if h.decode('UTF-8') == kvs.get_key_value_store()[3]:  # Check that the serverside hash is the same as received hash from client
               kvs.write_key()
             else:
               print('Will not write key, hash does not match!')
@@ -60,8 +60,9 @@ class Server(threading.Thread):
     elif self.type == 'table' and self.test:  # database server, hack so you can run server in tests
       self.listen()
       table = Tables('.lib/db1')
-      index = table.recv_index(self.ssl_sock)
-      data = table.recv_data(self.ssl_sock)
+      table.set_ssl_socket(self.ssl_sock)
+      index = table.recv_index()
+      data = table.recv_data()  #
       fi = table.init_index(index)
       fd = table.init_data(data, fi)  # type: ignore
       table.write_index(fi)
@@ -72,8 +73,9 @@ class Server(threading.Thread):
         self.listen()
         try:
           table = Tables('.lib/db1')
-          index = table.recv_index(self.ssl_sock)
-          data = table.recv_data(self.ssl_sock)
+          table.set_ssl_socket(self.ssl_sock)
+          index = table.recv_index()
+          data = table.recv_data()
           fi = table.init_index(index)
           fd = table.init_data(data, fi)  # type: ignore
           table.write_index(fi)

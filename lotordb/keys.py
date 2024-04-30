@@ -17,15 +17,13 @@ class Keys:  # Key Value Store
   def __init__(self, k: str = '', v: str = '', s: str = '') -> None:
     self.k = Key()
     if k and v and s:
-      self.set_key(k, v)
+      self.set_key_value_hash(k, v)
       self.set_store(s)
 
-  def set_key(self, k: str, v: str) -> None:
-    self.k.key = k
-    self.k.value = v
-    self.k.hash = Hash(self.k.value).get()
+  def set_key_value_hash(self, k: str, v: str) -> None:
+    self.k.key, self.k.value, self.k.hash = k, v, Hash(self.k.value).get()
 
-  def get_key(self) -> Tuple:
+  def get_key_value_store(self) -> Tuple:
     return self.k.key, self.k.value, self.k.store, self.k.hash
 
   def del_key(self) -> None:
@@ -45,8 +43,7 @@ class Keys:  # Key Value Store
 
   def read_key(self) -> Tuple:
     if os.path.exists(os.path.join(self.k.store, self.k.key)):
-      f = open(os.path.join(self.k.store, self.k.key), 'rb+')
-      return (True, f.read())
+      return (True, open(os.path.join(self.k.store, self.k.key), 'rb+').read())
     return (False,)
 
   def send_key(self, sock: Any, kvsh: Tuple) -> None:
