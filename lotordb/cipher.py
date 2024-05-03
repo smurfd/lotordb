@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 from hmac import new as new_hmac, compare_digest
+from dataclasses import dataclass, field, fields
 from hashlib import pbkdf2_hmac
 from typing import Union, List, Tuple, Any
 from lotordb.vars import Vars
-import threading, secrets
+import threading, secrets, struct, gzip
 
 
 # From https://raw.githubusercontent.com/smurfd/lightssl/master/src/lightciphers.c
@@ -159,9 +160,9 @@ class Cipher(threading.Thread):
     return aes_key, hmac_key, stretched[: self.vars.KEY]
 
   def get_encrypt(self, key, ina, out, pad=0) -> bytes:
-    s = False if not isinstance(ina, (str, bytes)) else True
+    s = False if not isinstance(ina, str) else True
     key = bytes(key) if isinstance(key, (bytes, list)) else key.encode('utf-8')
-    ina = bytes(ina) if isinstance(ina, (bytes, list)) else ina.encode('utf-8')
+    ina = bytes(ina) if isinstance(ina, (bytes, list, bytearray)) else ina.encode('utf-8')
     salt = secrets.token_bytes(self.vars.SALT)
     key, hmac_key, _ = self.get_key_hmac_iv(key, salt, 100000)
     out = bytes(out)
@@ -192,6 +193,8 @@ class Cipher(threading.Thread):
       if isinstance(ina, list):
         ina = ina + ([0] * pad)
       elif isinstance(ina, bytes):
+        ina = ina + bytes([0] * pad)
+      elif isinstance(ina, bytearray):
         ina = ina + bytes([0] * pad)
     if isinstance(ina, str):
       ina = ina.encode('UTF-8')
@@ -244,9 +247,129 @@ class Cipher(threading.Thread):
     return ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
 
 
+@dataclass
+class DbIndex111:
+  index: Union[bytes, int, None] = field(default=b'', init=True)
+  dbindex: Union[bytes, int, None] = field(default=b'', init=True)
+  database: Union[bytes, int, None] = field(default=b'', init=True)
+  table: Union[bytes, int, None] = field(default=b'', init=True)
+  row: Union[bytes, int, None] = field(default=b'', init=True)
+  col: Union[bytes, int, None] = field(default=b'', init=True)
+  segments: Union[bytes, int, None] = field(default=b'', init=True)
+  seek: Union[bytes, int, None] = field(default=b'', init=True)
+  file: Union[bytes, str, None] = field(default=b'db.dbindex', init=True)
+
+  def __iter__(self):
+    return (getattr(self, f.name) for f in fields(self))
+
+  def __len__(self):
+    return 8 + 255  # 8 ints and 255 filled out string
+
+
+@dataclass
+class DbData111:
+  index: Union[bytes, int, None] = field(default=b'', init=True)
+  database: Union[bytes, int, None] = field(default=b'', init=True)
+  table: Union[bytes, int, None] = field(default=b'', init=True)
+  relative: Union[bytes, int, None] = field(default=b'', init=True)
+  row: Union[bytes, int, None] = field(default=b'', init=True)
+  col: Union[bytes, int, None] = field(default=b'', init=True)
+  data: Union[bytes, list, None] = field(default=b'', init=True)
+
+  def __iter__(self):
+    return (getattr(self, f.name) for f in fields(self))
+
+
+def clear_iv_rk_out(cip):
+  rk, out = [0] * 240, [0] * 16
+  iv: Union[List[Any], bytes, str] = [0] * 56
+  rk, iv = cip.key_expansion_and_iv(cip.key)
+  return iv, rk, out
+
+
+def encrypt_list_data(cip, ret):
+  iv, rk, out = clear_iv_rk_out(cip)
+  va = bytearray()
+  var1 = [[ret[i].index, ret[i].database, ret[i].table, ret[i].relative, ret[i].row, ret[i].col, ret[i].data] for i in range(len(ret))]
+  [[va.extend(v1) for v1 in v] for v in var1]
+  var1 = gzip.compress(va, compresslevel=3)
+  pad, pd = cip.pad_data(var1)
+  for i in range(0, len(pd), 16):
+    out[i:] = cip.encrypt_block(cip.xor(iv, pd[i:], 16), rk)
+    iv = out[i:]
+  return cip.get_encrypt(cip.key, pd, out, pad)
+
+
+def decrypt_list_data(cip, zz):
+  iv, rk, out = clear_iv_rk_out(cip)
+  ina, s, pp = cip.get_decrypt(cip.key, zz)
+  for i in range(0, len(ina), 16):
+    out[i:] = cip.xor(iv, cip.decrypt_block(ina[i:], rk), 16)
+    iv = ina[i:]
+  out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
+  yy1 = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
+  return gzip.decompress(bytearray(yy1))
+
+
+def encrypt_index(cip, p):
+  iv, rk, out = clear_iv_rk_out(cip)
+  pad, p = cip.pad_data(p)
+  for i in range(0, len(p), 16):
+    out[i:] = cip.encrypt_block(cip.xor(iv, p[i:], 16), rk)
+    iv = out[i:]
+  return cip.get_encrypt(cip.key, p, out, pad)
+
+
+def decrypt_index(cip, index_packed):
+  iv, rk, out = clear_iv_rk_out(cip)
+  ina, s, pp = cip.get_decrypt(cip.key, index_packed)
+  for i in range(0, len(ina), 16):
+    out[i:] = cip.xor(iv, cip.decrypt_block(ina[i:], rk), 16)
+    iv = ina[i:]
+  out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
+  yy = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
+  return yy[:8], ''.join(chr(y) for y in yy[8:])
+
+
+def pack_data_data(index, data):
+  gzd = struct.pack('>%dQ' % len(data.data), *data.data)
+  gzl: int = len(gzd)
+  ret: List = []
+  size = 4048
+  pvr: List = [struct.pack('>Q', c) for c in [data.index, data.database, data.table, data.relative, data.row, data.col]]
+  zlen: int = (gzl // size) if not (gzl - ((gzl // size) * size) > 0) else (gzl // size) + 1
+  for i in range(zlen):
+    ret += [DbData111(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], gzd[i * size : (i + 1) * size])]
+  if len(ret[len(ret) - 1].data) % size:  # If data is not self.size, fill out data to be self.size
+    ret[len(ret) - 1].data += bytes([0] * (size - len(ret[len(ret) - 1].data)))
+  if not index.segments == zlen:  # Set number of segments to zlen
+    index.segments = struct.pack('>Q', zlen)
+  return ret
+
+
 if __name__ == '__main__':
   print('Cipher')
+  index = DbIndex111(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
+  data = DbData111(1, 1, 1, 1, 1, 1, [123] * 1234)
+  var: List = [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek]
+  index_bytearr = bytearray(c for c in var)
+  index_bytearr.extend(map(ord, index.file.ljust(255, ' ')))  # type: ignore
+  cip = Cipher()
+  # Pack index
+  index_encrypted = encrypt_index(cip, index_bytearr)
 
+  # gz and Pack data data
+  packed_data = pack_data_data(index, data)
+
+  # Unpack index
+  index_index, index_file = decrypt_index(cip, index_encrypted)
+
+  # encrypt gzipped data
+  encrypted_data = encrypt_list_data(cip, packed_data)
+  # decrypt gzipped data
+  data_list = decrypt_list_data(cip, encrypted_data)
+  print(data_list[:8], data_list[8:16], data_list[16:24], data_list[24:32], data_list[32:40], data_list[40:48], data_list[48:56])
+  print(int.from_bytes(data_list[48:56], 'big'))
 
 """
 // AES

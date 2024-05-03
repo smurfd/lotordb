@@ -55,6 +55,9 @@ class DbIndex:
   def __iter__(self):
     return (getattr(self, f.name) for f in fields(self))
 
+  def __len__(self):
+    return 8 + 255  # 8 ints and 255 filled out string
+
 
 @dataclass
 class DbData:

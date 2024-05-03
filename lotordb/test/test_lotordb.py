@@ -94,7 +94,10 @@ def test_lotordb_cipher_bytes():
   plain *= 100  # big "text" to encrypt / decrypt
   out = cipher.encrypt_cbc(plain)
   ina = cipher.decrypt_cbc(out)
-  assert plain == ina
+  print(plain)
+  print(ina)
+  print(bytearray(ina))
+  assert plain == bytearray(ina)
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
