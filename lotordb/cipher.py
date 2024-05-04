@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 from hmac import new as new_hmac, compare_digest
-from dataclasses import dataclass, field, fields
-from hashlib import pbkdf2_hmac
+from lotordb.vars import Vars, DbIndex, DbData
 from typing import Union, List, Tuple, Any
-from lotordb.vars import Vars
+from hashlib import pbkdf2_hmac
 import threading, secrets, struct, gzip
 
 
@@ -192,11 +191,9 @@ class Cipher(threading.Thread):
       pad = 16 - (len(ina) % 16)
       if isinstance(ina, list):
         ina = ina + ([0] * pad)
-      elif isinstance(ina, bytes):
-        ina = ina + bytes([0] * pad)
-      elif isinstance(ina, bytearray):
-        ina = ina + bytes([0] * pad)
-    if isinstance(ina, str):
+      elif isinstance(ina, (bytes, bytearray)):
+        ina += bytes([0] * pad)
+    elif isinstance(ina, str):
       ina = ina.encode('UTF-8')
     return pad, ina
 
@@ -247,39 +244,6 @@ class Cipher(threading.Thread):
     return ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
 
 
-@dataclass
-class DbIndex111:
-  index: Union[bytes, int, None] = field(default=b'', init=True)
-  dbindex: Union[bytes, int, None] = field(default=b'', init=True)
-  database: Union[bytes, int, None] = field(default=b'', init=True)
-  table: Union[bytes, int, None] = field(default=b'', init=True)
-  row: Union[bytes, int, None] = field(default=b'', init=True)
-  col: Union[bytes, int, None] = field(default=b'', init=True)
-  segments: Union[bytes, int, None] = field(default=b'', init=True)
-  seek: Union[bytes, int, None] = field(default=b'', init=True)
-  file: Union[bytes, str, None] = field(default=b'db.dbindex', init=True)
-
-  def __iter__(self):
-    return (getattr(self, f.name) for f in fields(self))
-
-  def __len__(self):
-    return 8 + 255  # 8 ints and 255 filled out string
-
-
-@dataclass
-class DbData111:
-  index: Union[bytes, int, None] = field(default=b'', init=True)
-  database: Union[bytes, int, None] = field(default=b'', init=True)
-  table: Union[bytes, int, None] = field(default=b'', init=True)
-  relative: Union[bytes, int, None] = field(default=b'', init=True)
-  row: Union[bytes, int, None] = field(default=b'', init=True)
-  col: Union[bytes, int, None] = field(default=b'', init=True)
-  data: Union[bytes, list, None] = field(default=b'', init=True)
-
-  def __iter__(self):
-    return (getattr(self, f.name) for f in fields(self))
-
-
 def clear_iv_rk_out(cip):
   rk, out = [0] * 240, [0] * 16
   iv: Union[List[Any], bytes, str] = [0] * 56
@@ -289,11 +253,10 @@ def clear_iv_rk_out(cip):
 
 def encrypt_list_data(cip, ret):
   iv, rk, out = clear_iv_rk_out(cip)
-  va = bytearray()
-  var1 = [[ret[i].index, ret[i].database, ret[i].table, ret[i].relative, ret[i].row, ret[i].col, ret[i].data] for i in range(len(ret))]
-  [[va.extend(v1) for v1 in v] for v in var1]
-  var1 = gzip.compress(va, compresslevel=3)
-  pad, pd = cip.pad_data(var1)
+  ba = bytearray()
+  var = [[ret[i].index, ret[i].database, ret[i].table, ret[i].relative, ret[i].row, ret[i].col, ret[i].data] for i in range(len(ret))]
+  [[ba.extend(v2) for v2 in v1] for v1 in var]
+  pad, pd = cip.pad_data(gzip.compress(ba, compresslevel=3))
   for i in range(0, len(pd), 16):
     out[i:] = cip.encrypt_block(cip.xor(iv, pd[i:], 16), rk)
     iv = out[i:]
@@ -307,8 +270,7 @@ def decrypt_list_data(cip, zz):
     out[i:] = cip.xor(iv, cip.decrypt_block(ina[i:], rk), 16)
     iv = ina[i:]
   out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
-  yy1 = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
-  return gzip.decompress(bytearray(yy1))
+  return gzip.decompress(bytearray(''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out))
 
 
 def encrypt_index(cip, p):
@@ -327,50 +289,81 @@ def decrypt_index(cip, index_packed):
     out[i:] = cip.xor(iv, cip.decrypt_block(ina[i:], rk), 16)
     iv = ina[i:]
   out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
-  yy = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
-  return yy[:8], ''.join(chr(y) for y in yy[8:])
+  ret = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
+  return ret[:8], ''.join(chr(y) for y in ret[8:])
 
 
-def pack_data_data(index, data):
-  gzd = struct.pack('>%dQ' % len(data.data), *data.data)
-  gzl: int = len(gzd)
+def segment_data(index, data):
+  pvr: List = [struct.pack('>Q', c) for c in [data.index, data.database, data.table, data.relative, data.row, data.col]]
+  pk_data = struct.pack('>%dQ' % len(data.data), *data.data)
+  pk_len: int = len(pk_data)
   ret: List = []
   size = 4048
-  pvr: List = [struct.pack('>Q', c) for c in [data.index, data.database, data.table, data.relative, data.row, data.col]]
-  zlen: int = (gzl // size) if not (gzl - ((gzl // size) * size) > 0) else (gzl // size) + 1
-  for i in range(zlen):
-    ret += [DbData111(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], gzd[i * size : (i + 1) * size])]
+  seg_len: int = (pk_len // size) if not (pk_len - ((pk_len // size) * size) > 0) else (pk_len // size) + 1
+  for i in range(seg_len):
+    ret += [DbData(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], pk_data[i * size : (i + 1) * size])]
   if len(ret[len(ret) - 1].data) % size:  # If data is not self.size, fill out data to be self.size
     ret[len(ret) - 1].data += bytes([0] * (size - len(ret[len(ret) - 1].data)))
-  if not index.segments == zlen:  # Set number of segments to zlen
-    index.segments = struct.pack('>Q', zlen)
+  if not index.segments == seg_len:  # Set number of segments to seg_len
+    index.segments = struct.pack('>Q', seg_len)
+  return ret
+
+
+def get_decrypted_data(data):
+  ret: List = []
+  for i in range(len(data) // 4096):
+    j = i * 4096
+    ret += [
+      DbData(
+        data[j + 0 : j + 8],
+        data[j + 8 : j + 16],
+        data[j + 16 : j + 24],
+        data[j + 24 : j + 32],
+        data[j + 32 : j + 40],
+        data[j + 40 : j + 48],
+        data[j + 48 : j + 4096],
+      )
+    ]
   return ret
 
 
 if __name__ == '__main__':
   print('Cipher')
-  index = DbIndex111(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
-  data = DbData111(1, 1, 1, 1, 1, 1, [123] * 1234)
+  import time
+
+  t = time.perf_counter()
+
+  index = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
+  data = DbData(1, 1, 1, 1, 1, 1, [123] * 1234)
   var: List = [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek]
   index_bytearr = bytearray(c for c in var)
   index_bytearr.extend(map(ord, index.file.ljust(255, ' ')))  # type: ignore
   cip = Cipher()
+
   # Pack index
   index_encrypted = encrypt_index(cip, index_bytearr)
 
-  # gz and Pack data data
-  packed_data = pack_data_data(index, data)
+  # Segment data
+  segmented_data = segment_data(index, data)
 
   # Unpack index
   index_index, index_file = decrypt_index(cip, index_encrypted)
 
-  # encrypt gzipped data
-  encrypted_data = encrypt_list_data(cip, packed_data)
-  # decrypt gzipped data
-  data_list = decrypt_list_data(cip, encrypted_data)
-  print(data_list[:8], data_list[8:16], data_list[16:24], data_list[24:32], data_list[32:40], data_list[40:48], data_list[48:56])
-  print(int.from_bytes(data_list[48:56], 'big'))
+  # encrypt and gzip data
+  encrypted_data = encrypt_list_data(cip, segmented_data)
 
+  # decrypt and ungzip data
+  data_list = decrypt_list_data(cip, encrypted_data)
+
+  # for i in range(0, len(data_list), 8):
+  #  print(data_list[i:i+8])
+  xxx = get_decrypted_data(data_list)
+  print('time {:.4f}'.format(time.perf_counter() - t))
+  # x = xxx[0]
+  # y = xxx[1]
+  # z = xxx[2]
+  # zd=DbData(z)
+  # print(z)
 """
 // AES
 // https://en.wikipedia.org/wiki/Advanced_Encryption_Standard

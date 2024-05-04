@@ -1,76 +1,8 @@
 #!/usr/bin/env python3
-from dataclasses import dataclass, field, fields
 from typing import List, Union, BinaryIO, Tuple, IO, Any
 import struct, gzip, threading, mmap, socket, secrets
+from lotordb.vars import DbIndex, DbData
 from lotordb.cipher import Cipher
-
-# Thinking out loud about how to do a database
-"""
-index[320] (read data when server starts)
-[index 8b, dbindex 8b, database 8b, table 8b, row 8b, col 8b, datasegments 8b, seek in file 8b, filename 256str]
-
-ex: small data, 1st index, 1st db and 1st table. 1st row and 1st column
-[0x1, '/tmp/db.db', 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0]
-
-ex: big data, 2st index, 1st db and 1st table. 2nd row and 1st column (0x20 * 4000) data
-[0x2, '/tmp/db.db', 0x2, 0x1, 0x1, 0x1, 0x1, 0x1, 0x20, 4096]
-
-
-data[4096]
-[index 8b, database 8b, table 8b, relative 8b, row 8b, col 8b, data 4048b]
-
-ex: small data, 1st index, 1st db and 1st table. 1st row and 1st column
-[0x1, 0x1, 0x1, 0x0, 0x1, 0x1, b'some data here']
-
-ex: big data, 2st index, 1st db and 1st table. 2st row and 1st column
-[0x2, 0x1, 0x1, 0x0, 0x1, 0x1, b'a shit ton of data way more than 4000b']
-[   , 0x1, 0x1, 0x2, 0x1, 0x1, b'a shit ton of data way more than 4000b']
-[   , 0x1, 0x1, 0x2, 0x1, 0x1, b'a shit ton of data way more than 4000b']
-[   , 0x1, 0x1, 0x2, 0x1, 0x1, b'a shit ton of data way more than 4000b']
-[   , 0x1, 0x1, 0x2, 0x1, 0x1, b'a shit ton of data way more than 4000b']
-
-inserting:
-add entry to index
-add entry to data(if zipped data exceeds 4000 add to more segments)
-
-retrieving:
-...
-
-----------------------------------------------
-"""
-
-
-@dataclass
-class DbIndex:
-  index: Union[bytes, int, None] = field(default=b'', init=True)
-  dbindex: Union[bytes, int, None] = field(default=b'', init=True)
-  database: Union[bytes, int, None] = field(default=b'', init=True)
-  table: Union[bytes, int, None] = field(default=b'', init=True)
-  row: Union[bytes, int, None] = field(default=b'', init=True)
-  col: Union[bytes, int, None] = field(default=b'', init=True)
-  segments: Union[bytes, int, None] = field(default=b'', init=True)
-  seek: Union[bytes, int, None] = field(default=b'', init=True)
-  file: Union[bytes, str, None] = field(default=b'db.dbindex', init=True)
-
-  def __iter__(self):
-    return (getattr(self, f.name) for f in fields(self))
-
-  def __len__(self):
-    return 8 + 255  # 8 ints and 255 filled out string
-
-
-@dataclass
-class DbData:
-  index: Union[bytes, int, None] = field(default=b'', init=True)
-  database: Union[bytes, int, None] = field(default=b'', init=True)
-  table: Union[bytes, int, None] = field(default=b'', init=True)
-  relative: Union[bytes, int, None] = field(default=b'', init=True)
-  row: Union[bytes, int, None] = field(default=b'', init=True)
-  col: Union[bytes, int, None] = field(default=b'', init=True)
-  data: Union[bytes, list, None] = field(default=b'', init=True)
-
-  def __iter__(self):
-    return (getattr(self, f.name) for f in fields(self))
 
 
 # Maby? https://renatocunha.com/2015/11/ctypes-mmap-rwlock/

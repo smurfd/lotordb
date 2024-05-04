@@ -1,16 +1,8 @@
 #!/usr/bin/env python3
-from dataclasses import dataclass, field
-from lotordb.hash import Hash
 from typing import Tuple, Any
+from lotordb.hash import Hash
+from lotordb.vars import Key
 import os
-
-
-@dataclass
-class Key:
-  key: str = field(default='', init=False)
-  value: str = field(default='', init=False)
-  store: str = field(default='/tmp', init=False)
-  hash: str = field(default='', init=False)
 
 
 class Keys:  # Key Value Store

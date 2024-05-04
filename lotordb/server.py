@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import threading, signal, socket, ssl
-from lotordb.keys import Keys
 from lotordb.tables import Tables
+from lotordb.keys import Keys
 from typing import Union, Any
 import sys
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-from lotordb.tables import Tables, DbIndex, DbData
+from lotordb.tables import Tables  # , DbIndex, DbData
+from lotordb.vars import DbIndex, DbData
 from lotordb.server import Server
 from lotordb.client import Client
 from lotordb.cipher import Cipher
@@ -94,9 +95,6 @@ def test_lotordb_cipher_bytes():
   plain *= 100  # big "text" to encrypt / decrypt
   out = cipher.encrypt_cbc(plain)
   ina = cipher.decrypt_cbc(out)
-  print(plain)
-  print(ina)
-  print(bytearray(ina))
   assert plain == bytearray(ina)
   print('time {:.4f}'.format(time.perf_counter() - t))
 

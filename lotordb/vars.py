@@ -1,6 +1,46 @@
 #!/usr/bin/env python3
-from dataclasses import dataclass, field
-from typing import List
+from dataclasses import dataclass, field, fields
+from typing import List, Union
+
+@dataclass
+class Key:
+  key: str = field(default='', init=False)
+  value: str = field(default='', init=False)
+  store: str = field(default='/tmp', init=False)
+  hash: str = field(default='', init=False)
+
+@dataclass
+class DbIndex:
+  index: Union[bytes, int, None] = field(default=b'', init=True)
+  dbindex: Union[bytes, int, None] = field(default=b'', init=True)
+  database: Union[bytes, int, None] = field(default=b'', init=True)
+  table: Union[bytes, int, None] = field(default=b'', init=True)
+  row: Union[bytes, int, None] = field(default=b'', init=True)
+  col: Union[bytes, int, None] = field(default=b'', init=True)
+  segments: Union[bytes, int, None] = field(default=b'', init=True)
+  seek: Union[bytes, int, None] = field(default=b'', init=True)
+  file: Union[bytes, str, None] = field(default=b'db.dbindex', init=True)
+
+  def __iter__(self):
+    return (getattr(self, f.name) for f in fields(self))
+
+  def __len__(self):
+    return 8 + 255  # 8 ints and 255 filled out string
+
+
+@dataclass
+class DbData:
+  index: Union[bytes, int, None] = field(default=b'', init=True)
+  database: Union[bytes, int, None] = field(default=b'', init=True)
+  table: Union[bytes, int, None] = field(default=b'', init=True)
+  relative: Union[bytes, int, None] = field(default=b'', init=True)
+  row: Union[bytes, int, None] = field(default=b'', init=True)
+  col: Union[bytes, int, None] = field(default=b'', init=True)
+  data: Union[bytes, list, None] = field(default=b'', init=True)
+
+  def __iter__(self):
+    return (getattr(self, f.name) for f in fields(self))
+
 
 @dataclass
 class Vars:
