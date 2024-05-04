@@ -197,12 +197,16 @@ class Cipher(threading.Thread):
       ina = ina.encode('UTF-8')
     return pad, ina
 
-  # CBC
-  def encrypt_cbc(self, ina: Union[List, bytes, str, Tuple]) -> Union[Tuple, bytes, List]:
+  def get_iv_rk(self) -> Tuple:
     rk, out = [0] * 240, [0] * 16
     iv: Union[List[Any], bytes, str] = [0] * 56
-    pad, ina = self.pad_data(ina)
     rk, iv = self.key_expansion_and_iv(self.key)
+    return iv, rk, out
+
+  # CBC
+  def encrypt_cbc(self, ina: Union[List, bytes, str, Tuple]) -> Union[Tuple, bytes, List]:
+    pad, ina = self.pad_data(ina)
+    iv, rk, out = self.get_iv_rk()
     for i in range(0, len(ina), 16):
       out[i:] = self.encrypt_block(self.xor(iv, ina[i:], 16), rk)
       iv = out[i:]
@@ -210,9 +214,7 @@ class Cipher(threading.Thread):
 
   # CBC
   def decrypt_cbc(self, ina: Union[List, bytes, str, Tuple]) -> Union[bytes, List]:
-    rk, out = [0] * 240, [0] * 16
-    iv: Union[List[Any], bytes, str, Tuple] = [0] * 56
-    rk, iv = self.key_expansion_and_iv(self.key)
+    iv, rk, out = self.get_iv_rk()
     ina, s, p = self.get_decrypt(self.key, ina)
     for i in range(0, len(ina), 16):
       out[i:] = self.xor(iv, self.decrypt_block(ina[i:], rk), 16)
@@ -222,10 +224,8 @@ class Cipher(threading.Thread):
 
   # CFB
   def encrypt_cfb(self, ina: Union[List, bytes, str, Tuple]) -> Union[Tuple, bytes, List]:
-    rk, out = [0] * 240, [0] * 16
-    iv: Union[List[Any], bytes, str] = [0] * 56
     pad, ina = self.pad_data(ina)
-    rk, iv = self.key_expansion_and_iv(self.key)
+    iv, rk, out = self.get_iv_rk()
     for i in range(0, len(ina), 16):
       out[i:] = self.xor(ina[i:], self.encrypt_block(iv, rk), 16)
       iv = out[i:]
@@ -233,9 +233,7 @@ class Cipher(threading.Thread):
 
   # CFB
   def decrypt_cfb(self, ina: Union[List, bytes, str, Tuple]) -> Union[bytes, List]:
-    rk, out = [0] * 240, [0] * 16
-    iv: Union[List[Any], bytes, str, Tuple] = [0] * 56
-    rk, iv = self.key_expansion_and_iv(self.key)
+    iv, rk, out = self.get_iv_rk()
     ina, s, p = self.get_decrypt(self.key, ina)
     for i in range(0, len(ina), 16):
       out[i:] = self.xor(ina[i:], self.encrypt_block(iv, rk), 16)
@@ -309,22 +307,13 @@ def segment_data(index, data):
   return ret
 
 
-def get_decrypted_data(data):
-  ret: List = []
-  for i in range(len(data) // 4096):
-    j = i * 4096
-    ret += [
-      DbData(
-        data[j + 0 : j + 8],
-        data[j + 8 : j + 16],
-        data[j + 16 : j + 24],
-        data[j + 24 : j + 32],
-        data[j + 32 : j + 40],
-        data[j + 40 : j + 48],
-        data[j + 48 : j + 4096],
-      )
-    ]
-  return ret
+def get_decrypted_data(d):
+  r: List = []
+  s: int = 4096
+  for i in range(len(d) // s):
+    j = i * s
+    r += [DbData(d[j : j + 8], d[j + 8 : j + 16], d[j + 16 : j + 24], d[j + 24 : j + 32], d[j + 32 : j + 40], d[j + 40 : j + 48], d[j + 48 : j + s])]
+  return r
 
 
 if __name__ == '__main__':
