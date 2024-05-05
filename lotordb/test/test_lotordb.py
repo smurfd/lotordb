@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from lotordb.tables import Tables  # , DbIndex, DbData
+from lotordb.tables import Tables
 from lotordb.vars import DbIndex, DbData
 from lotordb.server import Server
 from lotordb.client import Client
@@ -121,6 +121,26 @@ def test_lotordb_cipher_pad():
   out = cipher.encrypt_cbc(plain)  # type: ignore
   ina = cipher.decrypt_cbc(out)  # type: ignore
   assert plain == ina
+  print('time {:.4f}'.format(time.perf_counter() - t))
+
+
+def test_lotordb_cipher_list():
+  t = time.perf_counter()
+  index, data = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex'), DbData(1, 1, 1, 1, 1, 1, [123] * 1234)
+  var: List = [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek]
+  index_bytearr = bytearray(c for c in var)
+  index_bytearr.extend(map(ord, index.file.ljust(255, ' ')))  # type: ignore
+  cip = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
+  index_encrypted = cip.encrypt_index(index_bytearr)
+  segmented_data = cip.segment_data(index, data)
+  index_decr = cip.decrypt_index(index_encrypted)
+  encrypted_data = cip.encrypt_list_data(segmented_data)
+  data_list = cip.decrypt_list_data(encrypted_data)
+  decr_data = cip.get_decrypted_data(data_list)
+  assert decr_data[0].data == [123] * 506
+  assert decr_data[1].data == [123] * 506
+  assert decr_data[2].data == [123] * (1234 - 506 - 506) + [0] * (506 - (1234 - 506 - 506))
+  assert index_decr == DbIndex(*[1, 1, 1, 1, 1, 1, 1, 0], '.lib/db1.dbindex'.ljust(255, ' '))
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 

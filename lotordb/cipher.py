@@ -241,118 +241,73 @@ class Cipher(threading.Thread):
     out = out[: len(out) - p if isinstance(p, int) else int.from_bytes(p, 'big')]
     return ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
 
+  def encrypt_list_data(self, ret):
+    iv, rk, out = self.get_iv_rk()
+    ba = bytearray()
+    var = [[ret[i].index, ret[i].database, ret[i].table, ret[i].relative, ret[i].row, ret[i].col, ret[i].data] for i in range(len(ret))]
+    [[ba.extend(v2) for v2 in v1] for v1 in var]
+    pad, pd = self.pad_data(gzip.compress(ba, compresslevel=3))
+    for i in range(0, len(pd), 16):
+      out[i:] = self.encrypt_block(self.xor(iv, pd[i:], 16), rk)
+      iv = out[i:]
+    return self.get_encrypt(self.key, pd, out, pad)
 
-def clear_iv_rk_out(cip):
-  rk, out = [0] * 240, [0] * 16
-  iv: Union[List[Any], bytes, str] = [0] * 56
-  rk, iv = cip.key_expansion_and_iv(cip.key)
-  return iv, rk, out
+  def decrypt_list_data(self, zz):
+    iv, rk, out = self.get_iv_rk()
+    ina, s, pp = self.get_decrypt(self.key, zz)
+    for i in range(0, len(ina), 16):
+      out[i:] = self.xor(iv, self.decrypt_block(ina[i:], rk), 16)
+      iv = ina[i:]
+    out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
+    return gzip.decompress(bytearray(''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out))
 
+  def encrypt_index(self, p):
+    iv, rk, out = self.get_iv_rk()
+    pad, p = self.pad_data(p)
+    for i in range(0, len(p), 16):
+      out[i:] = self.encrypt_block(self.xor(iv, p[i:], 16), rk)
+      iv = out[i:]
+    return self.get_encrypt(self.key, p, out, pad)
 
-def encrypt_list_data(cip, ret):
-  iv, rk, out = clear_iv_rk_out(cip)
-  ba = bytearray()
-  var = [[ret[i].index, ret[i].database, ret[i].table, ret[i].relative, ret[i].row, ret[i].col, ret[i].data] for i in range(len(ret))]
-  [[ba.extend(v2) for v2 in v1] for v1 in var]
-  pad, pd = cip.pad_data(gzip.compress(ba, compresslevel=3))
-  for i in range(0, len(pd), 16):
-    out[i:] = cip.encrypt_block(cip.xor(iv, pd[i:], 16), rk)
-    iv = out[i:]
-  return cip.get_encrypt(cip.key, pd, out, pad)
+  def decrypt_index(self, index_packed):
+    iv, rk, out = self.get_iv_rk()
+    ina, s, pp = self.get_decrypt(self.key, index_packed)
+    for i in range(0, len(ina), 16):
+      out[i:] = self.xor(iv, self.decrypt_block(ina[i:], rk), 16)
+      iv = ina[i:]
+    out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
+    ret = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
+    return DbIndex(*ret[:8], ''.join(chr(y) for y in ret[8:]))
 
+  def segment_data(self, index, data):
+    pvr: List = [struct.pack('>Q', c) for c in [data.index, data.database, data.table, data.relative, data.row, data.col]]
+    pk_data = struct.pack('>%dQ' % len(data.data), *data.data)
+    pk_len: int = len(pk_data)
+    ret: List = []
+    size = 4048
+    seg_len: int = (pk_len // size) if not (pk_len - ((pk_len // size) * size) > 0) else (pk_len // size) + 1
+    for i in range(seg_len):
+      ret += [DbData(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], pk_data[i * size : (i + 1) * size])]
+    if len(ret[len(ret) - 1].data) % size:  # If data is not self.size, fill out data to be self.size
+      ret[len(ret) - 1].data += bytes([0] * (size - len(ret[len(ret) - 1].data)))
+    if not index.segments == seg_len:  # Set number of segments to seg_len
+      index.segments = struct.pack('>Q', seg_len)
+    return ret
 
-def decrypt_list_data(cip, zz):
-  iv, rk, out = clear_iv_rk_out(cip)
-  ina, s, pp = cip.get_decrypt(cip.key, zz)
-  for i in range(0, len(ina), 16):
-    out[i:] = cip.xor(iv, cip.decrypt_block(ina[i:], rk), 16)
-    iv = ina[i:]
-  out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
-  return gzip.decompress(bytearray(''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out))
-
-
-def encrypt_index(cip, p):
-  iv, rk, out = clear_iv_rk_out(cip)
-  pad, p = cip.pad_data(p)
-  for i in range(0, len(p), 16):
-    out[i:] = cip.encrypt_block(cip.xor(iv, p[i:], 16), rk)
-    iv = out[i:]
-  return cip.get_encrypt(cip.key, p, out, pad)
-
-
-def decrypt_index(cip, index_packed):
-  iv, rk, out = clear_iv_rk_out(cip)
-  ina, s, pp = cip.get_decrypt(cip.key, index_packed)
-  for i in range(0, len(ina), 16):
-    out[i:] = cip.xor(iv, cip.decrypt_block(ina[i:], rk), 16)
-    iv = ina[i:]
-  out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
-  ret = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
-  return ret[:8], ''.join(chr(y) for y in ret[8:])
-
-
-def segment_data(index, data):
-  pvr: List = [struct.pack('>Q', c) for c in [data.index, data.database, data.table, data.relative, data.row, data.col]]
-  pk_data = struct.pack('>%dQ' % len(data.data), *data.data)
-  pk_len: int = len(pk_data)
-  ret: List = []
-  size = 4048
-  seg_len: int = (pk_len // size) if not (pk_len - ((pk_len // size) * size) > 0) else (pk_len // size) + 1
-  for i in range(seg_len):
-    ret += [DbData(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], pk_data[i * size : (i + 1) * size])]
-  if len(ret[len(ret) - 1].data) % size:  # If data is not self.size, fill out data to be self.size
-    ret[len(ret) - 1].data += bytes([0] * (size - len(ret[len(ret) - 1].data)))
-  if not index.segments == seg_len:  # Set number of segments to seg_len
-    index.segments = struct.pack('>Q', seg_len)
-  return ret
+  def get_decrypted_data(self, d):
+    ret: List = []
+    u: List = [0, 48, 8]
+    v: List = [48, 4096, 8]
+    for i in range(len(d) // 4096):
+      j = i * 4096
+      ret += [DbData(*[int.from_bytes(d[j + k : j + k + 8]) for k in range(*u)], [int.from_bytes(d[j + k : j + k + 8]) for k in range(*v)])]
+    return ret
 
 
-def get_decrypted_data(d):
-  r: List = []
-  s: int = 4096
-  for i in range(len(d) // s):
-    j = i * s
-    r += [DbData(d[j : j + 8], d[j + 8 : j + 16], d[j + 16 : j + 24], d[j + 24 : j + 32], d[j + 32 : j + 40], d[j + 40 : j + 48], d[j + 48 : j + s])]
-  return r
-
+# TODO: replace encrypt_cfb/decrypt_cfb with encrypt_list_*
 
 if __name__ == '__main__':
   print('Cipher')
-  import time
-
-  t = time.perf_counter()
-
-  index = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
-  data = DbData(1, 1, 1, 1, 1, 1, [123] * 1234)
-  var: List = [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek]
-  index_bytearr = bytearray(c for c in var)
-  index_bytearr.extend(map(ord, index.file.ljust(255, ' ')))  # type: ignore
-  cip = Cipher()
-
-  # Pack index
-  index_encrypted = encrypt_index(cip, index_bytearr)
-
-  # Segment data
-  segmented_data = segment_data(index, data)
-
-  # Unpack index
-  index_index, index_file = decrypt_index(cip, index_encrypted)
-
-  # encrypt and gzip data
-  encrypted_data = encrypt_list_data(cip, segmented_data)
-
-  # decrypt and ungzip data
-  data_list = decrypt_list_data(cip, encrypted_data)
-
-  # for i in range(0, len(data_list), 8):
-  #  print(data_list[i:i+8])
-  xxx = get_decrypted_data(data_list)
-  print('time {:.4f}'.format(time.perf_counter() - t))
-  # x = xxx[0]
-  # y = xxx[1]
-  # z = xxx[2]
-  # zd=DbData(z)
-  # print(z)
 """
 // AES
 // https://en.wikipedia.org/wiki/Advanced_Encryption_Standard
