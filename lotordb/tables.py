@@ -124,6 +124,32 @@ class Tables(threading.Thread):  # Table store
         ]
         [self.fd.write(x) for x in cip if self.fd]  # type: ignore
 
+  def write_index2(self, index: DbIndex, cip) -> None:
+    var: List = [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek]
+    index_bytearr = [c for c in var]
+    index_bytearr.extend(map(ord, index.file.ljust(255, ' ')))  # type: ignore
+    index_encrypted = cip.encrypt_index(index_bytearr)
+    if self.fi:
+      self.fi.write(index_encrypted)
+
+  def write_data2(self, i: DbIndex, d, cip) -> None:
+    segmented_data = cip.segment_data(i, d)
+    encrypted_data = cip.encrypt_list_data(segmented_data)
+    if self.fd:
+      self.fd.write(encrypted_data)
+
+  def read_index2(self, cip) -> Union[DbIndex, List, None]:
+    self.open_index_file(self.fn[0], 'rb+')
+    self.fimm = mmap.mmap(self.fi.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
+    x = self.fimm.read() if self.fimm else b''
+    return DbIndex(*(cip.decrypt_index(x))) if len(x) == 322 else [DbIndex(*(cip.decrypt_index(x[i : i + 322]))) for i in range(0, len(x), 322)]  # type: ignore
+
+  def read_data2(self, index: DbIndex, cip) -> List:
+    self.open_data_file(self.fn[1], 'rb+')
+    self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
+    data_list = cip.decrypt_list_data(self.fdmm.read() if self.fdmm else b'')
+    return cip.get_decrypted_data(data_list)
+
   def read_index(self) -> Union[DbIndex, None]:
     self.open_index_file(self.fn[0], 'rb+')
     self.fimm = mmap.mmap(self.fi.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore

@@ -103,7 +103,4 @@ class Server(threading.Thread):
 
 if __name__ == '__main__':
   print('Server')
-  if sys.argv[1] and sys.argv[1] == 'table':
-    Server('127.0.0.1', 1337, dbtype='table')
-  else:
-    Server('127.0.0.1', 1337, dbtype='key')
+  Server('127.0.0.1', 1337, dbtype='table') if sys.argv[1] and sys.argv[1] == 'table' else Server('127.0.0.1', 1337, dbtype='key')

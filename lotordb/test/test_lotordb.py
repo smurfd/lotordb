@@ -38,7 +38,7 @@ def test_lotordb_table() -> None:
 def test_lotordb_table_list():
   time.sleep(0.1)
   t = time.perf_counter()
-  context: List = [123] * 124  # 100000025
+  context: List = [123] * 1234  # 100000025
   tables = Tables('.lib/db2')
   ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db2.dbindex')
   dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
@@ -141,6 +141,20 @@ def test_lotordb_cipher_list():
   assert decr_data[1].data == [123] * 506
   assert decr_data[2].data == [123] * (1234 - 506 - 506) + [0] * (506 - (1234 - 506 - 506))
   assert index_decr == DbIndex(*[1, 1, 1, 1, 1, 1, 1, 0], '.lib/db1.dbindex'.ljust(255, ' '))
+  print('time {:.4f}'.format(time.perf_counter() - t))
+
+
+def test_lotordb_cipher_read_write():
+  t = time.perf_counter()
+  cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
+  dindex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db3.dbindex')
+  data = DbData(1, 1, 1, 1, 1, 1, [123] * 1234)
+  table = Tables('.lib/db3')
+  table.write_index2(dindex, cipher)
+  table.write_index2(dindex, cipher)
+  table.write_data2(dindex, data, cipher)
+  i = table.read_index2(cipher)
+  table.read_data2(i, cipher)
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 

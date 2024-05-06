@@ -20,15 +20,11 @@ class Cipher(threading.Thread):
     return [s[i][-1]] + s[i][:-1]
 
   def shift_rows(self, s) -> List:
-    s[1] = self.shift_row(s, 1)
-    s[2] = self.shift_row(s, 2)
-    s[3] = self.shift_row(s, 3)
+    s[1], s[2], s[3] = self.shift_row(s, 1), self.shift_row(s, 2), self.shift_row(s, 3)
     return s
 
   def invshift_rows(self, s) -> List:
-    s[1] = self.invshift_row(s, 1)
-    s[2] = self.invshift_row(s, 2)
-    s[3] = self.invshift_row(s, 3)
+    s[1], s[2], s[3] = self.invshift_row(s, 1), self.invshift_row(s, 2), self.invshift_row(s, 3)
     return s
 
   def sub_bytes(self, s) -> List:
@@ -286,8 +282,7 @@ class Cipher(threading.Thread):
     ret: List = []
     size = 4048
     seg_len: int = (pk_len // size) if not (pk_len - ((pk_len // size) * size) > 0) else (pk_len // size) + 1
-    for i in range(seg_len):
-      ret += [DbData(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], pk_data[i * size : (i + 1) * size])]
+    [ret := ret + [DbData(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], pk_data[i * size : (i + 1) * size])] for i in range(seg_len)]
     if len(ret[len(ret) - 1].data) % size:  # If data is not self.size, fill out data to be self.size
       ret[len(ret) - 1].data += bytes([0] * (size - len(ret[len(ret) - 1].data)))
     if not index.segments == seg_len:  # Set number of segments to seg_len
@@ -305,7 +300,6 @@ class Cipher(threading.Thread):
 
 
 # TODO: replace encrypt_cfb/decrypt_cfb with encrypt_list_*
-
 if __name__ == '__main__':
   print('Cipher')
 """
@@ -314,13 +308,4 @@ if __name__ == '__main__':
 // https://www.rfc-editor.org/rfc/rfc3565
 // https://www.rfc-editor.org/rfc/rfc3565
 // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf
-
-// Cipher Key = 60 3d eb 10 15 ca 71 be 2b 73 ae f0 85 7d 77 81
-// 1f 35 2c 07 3b 61 08 d7 2d 98 10 a3 09 14 df f4
-// Nk = 8
-// w0 = 603deb10 w1 = 15ca71be w2 = 2b73aef0 w3 = 857d7781
-// w4 = 1f352c07 w5 = 3b6108d7 w6 = 2d9810a3 w7 = 0914dff4
-// C.3 AES-256 (Nk=8, Nr=14)
-// PLAINTEXT: 00112233445566778899aabbccddeeff
-// KEY: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
 """
