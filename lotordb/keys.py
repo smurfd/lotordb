@@ -29,9 +29,10 @@ class Keys:  # Key Value Store
     if not os.path.exists(self.k.store):
       os.makedirs(self.k.store)
     f = open(os.path.join(self.k.store, self.k.key), 'wb+')
-    if isinstance(self.k.value, bytes):
-      return f.write(self.k.value) > 0
-    return f.write(self.k.value.encode('UTF-8')) > 0
+    return f.write(self.k.value) > 0 if isinstance(self.k.value, bytes) else f.write(self.k.value.encode('UTF-8')) > 0  # type: ignore
+    # if isinstance(self.k.value, bytes):
+    #  return f.write(self.k.value) > 0
+    # return f.write(self.k.value.encode('UTF-8')) > 0
 
   def read_key(self) -> Tuple:
     return (True, open(os.path.join(self.k.store, self.k.key), 'rb+').read()) if os.path.exists(os.path.join(self.k.store, self.k.key)) else (False,)
