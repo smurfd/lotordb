@@ -240,7 +240,11 @@ class Cipher(threading.Thread):
   def encrypt_list_data(self, ret):
     iv, rk, out = self.get_iv_rk()
     ba = bytearray()
-    var = [[ret[i].index, ret[i].database, ret[i].table, ret[i].relative, ret[i].row, ret[i].col, ret[i].data] for i in range(len(ret))]
+    r = ret[0]
+    if isinstance(r, list):
+      var = [[r[i].index, r[i].database, r[i].table, r[i].relative, r[i].row, r[i].col, r[i].data] for i in range(len(r))]
+    else:
+      var = [[ret[i].index, ret[i].database, ret[i].table, ret[i].relative, ret[i].row, ret[i].col, ret[i].data] for i in range(len(ret))]
     [[ba.extend(v2) for v2 in v1] for v1 in var]
     pad, pd = self.pad_data(gzip.compress(ba, compresslevel=3))
     for i in range(0, len(pd), 16):
@@ -287,7 +291,7 @@ class Cipher(threading.Thread):
       ret[len(ret) - 1].data += bytes([0] * (size - len(ret[len(ret) - 1].data)))
     if not index.segments == seg_len:  # Set number of segments to seg_len
       index.segments = struct.pack('>Q', seg_len)
-    return ret
+    return ret, seg_len
 
   def get_decrypted_data(self, d):
     ret: List = []

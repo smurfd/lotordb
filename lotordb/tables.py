@@ -133,22 +133,42 @@ class Tables(threading.Thread):  # Table store
       self.fi.write(index_encrypted)
 
   def write_data2(self, i: DbIndex, d, cip) -> None:
-    segmented_data = cip.segment_data(i, d)
+    segmented_data, seg = cip.segment_data(i, d)
+    i.segments = seg
     encrypted_data = cip.encrypt_list_data(segmented_data)
     if self.fd:
       self.fd.write(encrypted_data)
 
-  def read_index2(self, cip) -> Union[DbIndex, List, None]:
+  def read_index2(self, index, cip) -> Union[Any, DbIndex, List, None]:
     self.open_index_file(self.fn[0], 'rb+')
     self.fimm = mmap.mmap(self.fi.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     x = self.fimm.read() if self.fimm else b''
-    return DbIndex(*(cip.decrypt_index(x))) if len(x) == 322 else [DbIndex(*(cip.decrypt_index(x[i : i + 322]))) for i in range(0, len(x), 322)]  # type: ignore
+    ret = DbIndex(*(cip.decrypt_index(x))) if len(x) == 322 else [DbIndex(*(cip.decrypt_index(x[i : i + 322]))) for i in range(0, len(x), 322)]  # type: ignore
+    if isinstance(ret, DbIndex) and ret.segments != index.segments:
+      ret.segments = index.segments
+    elif isinstance(ret, list):
+      ret[0].segments = index.segments  # TODO: which index segment shoul be updated!?
+    return ret
 
   def read_data2(self, index: DbIndex, cip) -> List:
     self.open_data_file(self.fn[1], 'rb+')
+    data_list = []
+    ret = []
+    ln = 1 if not isinstance(index, list) else len(index)
     self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
-    data_list = cip.decrypt_list_data(self.fdmm.read() if self.fdmm else b'')
-    return cip.get_decrypted_data(data_list)
+    data_list += [cip.decrypt_list_data(self.fdmm.read(194)) for i in range(ln)]  # type: ignore
+    if len(data_list) <= 4096 and isinstance(data_list, bytes):
+      return cip.get_decrypted_data(data_list)
+    elif isinstance(data_list, bytes):
+      return [cip.get_decrypted_data(data_list[i : i + 4096]) for i in range(0, len(data_list), 4096)]
+    elif isinstance(data_list, list):
+      for j in range(len(data_list)):
+        if len(data_list[j]) <= 4096:
+          ret += [cip.get_decrypted_data(data_list[j])]
+        else:
+          for i in range(0, len(data_list[j]), 4096):
+            ret += [cip.get_decrypted_data(data_list[j][i : i + 4096])]
+      return ret
 
   def read_index(self) -> Union[DbIndex, None]:
     self.open_index_file(self.fn[0], 'rb+')
