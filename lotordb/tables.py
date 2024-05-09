@@ -38,6 +38,7 @@ class Tables(threading.Thread):  # Table store
 
   def open_index_file(self, filename: str, rwd: str) -> None:
     self.fi = open(filename, rwd)
+    print('ind', filename)
 
   def open_data_file(self, filename: str, rwd: str) -> None:
     self.fd = open(filename, rwd)
@@ -79,58 +80,15 @@ class Tables(threading.Thread):  # Table store
       return ret
     return DbData(*data)  # type: ignore
 
-  def get_index(self, index: DbIndex) -> List:
-    unpacked: List[Union[int, Tuple, None]] = [None] * 8
-    var: List = [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek]
-    unpacked[:7] = [struct.unpack('>Q', var[c]) for c in range(8)]
-    if isinstance(index.file, bytes):
-      unpacked[8] = struct.unpack('>255s', index.file)[0].decode('UTF-8').rstrip(' ')
-    return unpacked
-
-  def get_data(self, index: DbIndex, data: List) -> Tuple[list, bytes]:
-    dat: bytes = b''
-    ret: List = []
-    if isinstance(index.segments, bytes):
-      for i in range(struct.unpack('>Q', index.segments)[0]):
-        dat += data[i].data
-        ret += [struct.unpack('>Q', c) for c in [data[i].index, data[i].database, data[i].table, data[i].relative, data[i].row, data[i].col]]
-    return ret, gzip.decompress(bytearray(struct.unpack('>%dQ' % (len(dat) // 8), dat)))
-
-  def write_index(self, i: DbIndex) -> None:
-    cip = [
-      self.cip.encrypt_cbc(i.index),  # type: ignore
-      self.cip.encrypt_cbc(i.dbindex),  # type: ignore
-      self.cip.encrypt_cbc(i.database),  # type: ignore
-      self.cip.encrypt_cbc(i.table),  # type: ignore
-      self.cip.encrypt_cbc(i.row),  # type: ignore
-      self.cip.encrypt_cbc(i.col),  # type: ignore
-      self.cip.encrypt_cbc(i.segments),  # type: ignore
-      self.cip.encrypt_cbc(i.seek),  # type: ignore
-      self.cip.encrypt_cbc(i.file),  # type: ignore
-    ]
-    [self.fi.write(x) for x in cip if self.fi]  # type: ignore
-
-  def write_data(self, i: DbIndex, d: List) -> None:
-    if i and isinstance(i.segments, bytes):
-      for b in range(struct.unpack('>Q', i.segments)[0]):
-        cip = [
-          self.cip.encrypt_cbc(d[b].index),
-          self.cip.encrypt_cbc(d[b].database),
-          self.cip.encrypt_cbc(d[b].table),
-          self.cip.encrypt_cbc(d[b].relative),
-          self.cip.encrypt_cbc(d[b].row),
-          self.cip.encrypt_cbc(d[b].col),
-          self.cip.encrypt_cbc(d[b].data),
-        ]
-        [self.fd.write(x) for x in cip if self.fd]  # type: ignore
-
   def write_index2(self, index: DbIndex, cip) -> None:
     var: List = [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek]
     index_bytearr = [c for c in var]
     index_bytearr.extend(map(ord, index.file.ljust(255, ' ')))  # type: ignore
     index_encrypted = cip.encrypt_index(index_bytearr)
+    print(self.fi)
     if self.fi:
-      self.fi.write(index_encrypted)
+      print('hi,', index_encrypted)
+      print(self.fi.write(index_encrypted))
 
   def write_data2(self, i: DbIndex, d, cip) -> None:
     segmented_data, seg = cip.segment_data(i, d)
@@ -169,27 +127,6 @@ class Tables(threading.Thread):  # Table store
           for i in range(0, len(data_list[j]), 4096):
             ret += [cip.get_decrypted_data(data_list[j][i : i + 4096])]
       return ret
-
-  def read_index(self) -> Union[DbIndex, None]:
-    self.open_index_file(self.fn[0], 'rb+')
-    self.fimm = mmap.mmap(self.fi.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
-    rd: List[Any] = [0] * 9
-    if self.fdmm:
-      rd = [self.cip.decrypt_cbc(self.fdmm.read(self.cip.len_salt_hash([8, 8, 8, 8, 8, 8, 8, 8, 255][j]))) for j in range(9)]
-    return DbIndex(*(rd))  # type: ignore
-
-  def read_data(self, index: DbIndex) -> List:
-    if isinstance(index.segments, bytes):
-      lngt: int = struct.unpack('>Q', index.segments)[0]
-    self.open_data_file(self.fn[1], 'rb+')
-    self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
-    r = [0] * lngt
-    for k in range(lngt):
-      rd: List[Any] = [0] * 7
-      if self.fdmm:
-        rd = [self.cip.decrypt_cbc(self.fdmm.read(self.cip.len_salt_hash([8, 8, 8, 8, 8, 8, 4048][j]))) for j in range(7)]
-      r.extend(DbData(*(rd)))  # type: ignore
-    return r
 
   def send_index(self, index: DbIndex) -> None:
     b: bytes = bytearray()

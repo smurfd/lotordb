@@ -6,6 +6,7 @@ from hashlib import pbkdf2_hmac
 import threading, secrets, struct, gzip
 
 
+# TODO: fix type: ignore
 # From https://raw.githubusercontent.com/smurfd/lightssl/master/src/lightciphers.c
 class Cipher(threading.Thread):
   def __init__(self, key: List = [i for i in range(0x20)], iv: List = [0xFF for _ in range(16)]) -> None:

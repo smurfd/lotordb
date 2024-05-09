@@ -35,27 +35,6 @@ def test_lotordb_table() -> None:
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
-def test_lotordb_table_list():
-  time.sleep(0.1)
-  t = time.perf_counter()
-  context: List = [123] * 1234  # 100000025
-  tables = Tables('.lib/db2')
-  ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db2.dbindex')
-  dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
-  index: DbIndex = tables.init_index(ind)
-  data = tables.init_data(dad, index)  # 500mb
-  if isinstance(index, DbIndex):
-    tables.get_index(index)
-    tables.write_index(index)
-    if isinstance(data, list):
-      tables.write_data(index, data)
-      index2 = tables.read_index()
-      data2 = tables.read_data(index)
-      if isinstance(index2, DbIndex):
-        tables.get_data(index2, data2)
-  print('time {:.4f}'.format(time.perf_counter() - t))
-
-
 def test_lotordb_hash():
   t = time.perf_counter()
   has = Hash('smurfd').get()

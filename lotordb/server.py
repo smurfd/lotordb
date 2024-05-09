@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import threading, signal, socket, ssl
+from lotordb.vars import DbIndex, DbData
+from lotordb.cipher import Cipher
 from lotordb.tables import Tables
 from lotordb.keys import Keys
 from typing import Union, Any
-import sys
+import sys, secrets
 
 
 class Server(threading.Thread):
@@ -59,16 +61,20 @@ class Server(threading.Thread):
           self.close()
     elif self.type == 'table' and self.test:  # database server, hack so you can run server in tests
       self.listen()
+      cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
       table = Tables('.lib/db1')
       table.set_ssl_socket(self.ssl_sock)
       index = table.recv_index()
-      data = table.recv_data()  #
-      fi = table.init_index(index)
-      fd = table.init_data(data, fi)  # type: ignore
-      table.write_index(fi)
-      table.write_data(fi, [fd])
+      data = table.recv_data()
+      f = index[8].decode('UTF-8')
+      ind = DbIndex(*(int.from_bytes(index[i]) for i in range(8)), f)  # type: ignore
+      dat = DbData(*(int.from_bytes(data[i]) for i in range(6)), data[6])  # type: ignore
+      table.write_index2(ind, cipher)
+      table.write_data2(ind, dat, cipher)
+      table.close_file()
       self.close()
     elif self.type == 'table':  # database server
+      cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
       while not self.event.is_set():
         self.listen()
         try:
@@ -76,10 +82,12 @@ class Server(threading.Thread):
           table.set_ssl_socket(self.ssl_sock)
           index = table.recv_index()
           data = table.recv_data()
-          fi = table.init_index(index)
-          fd = table.init_data(data, fi)  # type: ignore
-          table.write_index(fi)
-          table.write_data(fi, [fd])
+          f = index[8].decode('UTF-8')
+          ind = DbIndex(*(int.from_bytes(index[i]) for i in range(8)), f)  # type: ignore
+          dat = DbData(*(int.from_bytes(data[i]) for i in range(6)), data[6])  # type: ignore
+          table.write_index2(ind, cipher)
+          table.write_data2(ind, dat, cipher)
+          table.close_file()
         finally:
           self.close()
 
