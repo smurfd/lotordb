@@ -41,7 +41,3 @@ class Keys:  # Key Value Store
 
   def recv_key(self, sock: Any, size: int = 2048) -> Tuple:
     return tuple(sock.recv(4096).strip(b'\n').split(b'\n', 3))
-
-
-if __name__ == '__main__':
-  print('Keys')

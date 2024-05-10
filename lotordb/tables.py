@@ -38,7 +38,6 @@ class Tables(threading.Thread):  # Table store
 
   def open_index_file(self, filename: str, rwd: str) -> None:
     self.fi = open(filename, rwd)
-    print('ind', filename)
 
   def open_data_file(self, filename: str, rwd: str) -> None:
     self.fd = open(filename, rwd)
@@ -150,7 +149,3 @@ class Tables(threading.Thread):  # Table store
 
   def set_ssl_socket(self, sslsock):
     self.ssl_sock = sslsock
-
-
-if __name__ == '__main__':
-  print('Table')

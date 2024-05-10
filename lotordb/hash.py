@@ -19,7 +19,3 @@ class Hash(threading.Thread):
   def get(self) -> str:
     self.join()
     return self.hash if self.hash else ''
-
-
-if __name__ == '__main__':
-  print('Hash')

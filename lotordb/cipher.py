@@ -301,9 +301,6 @@ class Cipher(threading.Thread):
     return ret
 
 
-# TODO: replace encrypt_cfb/decrypt_cfb with encrypt_list_*
-if __name__ == '__main__':
-  print('Cipher')
 """
 // AES
 // https://en.wikipedia.org/wiki/Advanced_Encryption_Standard
