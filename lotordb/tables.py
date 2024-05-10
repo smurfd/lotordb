@@ -85,17 +85,13 @@ class Tables(threading.Thread):  # Table store
     index_bytearr = [c for c in var]
     index_bytearr.extend(map(ord, index.file.ljust(255, ' ')))  # type: ignore
     index_encrypted = cip.encrypt_index(index_bytearr)
-    print(self.fi)
-    if self.fi:
-      print('hi,', index_encrypted)
-      print(self.fi.write(index_encrypted))
+    self.fi.write(index_encrypted) if self.fi else b''
 
   def write_data2(self, i: DbIndex, d, cip) -> None:
     segmented_data, seg = cip.segment_data(i, d)
     i.segments = seg
     encrypted_data = cip.encrypt_list_data(segmented_data)
-    if self.fd:
-      self.fd.write(encrypted_data)
+    self.fd.write(encrypted_data) if self.fd else b''
 
   def read_index2(self, index, cip) -> Union[Any, DbIndex, List, None]:
     self.open_index_file(self.fn[0], 'rb+')
@@ -131,15 +127,12 @@ class Tables(threading.Thread):  # Table store
   def send_index(self, index: DbIndex) -> None:
     b: bytes = bytearray()
     [b.extend(i) for i in [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek, index.file]]  # type: ignore
-    # if self.ssl_sock:
-    #  self.ssl_sock.send(b)
     self.ssl_sock.send(b) if self.ssl_sock else b''
 
   def send_data(self, data: DbData) -> None:
     b: bytes = bytearray()
     [b.extend(i) for i in [data.index, data.database, data.table, data.relative, data.row, data.col, data.data]]  # type: ignore
-    if self.ssl_sock:
-      self.ssl_sock.send(b)
+    self.ssl_sock.send(b) if self.ssl_sock else b''
 
   def recv_index(self, size: int = 319) -> Tuple:
     if self.ssl_sock:

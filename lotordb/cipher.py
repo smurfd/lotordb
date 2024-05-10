@@ -187,10 +187,6 @@ class Cipher(threading.Thread):
     if len(ina) % 16:
       pad = 16 - (len(ina) % 16)
       ina = ina + bytes([0] * pad) if isinstance(ina, (bytes, bytearray)) else ina + ([0] * pad)
-      # if isinstance(ina, list):
-      #  ina = ina + ([0] * pad)
-      # elif isinstance(ina, (bytes, bytearray)):
-      #  ina += bytes([0] * pad)
     elif isinstance(ina, str):
       ina = ina.encode('UTF-8')
     return pad, ina

@@ -43,16 +43,13 @@ class Client(threading.Thread):
     return self.sock
 
   def close(self) -> None:
-    if self.sock:
-      self.sock.close()
+    self.sock.close() if self.sock else None
 
   def send(self, data: bytes) -> None:
-    if self.sock:
-      self.sock.send(data)
+    self.sock.send(data) if self.sock else None
 
   def receive(self, data: int) -> None:
-    if self.sock:
-      self.sock.recv(data)
+    self.sock.recv(data) if self.sock else None
 
   def set_key(self, key: Union[None, Keys]) -> Self:
     self.key = key
