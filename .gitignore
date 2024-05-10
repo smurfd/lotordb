@@ -5,3 +5,5 @@
 */__pycache__
 */test/__pycache__
 .lib/
+lotordb/bitrs/.*
+lotordb/bitrs/bitrs/__pycache__
