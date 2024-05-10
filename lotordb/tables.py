@@ -109,10 +109,10 @@ class Tables(threading.Thread):  # Table store
     return ret
 
   def read_data2(self, index: DbIndex, cip) -> List:
+    data_list: List = []
+    ret: List = []
+    ln: int = 1 if not isinstance(index, list) else len(index)
     self.open_data_file(self.fn[1], 'rb+')
-    data_list = []
-    ret = []
-    ln = 1 if not isinstance(index, list) else len(index)
     self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     data_list += [cip.decrypt_list_data(self.fdmm.read(194)) for i in range(ln)]  # type: ignore
     if len(data_list) <= 4096 and isinstance(data_list, bytes):
@@ -131,8 +131,9 @@ class Tables(threading.Thread):  # Table store
   def send_index(self, index: DbIndex) -> None:
     b: bytes = bytearray()
     [b.extend(i) for i in [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek, index.file]]  # type: ignore
-    if self.ssl_sock:
-      self.ssl_sock.send(b)
+    # if self.ssl_sock:
+    #  self.ssl_sock.send(b)
+    self.ssl_sock.send(b) if self.ssl_sock else b''
 
   def send_data(self, data: DbData) -> None:
     b: bytes = bytearray()
