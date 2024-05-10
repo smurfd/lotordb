@@ -28,8 +28,5 @@ class Bitrs(multiprocessing.Process):
 
   def stop(self) -> Any:
     self.prcs.close()
-    self.ret.wait(timeout=0.0001)
-    if self.ret.ready():
-      self.prcs.terminate()
-      self.prcs.join()
+    self.prcs.join()
     return self.ret.get(timeout=1)
