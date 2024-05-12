@@ -5,14 +5,6 @@ from lotordb.vars import DbIndex, DbData
 from lotordb.cipher import Cipher
 
 
-# Maby? https://renatocunha.com/2015/11/ctypes-mmap-rwlock/
-# Before mmap : time 6.3838
-# After mmap  : time 6.3694
-# After compress level1: time 4.9225
-# 4.4616 python 3.11.7
-# 4.0892 python 3.12.2
-# After compress befor pack: time 0.8563!!!!! (python 3.11.7)
-# After compress befor pack without double get_data: time 0.7963!!!!! (python 3.11.7)
 # Sending byte array: time 0.4790!!! (python 3.11.7)
 # gzip command: time 1.539226
 class Tables(threading.Thread):  # Table store
@@ -43,10 +35,8 @@ class Tables(threading.Thread):  # Table store
     self.fd = open(filename, rwd)
 
   def close_file(self) -> None:
-    if self.fi and not self.fi.closed:
-      self.fi.close()
-    if self.fd and not self.fd.closed:
-      self.fd.close()
+    self.fi.close() if self.fi and not self.fi.closed else None
+    self.fd.close() if self.fd and not self.fd.closed else None
 
   def init_index(self, index: Union[DbIndex, Tuple, None]) -> DbIndex:
     if isinstance(index, DbIndex) and index and isinstance(index.file, str):
@@ -63,13 +53,14 @@ class Tables(threading.Thread):  # Table store
       gzd: bytes = gzip.compress(bytearray(data.data), compresslevel=3)
       gzd = struct.pack('>%dQ' % len(gzd), *gzd)
       gzl: int = len(gzd)
+      gzlsize: int = gzl // self.size
       ret: List = []
       if isinstance(index.seek, bytes) and self.fd:
         if not struct.unpack('>Q', index.seek):
           index.seek = struct.pack('>Q', self.fd.tell())
         self.fd.seek(struct.unpack('>Q', index.seek)[0], 0)
       # Calculate diff between length of gz data, if not divisable with self.size, add 1 to zlen
-      zlen: int = (gzl // self.size) if not (gzl - ((gzl // self.size) * self.size) > 0) else (gzl // self.size) + 1
+      zlen: int = (gzlsize) if not (gzl - ((gzlsize) * self.size) > 0) else (gzlsize) + 1
       for i in range(zlen):
         ret += [DbData(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], gzd[i * self.size : (i + 1) * self.size])]
       if len(ret[len(ret) - 1].data) % self.size:  # If data is not self.size, fill out data to be self.size
@@ -87,16 +78,15 @@ class Tables(threading.Thread):  # Table store
     self.fi.write(index_encrypted) if self.fi else b''
 
   def write_data2(self, i: DbIndex, d, cip) -> None:
-    segmented_data, seg = cip.segment_data(i, d)
-    i.segments = seg
+    segmented_data, i.segments = cip.segment_data(i, d)
     encrypted_data = cip.encrypt_list_data(segmented_data)
     self.fd.write(encrypted_data) if self.fd else b''
 
   def read_index2(self, index, cip) -> Union[Any, DbIndex, List, None]:
     self.open_index_file(self.fn[0], 'rb+')
     self.fimm = mmap.mmap(self.fi.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
-    x = self.fimm.read() if self.fimm else b''
-    ret = DbIndex(*(cip.decrypt_index(x))) if len(x) == 322 else [DbIndex(*(cip.decrypt_index(x[i : i + 322]))) for i in range(0, len(x), 322)]  # type: ignore
+    r = self.fimm.read() if self.fimm else b''
+    ret = DbIndex(*(cip.decrypt_index(r))) if len(r) == 322 else [DbIndex(*(cip.decrypt_index(r[i : i + 322]))) for i in range(0, len(r), 322)]  # type: ignore
     if isinstance(ret, DbIndex) and ret.segments != index.segments:
       ret.segments = index.segments
     elif isinstance(ret, list):
@@ -134,13 +124,11 @@ class Tables(threading.Thread):  # Table store
     self.ssl_sock.send(b) if self.ssl_sock else b''
 
   def recv_index(self, size: int = 319) -> Tuple:
-    if self.ssl_sock:
-      r = self.ssl_sock.recv(size)  # Size of DbIndex, below separate per variable
+    r = self.ssl_sock.recv(size) if self.ssl_sock else ()  # Size of DbIndex, below separate per variable
     return (r[0:8], r[8:16], r[16:24], r[24:32], r[32:40], r[40:48], r[48:56], r[56:64], r[64:319])
 
   def recv_data(self, size: int = 4096) -> Tuple:
-    if self.ssl_sock:
-      r = self.ssl_sock.recv(size)  # Size of DbData, below separate per variable
+    r = self.ssl_sock.recv(size) if self.ssl_sock else ()  # Size of DbData, below separate per variable
     return (r[0:8], r[8:16], r[16:24], r[24:32], r[32:40], r[40:48], r[48:4096])
 
   def set_index_data(self, index: DbIndex, data: DbData):

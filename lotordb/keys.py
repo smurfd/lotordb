@@ -2,7 +2,7 @@
 from typing import Tuple, Any
 from lotordb.hash import Hash
 from lotordb.vars import Key
-import os
+import os, pathlib
 
 
 class Keys:  # Key Value Store
@@ -19,15 +19,13 @@ class Keys:  # Key Value Store
     return self.k.key, self.k.value, self.k.store, self.k.hash
 
   def del_key(self) -> None:
-    if os.path.exists(os.path.join(self.k.store, self.k.key)):
-      os.remove(os.path.join(self.k.store, self.k.key))
+    pathlib.Path(os.path.join(self.k.store, self.k.key)).unlink(missing_ok=True)
 
   def set_store(self, s: str) -> None:
     self.k.store = s
 
   def write_key(self) -> bool:
-    if not os.path.exists(self.k.store):
-      os.makedirs(self.k.store)
+    os.makedirs(self.k.store, exist_ok=True)
     f = open(os.path.join(self.k.store, self.k.key), 'wb+')
     return f.write(self.k.value) > 0 if isinstance(self.k.value, bytes) else f.write(self.k.value.encode('UTF-8')) > 0  # type: ignore
 

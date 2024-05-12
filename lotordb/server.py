@@ -53,10 +53,7 @@ class Server(threading.Thread):
           print('serv', k, v, s, h)
           if k and v and s:
             kvs = Keys(k, v, s)
-            if h.decode('UTF-8') == kvs.get_key_value_store()[3]:  # Check that the serverside hash is the same as received hash from client
-              kvs.write_key()
-            else:
-              print('Will not write key, hash does not match!')
+            kvs.write_key() if h.decode('UTF-8') == kvs.get_key_value_store()[3] else print('Will not write key, hash does not match!')
         finally:
           self.close()
     elif self.type == 'table' and self.test:  # database server, hack so you can run server in tests
@@ -66,8 +63,7 @@ class Server(threading.Thread):
       table.set_ssl_socket(self.ssl_sock)
       index = table.recv_index()
       data = table.recv_data()
-      f = index[8].decode('UTF-8')
-      ind = DbIndex(*(int.from_bytes(index[i]) for i in range(8)), f)  # type: ignore
+      ind = DbIndex(*(int.from_bytes(index[i]) for i in range(8)), index[8].decode('UTF-8'))  # type: ignore
       dat = DbData(*(int.from_bytes(data[i]) for i in range(6)), data[6])  # type: ignore
       table.write_index2(ind, cipher)
       table.write_data2(ind, dat, cipher)
@@ -82,8 +78,7 @@ class Server(threading.Thread):
           table.set_ssl_socket(self.ssl_sock)
           index = table.recv_index()
           data = table.recv_data()
-          f = index[8].decode('UTF-8')
-          ind = DbIndex(*(int.from_bytes(index[i]) for i in range(8)), f)  # type: ignore
+          ind = DbIndex(*(int.from_bytes(index[i]) for i in range(8)), index[8].decode('UTF-8'))  # type: ignore
           dat = DbData(*(int.from_bytes(data[i]) for i in range(6)), data[6])  # type: ignore
           table.write_index2(ind, cipher)
           table.write_data2(ind, dat, cipher)

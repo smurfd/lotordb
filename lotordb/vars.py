@@ -27,7 +27,6 @@ class DbIndex:
   def __len__(self):
     return 8 + 255  # 8 ints and 255 filled out string
 
-
 @dataclass
 class DbData:
   index: Union[bytes, int, None] = field(default=b'', init=True)
@@ -41,6 +40,8 @@ class DbData:
   def __iter__(self):
     return (getattr(self, f.name) for f in fields(self))
 
+  def __len__(self):
+    return 48 + 4048  # 48 ints and 4048 filled out string
 
 @dataclass
 class Vars:
