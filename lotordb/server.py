@@ -8,6 +8,9 @@ from typing import Union, Any
 import sys, secrets
 
 
+# TODO: Set self.tables instead of using Tables()
+# TODO: Check if received index/data is bytes, then dont encode
+# TODO: write_data2, already_encoded param, to just write data to disk
 class Server(threading.Thread):
   class ServiceExit(Exception):
     pass

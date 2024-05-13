@@ -5,6 +5,14 @@ from lotordb.vars import DbIndex, DbData
 from lotordb.cipher import Cipher
 
 
+# TODO: Rename read/write*2
+# TODO: rewrite to always use encrypted data
+#       init_index
+#       init_data
+#       send_index
+#       send_data
+#       recv_index
+#       recv_data
 # Sending byte array: time 0.4790!!! (python 3.11.7)
 # gzip command: time 1.539226
 class Tables(threading.Thread):  # Table store
