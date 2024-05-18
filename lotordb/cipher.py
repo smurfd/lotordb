@@ -262,6 +262,7 @@ class Cipher(threading.Thread):
   def encrypt_index(self, p):
     iv, rk, out = self.get_iv_rk()
     pad, p = self.pad_data(p)
+    print('PAD', pad, len(p), p)
     for i in range(0, len(p), 16):
       out[i:] = self.encrypt_block(self.xor(iv, p[i:], 16), rk)
       iv = out[i:]
@@ -276,6 +277,51 @@ class Cipher(threading.Thread):
     out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
     ret = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
     return DbIndex(*ret[:8], ''.join(chr(y) for y in ret[8:]))
+
+  def decrypt_index2(self, index_packed):
+    iv, rk, out = self.get_iv_rk()
+    ina, s, pp = self.get_decrypt(self.key, index_packed)
+    for i in range(0, len(ina), 16):
+      out[i:] = self.xor(iv, self.decrypt_block(ina[i:], rk), 16)
+      iv = ina[i:]
+    out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
+    ret = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
+    return DbIndex(*(int.from_bytes(ret[i : i + 8]) for i in range(0, 64, 8)), ''.join(chr(y) for y in ret[64:]))
+
+  def decrypt_data2(self, data_packed):
+    iv, rk, out = self.get_iv_rk()
+    ina, s, pp = self.get_decrypt(self.key, data_packed)
+    print('INA', ina)
+    if s or pp:
+      pass  # TODO: string or padded, needed now?
+    for i in range(0, len(ina), 16):
+      out[i:] = self.xor(iv, self.decrypt_block(ina[i:], rk), 16)
+      iv = ina[i:]
+    # out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
+    print('DECRY', out)
+    outba = [i for i in out[48 : len(out)]]  # -8]]
+    outba1 = bytes(outba)
+    # print(outba1)
+    outba2 = gzip.decompress(outba1)
+    return DbData(*(int.from_bytes(out[i : i + 8]) for i in range(0, 48, 8)), outba2)
+    # print(int(gzip.decompress(x)[0]))
+    # outba = bytearray()
+    # [outba.extend(i) for i in out[40:len(out)-8]]
+    # print("DAAAA", outba)
+    # print("DAAAA", outba1)
+    # print("DAAAA", outba2)
+    # print("DECCCC", [chr(i) for i in out[40:len(out)-8]])
+    # b = bytearray()
+    # [b.extend(bytes(i)) for i in out]
+    # print("BBBBBBB", b)
+    # ret = b
+    # print("INNNNNNNNNN", len(ina))
+    # dat = gzip.decompress(out)
+    # ret = gzip.decompress(ret)
+    # ret = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
+    # return DbData(*(int.from_bytes(ret[i:i+8]) for i in range(0,48,8)), ''.join(chr(y) for y in ret[48:]))
+
+  # r[0:8], r[8:16], r[16:24], r[24:32], r[32:40], r[40:48], r[48:4096]
 
   def segment_data(self, index, data):
     pvr: List = [struct.pack('>Q', c) for c in [data.index, data.database, data.table, data.relative, data.row, data.col]]

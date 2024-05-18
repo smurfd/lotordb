@@ -7,3 +7,4 @@
 .lib/
 lotordb/bitrs/.*
 lotordb/bitrs/bitrs/__pycache__
+lotordb/bitrs/bitrs/test/__pycache__/

@@ -157,9 +157,11 @@ def test_lotordb_cipher_read_write_more():
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
+"""
 def test_lotordb_table_list2():
   time.sleep(0.1)
   t = time.perf_counter()
+  Server('127.0.0.1', 1338, test=True, dbtype='table')
   cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
   context: List = [123] * 1234  # 100000025
   tables = Tables('.lib/db5')
@@ -167,9 +169,36 @@ def test_lotordb_table_list2():
   dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
   tables.write_index2(ind, cipher)
   tables.write_data2(ind, dad, cipher)
-  tables.read_index2(ind, cipher)
-  tables.read_data2(ind, cipher)
+  i = tables.read_index2(ind, cipher)
+  d = tables.read_data2(ind, cipher)
+  i = tables.init_index(i)
+  tables.set_index_data(i, d)
+  Client('127.0.0.1', 1338, dbtype='table').set_tables(tables).start()
   print('time {:.4f}'.format(time.perf_counter() - t))
+"""
+
+
+def test_lotordb_new_encrypt_decrypt_write_read():
+  Server('127.0.0.1', 1337, test=True, dbtype='tablesecure')
+  tables = Tables('.lib/db9')
+  context: List = [123] * 123456
+  ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db9.dbindex')
+  dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
+  cip = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
+  i = tables.index_to_bytearray_encrypt(ind, cip)
+  d = tables.data_to_bytearray_encrypt(dad, ind, cip)
+  tables.write_index3(i)
+  tables.write_data3(d)
+  bi = tables.decrypt_bytearray_to_index(i, cip)
+  bd = tables.decrypt_bytearray_to_data(d, cip)
+  ri = tables.read_index3()
+  rd = tables.read_data3()
+  rbi = tables.decrypt_bytearray_to_index(ri, cip)
+  rbd = tables.decrypt_bytearray_to_data(rd, cip)
+  tables.set_index_data(i, d)
+  Client('127.0.0.1', 1337, dbtype='tablesecure').set_tables(tables).start()
+  assert bi == rbi
+  assert bd == rbd
 
 
 if __name__ == '__main__':

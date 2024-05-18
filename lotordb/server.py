@@ -88,6 +88,15 @@ class Server(threading.Thread):
           table.close_file()
         finally:
           self.close()
+    elif self.type == 'tablesecure' and self.test:  # database server, hack so you can run server in tests
+      table = Tables('.lib/db8')
+      self.listen()
+      table.set_ssl_socket(self.ssl_sock)
+      index = table.recv_encrypted_index()
+      data = table.recv_encrypted_data()
+      table.write_index3(index)
+      table.write_data3(data)
+      self.close()
 
   def init_server_socket(self) -> None:
     self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)

@@ -21,14 +21,25 @@ class Client(threading.Thread):
 
   def run(self) -> None:
     try:
+      print('Cli', self.type)
       self.thread.start()
+      print('Cli conn')
       self.connect()
+      print('Cli conn')
       if self.type == 'key' and self.key:  # key value client
         self.key.send_key(self.sock, self.key.get_key_value_store())
       elif self.type == 'table' and self.tables and self.sock and self.tables.index and self.tables.data:  # database client
         self.tables.set_ssl_socket(self.sock)
         self.tables.send_index(self.tables.index)
         self.tables.send_data(self.tables.data)
+      elif self.type == 'tablesecure' and self.tables:
+        print('table secure')
+        print('cli', self.tables.index)
+        self.tables.set_ssl_socket(self.sock)
+        print('cli', self.tables.index)
+        self.tables.send_encrypted_index(self.tables.index)
+        self.tables.send_encrypted_data(self.tables.data)
+
       self.close()
       self.thread.join(timeout=0.1)
     except Exception as e:
