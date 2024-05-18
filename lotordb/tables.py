@@ -159,72 +159,40 @@ class Tables(threading.Thread):  # Table store
     return cip.decrypt_index2(indexba)
 
   def send_encrypted_index(self, index):
-    print('SEND', len(index))
     self.ssl_sock.send(struct.pack('>Q', len(index))) if self.ssl_sock else b''
     self.ssl_sock.send(index) if self.ssl_sock else b''
 
-  def recv_encrypted_index(self):  # , size=370):
+  def recv_encrypted_index(self):
     size = self.ssl_sock.recv(8) if self.ssl_sock else ()
-    print('index', size)
-    r = self.ssl_sock.recv(int.from_bytes(size)) if self.ssl_sock else ()
-    return r
+    return self.ssl_sock.recv(int.from_bytes(size)) if self.ssl_sock else ()
 
   def send_encrypted_data(self, data):
-    print('SEND', len(data))  # , bytes(670))#len(data)))
     self.ssl_sock.send(struct.pack('>Q', len(data))) if self.ssl_sock else b''
     self.ssl_sock.send(data) if self.ssl_sock else b''
 
-  def recv_encrypted_data(self):  # , size=4096):
+  def recv_encrypted_data(self):
     size = self.ssl_sock.recv(8) if self.ssl_sock else ()
-    print('data', size)
-    r = self.ssl_sock.recv(int.from_bytes(size)) if self.ssl_sock else ()
-    return r
+    return self.ssl_sock.recv(int.from_bytes(size)) if self.ssl_sock else ()
 
   def data_to_bytearray_encrypt(self, data, index, cip):
     b: bytes = bytearray()
     if isinstance(data, DbData) and data and data.data:
       pvr: List = [struct.pack('>Q', c) for c in [data.index, data.database, data.table, data.relative, data.row, data.col]]
       gzd: bytes = gzip.compress(bytearray(data.data), compresslevel=3)
-      # gzd = struct.pack('>%dQ' % len(gzd), *gzd)
       gzl: int = len(gzd)
       gzlsize: int = gzl // self.size
-      # print(type(gzd))
-      # print(gzd)
-      # print("L  E. N ", gzl, gzlsize, len(data.data))
-      # b.extend(gzd)
-      # if isinstance(gzd, bytearray): print("AARRRR")
-      # return cip.encrypt_index(gzd)
-
       if isinstance(index.seek, bytes) and self.fd:
         if not struct.unpack('>Q', index.seek):
           index.seek = struct.pack('>Q', self.fd.tell())
         self.fd.seek(struct.unpack('>Q', index.seek)[0], 0)
       # Calculate diff between length of gz data, if not divisable with self.size, add 1 to zlen
       zlen: int = (gzlsize) if not (gzl - ((gzlsize) * self.size) > 0) else (gzlsize) + 1
-      # print("ZLE", zlen)
-      # print(pvr)
-      # print(pvr[0])
-      # b.extend(pvr[0])
-      # b.extend(pvr[1])
-      # b.extend(pvr[2])
-      # b.extend(pvr[3])
-      # b.extend(pvr[4])
-      # b.extend(pvr[5])
       [b.extend(pvr[i]) for i in range(6)]
       [b.extend(gzd[i * self.size : (i + 1) * self.size]) for i in range(zlen)]
       return cip.encrypt_index(b)
-      # return b
-      # for i in range(zlen):
-      #  ret += [DbData(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], gzd[i * self.size : (i + 1) * self.size])]
-      # if len(ret[len(ret) - 1].data) % self.size:  # If data is not self.size, fill out data to be self.size
-      #  ret[len(ret) - 1].data += bytes([0] * (self.size - len(ret[len(ret) - 1].data)))
-      # if not index.segments == zlen:  # Set number of segments to zlen
-      #  index.segments = struct.pack('>Q', zlen)
-      # return ret
 
   def decrypt_bytearray_to_data(self, databa, cip):
     return cip.decrypt_data2(databa)
-    # return gzip.decompress(dat)
 
   def write_index3(self, index):
     self.fi.write(index) if self.fi else b''
@@ -235,11 +203,9 @@ class Tables(threading.Thread):  # Table store
   def read_index3(self):
     self.open_index_file(self.fn[0], 'rb+')
     self.fimm = mmap.mmap(self.fi.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
-    r = self.fimm.read() if self.fimm else b''
-    return r
+    return self.fimm.read() if self.fimm else b''
 
   def read_data3(self):
     self.open_data_file(self.fn[1], 'rb+')
     self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
-    r = self.fdmm.read() if self.fimm else b''
-    return r
+    return self.fdmm.read() if self.fimm else b''
