@@ -4,11 +4,10 @@ from lotordb.vars import DbIndex, DbData
 from lotordb.cipher import Cipher
 from lotordb.tables import Tables
 from lotordb.keys import Keys
-from typing import Union, Any
+from typing import Union, Any, Self
 import sys, secrets
 
 
-# TODO: Set self.tables instead of using Tables()
 # TODO: Check if received index/data is bytes, then dont encode
 # TODO: write_data2, already_encoded param, to just write data to disk
 class Server(threading.Thread):
@@ -27,6 +26,7 @@ class Server(threading.Thread):
     self.event = threading.Event()
     self.test: bool = test
     self.type: Union[bool, str] = dbtype
+    self.tables: Union[None, Tables] = None
     self.thread = threading.Thread()
     try:
       self.thread.start()
@@ -59,43 +59,40 @@ class Server(threading.Thread):
             kvs.write_key() if h.decode('UTF-8') == kvs.get_key_value_store()[3] else print('Will not write key, hash does not match!')
         finally:
           self.close()
-    elif self.type == 'table' and self.test:  # database server, hack so you can run server in tests
+    elif self.type == 'table' and self.test and self.tables:  # database server, hack so you can run server in tests
       self.listen()
       cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
-      table = Tables('.lib/db1')
-      table.set_ssl_socket(self.ssl_sock)
-      index = table.recv_index()
-      data = table.recv_data()
+      self.tables.set_ssl_socket(self.ssl_sock)
+      index = self.tables.recv_index()
+      data = self.tables.recv_data()
       ind = DbIndex(*(int.from_bytes(index[i]) for i in range(8)), index[8].decode('UTF-8'))  # type: ignore
       dat = DbData(*(int.from_bytes(data[i]) for i in range(6)), data[6])  # type: ignore
-      table.write_index2(ind, cipher)
-      table.write_data2(ind, dat, cipher)
-      table.close_file()
+      self.tables.write_index2(ind, cipher)
+      self.tables.write_data2(ind, dat, cipher)
+      self.tables.close_file()
       self.close()
-    elif self.type == 'table':  # database server
+    elif self.type == 'table' and self.tables:  # database server
       cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
       while not self.event.is_set():
         self.listen()
         try:
-          table = Tables('.lib/db1')
-          table.set_ssl_socket(self.ssl_sock)
-          index = table.recv_index()
-          data = table.recv_data()
+          self.tables.set_ssl_socket(self.ssl_sock)
+          index = self.tables.recv_index()
+          data = self.tables.recv_data()
           ind = DbIndex(*(int.from_bytes(index[i]) for i in range(8)), index[8].decode('UTF-8'))  # type: ignore
           dat = DbData(*(int.from_bytes(data[i]) for i in range(6)), data[6])  # type: ignore
-          table.write_index2(ind, cipher)
-          table.write_data2(ind, dat, cipher)
-          table.close_file()
+          self.tables.write_index2(ind, cipher)
+          self.tables.write_data2(ind, dat, cipher)
+          self.tables.close_file()
         finally:
           self.close()
-    elif self.type == 'tablesecure' and self.test:  # database server, hack so you can run server in tests
-      table = Tables('.lib/db8')
+    elif self.type == 'tablesecure' and self.test and self.tables:  # database server, hack so you can run server in tests
       self.listen()
-      table.set_ssl_socket(self.ssl_sock)
-      index = table.recv_encrypted_index()
-      data = table.recv_encrypted_data()
-      table.write_index3(index)
-      table.write_data3(data)
+      self.tables.set_ssl_socket(self.ssl_sock)
+      index = self.tables.recv_encrypted_index()
+      data = self.tables.recv_encrypted_data()
+      self.tables.write_index3(index)
+      self.tables.write_data3(data)
       self.close()
 
   def init_server_socket(self) -> None:
@@ -115,7 +112,12 @@ class Server(threading.Thread):
   def service_shutdown(self, signum, frame) -> None:
     raise self.ServiceExit
 
+  def set_tables(self, tables: Union[None, Tables]) -> Self:
+    self.tables = tables
+    return self
+
 
 if __name__ == '__main__':
   print('Server')
-  Server('127.0.0.1', 1337, dbtype='table') if sys.argv[1] and sys.argv[1] == 'table' else Server('127.0.0.1', 1337, dbtype='key')
+  tables = Tables('.lib/db1')
+  Server('127.0.0.1', 1337, dbtype='table').set_tables(tables) if sys.argv[1] and sys.argv[1] == 'table' else Server('127.0.0.1', 1337, dbtype='key')
