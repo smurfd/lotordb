@@ -77,7 +77,7 @@ if __name__ == '__main__':
     tables.set_index_data(index, data)
     Client('127.0.0.1', 1337, dbtype='table').set_tables(tables).start()
   elif sys.argv[1] == 'tablesecure':
-    tables = Tables('.lib/db10')
+    tables = Tables()
     ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db10.dbindex')
     dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
     cip = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])

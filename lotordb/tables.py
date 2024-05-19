@@ -3,6 +3,7 @@ from typing import List, Union, BinaryIO, Tuple, IO, Any
 import struct, gzip, threading, mmap, socket, secrets
 from lotordb.vars import DbIndex, DbData
 from lotordb.cipher import Cipher
+import io
 
 
 # TODO: Rename read/write*2
@@ -16,20 +17,24 @@ from lotordb.cipher import Cipher
 # Sending byte array: time 0.4790!!! (python 3.11.7)
 # gzip command: time 1.539226
 class Tables(threading.Thread):  # Table store
-  def __init__(self, fn) -> None:
+  def __init__(self, fn='') -> None:
     threading.Thread.__init__(self, group=None)
     self.fi: Union[None, BinaryIO, IO] = None
     self.fd: Union[None, BinaryIO, IO] = None
     self.fimm: Union[None, BinaryIO] = None
     self.fdmm: Union[None, BinaryIO] = None
     self.fn = (fn + '.dbindex', fn + '.dbdata')
-    self.open_index_file(self.fn[0], 'ab+')
-    self.open_data_file(self.fn[1], 'ab+')
     self.size: int = 4048
     self.index: Union[DbIndex, None] = None
     self.data: Union[DbData, None] = None
     self.cip = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
     self.ssl_sock: Union[socket.socket, None] = None
+    if fn:
+      self.open_index_file(self.fn[0], 'ab+')
+      self.open_data_file(self.fn[1], 'ab+')
+    else:
+      self.fi = io.BufferedRandom  # type: ignore
+      self.fd = io.BufferedRandom  # type: ignore
     self.start()
 
   def __exit__(self) -> None:
