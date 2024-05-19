@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import threading, socket, ssl
 from lotordb.keys import Keys
+from lotordb.cipher import Cipher
 from lotordb.tables import Tables, DbIndex, DbData
 from typing import Union, Self, List, Any
-import sys
+import sys, secrets
 
 
 class Client(threading.Thread):
@@ -66,14 +67,23 @@ class Client(threading.Thread):
 
 if __name__ == '__main__':
   print('Client')
+  context: List = [123] * 123456
   if sys.argv[1] and sys.argv[1] == 'table':
-    context: List = [123] * 125
     dindex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
     ddata = DbData(1, 1, 1, 1, 1, 1, context)
-    table = Tables('.lib/db1')
-    index = table.init_index(dindex)
-    data = table.init_data(ddata, index)[0]  # type: ignore
-    table.set_index_data(index, data)
-    Client('127.0.0.1', 1337, dbtype='table').set_tables(table).start()
-  else:
+    tables = Tables('.lib/db1')
+    index = tables.init_index(dindex)
+    data = tables.init_data(ddata, index)[0]  # type: ignore
+    tables.set_index_data(index, data)
+    Client('127.0.0.1', 1337, dbtype='table').set_tables(tables).start()
+  elif sys.argv[1] == 'tablesecure':
+    tables = Tables('.lib/db10')
+    ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db10.dbindex')
+    dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
+    cip = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
+    i = tables.index_to_bytearray_encrypt(ind, cip)
+    d = tables.data_to_bytearray_encrypt(dad, ind, cip)
+    tables.set_index_data(i, d)
+    Client('127.0.0.1', 1337, dbtype='tablesecure').set_tables(tables).start()
+  elif sys.argv[1] == 'key':
     Client('127.0.0.1', 1337, dbtype='key').set_key(Keys(k='1122', v='abc', s='/tmp')).start()

@@ -94,6 +94,18 @@ class Server(threading.Thread):
       self.tables.write_index3(index)
       self.tables.write_data3(data)
       self.close()
+    elif self.type == 'tablesecure' and self.tables:  # database server
+      while not self.event.is_set():
+        self.listen()
+        try:
+          self.tables.set_ssl_socket(self.ssl_sock)
+          index = self.tables.recv_encrypted_index()
+          data = self.tables.recv_encrypted_data()
+          self.tables.write_index3(index)
+          self.tables.write_data3(data)
+          self.tables.close_file()
+        finally:
+          self.close()
 
   def init_server_socket(self) -> None:
     self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -119,5 +131,10 @@ class Server(threading.Thread):
 
 if __name__ == '__main__':
   print('Server')
-  tables = Tables('.lib/db1')
-  Server('127.0.0.1', 1337, dbtype='table').set_tables(tables) if sys.argv[1] and sys.argv[1] == 'table' else Server('127.0.0.1', 1337, dbtype='key')
+  tables = Tables('.lib/db10')
+  if sys.argv[1] == 'table':
+    Server('127.0.0.1', 1337, dbtype='table').set_tables(tables)
+  elif sys.argv[1] == 'tablesecure':
+    Server('127.0.0.1', 1337, dbtype='tablesecure').set_tables(tables)
+  elif sys.argv[1] == 'key':
+    Server('127.0.0.1', 1337, dbtype='key')

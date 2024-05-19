@@ -195,9 +195,11 @@ class Tables(threading.Thread):  # Table store
     return cip.decrypt_data2(databa)
 
   def write_index3(self, index):
+    self.open_index_file(self.fn[0], 'ab+') if self.fi.closed else None
     self.fi.write(index) if self.fi else b''
 
   def write_data3(self, data):
+    self.open_data_file(self.fn[1], 'ab+') if self.fd.closed else None
     self.fd.write(data) if self.fd else b''
 
   def read_index3(self):
