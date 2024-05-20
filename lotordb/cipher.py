@@ -3,7 +3,7 @@ from hmac import new as new_hmac, compare_digest
 from lotordb.vars import Vars, DbIndex, DbData
 from typing import Union, List, Tuple, Any
 from hashlib import pbkdf2_hmac
-import threading, secrets, struct, gzip
+import threading, secrets, gzip
 
 
 # TODO: fix type: ignore
@@ -235,32 +235,6 @@ class Cipher(threading.Thread):
     out = out[: len(out) - p if isinstance(p, int) else int.from_bytes(p, 'big')]
     return ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
 
-  """
-  def encrypt_list_data(self, ret):
-    iv, rk, out = self.get_iv_rk()
-    ba = bytearray()
-    r = ret[0]
-    if isinstance(r, list):
-      var = [[r[i].index, r[i].database, r[i].table, r[i].relative, r[i].row, r[i].col, r[i].data] for i in range(len(r))]
-    else:
-      var = [[ret[i].index, ret[i].database, ret[i].table, ret[i].relative, ret[i].row, ret[i].col, ret[i].data] for i in range(len(ret))]
-    [[ba.extend(v2) for v2 in v1] for v1 in var]
-    pad, pd = self.pad_data(gzip.compress(ba, compresslevel=3))
-    for i in range(0, len(pd), 16):
-      out[i:] = self.encrypt_block(self.xor(iv, pd[i:], 16), rk)
-      iv = out[i:]
-    return self.get_encrypt(self.key, pd, out, pad)
-
-  def decrypt_list_data(self, zz):
-    iv, rk, out = self.get_iv_rk()
-    ina, s, pp = self.get_decrypt(self.key, zz)
-    for i in range(0, len(ina), 16):
-      out[i:] = self.xor(iv, self.decrypt_block(ina[i:], rk), 16)
-      iv = ina[i:]
-    out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
-    return gzip.decompress(bytearray(''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out))
-  """
-
   def encrypt_index(self, p):
     iv, rk, out = self.get_iv_rk()
     pad, p = self.pad_data(p)
@@ -269,18 +243,6 @@ class Cipher(threading.Thread):
       out[i:] = self.encrypt_block(self.xor(iv, p[i:], 16), rk)
       iv = out[i:]
     return self.get_encrypt(self.key, p, out, pad)
-
-  """
-  def decrypt_index(self, index_packed):
-    iv, rk, out = self.get_iv_rk()
-    ina, s, pp = self.get_decrypt(self.key, index_packed)
-    for i in range(0, len(ina), 16):
-      out[i:] = self.xor(iv, self.decrypt_block(ina[i:], rk), 16)
-      iv = ina[i:]
-    out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
-    ret = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
-    return DbIndex(*ret[:8], ''.join(chr(y) for y in ret[8:]))
-  """
 
   def decrypt_index2(self, index_packed):
     iv, rk, out = self.get_iv_rk()
@@ -302,20 +264,6 @@ class Cipher(threading.Thread):
       iv = ina[i:]
     outdata = gzip.decompress(bytes([i for i in out[48 : len(out)]]))
     return DbData(*(int.from_bytes(out[i : i + 8]) for i in range(0, 48, 8)), outdata)
-
-  def segment_data(self, index, data):
-    pvr: List = [struct.pack('>Q', c) for c in [data.index, data.database, data.table, data.relative, data.row, data.col]]
-    pk_data = struct.pack('>%dQ' % len(data.data), *data.data)
-    pk_len: int = len(pk_data)
-    ret: List = []
-    size = 4048
-    seg_len: int = (pk_len // size) if not (pk_len - ((pk_len // size) * size) > 0) else (pk_len // size) + 1
-    [ret := ret + [DbData(pvr[0], pvr[1], pvr[2], pvr[3], pvr[4], pvr[5], pk_data[i * size : (i + 1) * size])] for i in range(seg_len)]
-    if len(ret[len(ret) - 1].data) % size:  # If data is not self.size, fill out data to be self.size
-      ret[len(ret) - 1].data += bytes([0] * (size - len(ret[len(ret) - 1].data)))
-    if not index.segments == seg_len:  # Set number of segments to seg_len
-      index.segments = struct.pack('>Q', seg_len)
-    return ret, seg_len
 
   def get_decrypted_data(self, d):
     ret: List = []

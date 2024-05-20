@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
 import threading, signal, socket, ssl
-
-# from lotordb.vars import DbIndex, DbData
-# from lotordb.cipher import Cipher
 from lotordb.tables import Tables
 from lotordb.keys import Keys
 from typing import Union, Any, Self
-import sys  # , secrets
+import sys
 
 
-# TODO: Check if received index/data is bytes, then dont encode
-# TODO: write_data2, already_encoded param, to just write data to disk
 class Server(threading.Thread):
   class ServiceExit(Exception):
     pass
@@ -80,35 +75,6 @@ class Server(threading.Thread):
           self.tables.close_file()
         finally:
           self.close()
-    """
-    elif self.type == 'table' and self.test and self.tables:  # database server, hack so you can run server in tests
-      self.listen()
-      cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
-      self.tables.set_ssl_socket(self.ssl_sock)
-      index = self.tables.recv_index()
-      data = self.tables.recv_data()
-      ind = DbIndex(*(int.from_bytes(index[i]) for i in range(8)), index[8].decode('UTF-8'))  # type: ignore
-      dat = DbData(*(int.from_bytes(data[i]) for i in range(6)), data[6])  # type: ignore
-      self.tables.write_index2(ind, cipher)
-      self.tables.write_data2(ind, dat, cipher)
-      self.tables.close_file()
-      self.close()
-    elif self.type == 'table' and self.tables:  # database server
-      cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
-      while not self.event.is_set():
-        self.listen()
-        try:
-          self.tables.set_ssl_socket(self.ssl_sock)
-          index = self.tables.recv_index()
-          data = self.tables.recv_data()
-          ind = DbIndex(*(int.from_bytes(index[i]) for i in range(8)), index[8].decode('UTF-8'))  # type: ignore
-          dat = DbData(*(int.from_bytes(data[i]) for i in range(6)), data[6])  # type: ignore
-          self.tables.write_index2(ind, cipher)
-          self.tables.write_data2(ind, dat, cipher)
-          self.tables.close_file()
-        finally:
-          self.close()
-    """
 
   def init_server_socket(self) -> None:
     self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)

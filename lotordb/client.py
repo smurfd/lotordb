@@ -26,10 +26,6 @@ class Client(threading.Thread):
       self.connect()
       if self.type == 'key' and self.key:  # key value client
         self.key.send_key(self.sock, self.key.get_key_value_store())
-      # elif self.type == 'table' and self.tables and self.sock and self.tables.index and self.tables.data:  # database client
-      #  self.tables.set_ssl_socket(self.sock)
-      #  self.tables.send_index(self.tables.index)
-      #  self.tables.send_data(self.tables.data)
       elif self.type == 'tablesecure' and self.tables:
         self.tables.set_ssl_socket(self.sock)
         self.tables.send_encrypted_index(self.tables.index)
@@ -68,17 +64,6 @@ class Client(threading.Thread):
 if __name__ == '__main__':
   print('Client')
   context: List = [123] * 123456
-  """
-  if sys.argv[1] and sys.argv[1] == 'table':
-    dindex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
-    ddata = DbData(1, 1, 1, 1, 1, 1, context)
-    tables = Tables('.lib/db1')
-    index = tables.init_index(dindex)
-    data = tables.init_data(ddata, index)[0]  # type: ignore
-    tables.set_index_data(index, data)
-    Client('127.0.0.1', 1337, dbtype='table').set_tables(tables).start()
-  elif sys.argv[1] == 'tablesecure':
-  """
   if sys.argv[1] == 'tablesecure':
     tables = Tables()
     ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db10.dbindex')
