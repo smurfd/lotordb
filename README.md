@@ -21,7 +21,7 @@ python3 -m pytest lotordb/test
 The database
 
 ### Usage
-Start Table server in one terminal: `PYTHONPATH="." python3 lotordb/server.py table`<br>
+Start Table server in one terminal: `PYTHONPATH="." python3 lotordb/server.py tablesecure`<br>
 Start Key server in one terminal: `PYTHONPATH="." python3 lotordb/server.py key`<br>
-Start Table client in one terminal: `PYTHONPATH="." python3 lotordb/client.py table`<br>
+Start Table client in one terminal: `PYTHONPATH="." python3 lotordb/client.py tablesecure`<br>
 Start Key client in one terminal: `PYTHONPATH="." python3 lotordb/client.py key`<br>
