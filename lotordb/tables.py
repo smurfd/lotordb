@@ -60,7 +60,7 @@ class Tables(threading.Thread):  # Table store
     return cip.encrypt_index(b)
 
   def decrypt_bytearray_to_index(self, indexba, cip):
-    return cip.decrypt_index2(indexba)
+    return cip.decrypt_index(indexba)
 
   def send_encrypted_index(self, index):
     self.ssl_sock.send(struct.pack('>Q', len(index))) if self.ssl_sock else b''
@@ -96,22 +96,22 @@ class Tables(threading.Thread):  # Table store
       return cip.encrypt_index(b)
 
   def decrypt_bytearray_to_data(self, databa, cip):
-    return cip.decrypt_data2(databa)
+    return cip.decrypt_data(databa)
 
-  def write_index3(self, index):
+  def write_index(self, index):
     self.open_index_file(self.fn[0], 'ab+') if self.fi.closed else None
     self.fi.write(index) if self.fi else b''
 
-  def write_data3(self, data):
+  def write_data(self, data):
     self.open_data_file(self.fn[1], 'ab+') if self.fd.closed else None
     self.fd.write(data) if self.fd else b''
 
-  def read_index3(self):
+  def read_index(self):
     self.open_index_file(self.fn[0], 'rb+')
     self.fimm = mmap.mmap(self.fi.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     return self.fimm.read() if self.fimm else b''
 
-  def read_data3(self):
+  def read_data(self):
     self.open_data_file(self.fn[1], 'rb+')
     self.fdmm = mmap.mmap(self.fd.fileno(), 0, access=mmap.ACCESS_READ)  # type: ignore
     return self.fdmm.read() if self.fimm else b''

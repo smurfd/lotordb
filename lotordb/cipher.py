@@ -244,7 +244,7 @@ class Cipher(threading.Thread):
       iv = out[i:]
     return self.get_encrypt(self.key, p, out, pad)
 
-  def decrypt_index2(self, index_packed):
+  def decrypt_index(self, index_packed):
     iv, rk, out = self.get_iv_rk()
     ina, s, pp = self.get_decrypt(self.key, index_packed)
     for i in range(0, len(ina), 16):
@@ -254,7 +254,7 @@ class Cipher(threading.Thread):
     ret = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
     return DbIndex(*(int.from_bytes(ret[i : i + 8]) for i in range(0, 64, 8)), ''.join(chr(y) for y in ret[64:]))
 
-  def decrypt_data2(self, data_packed):
+  def decrypt_data(self, data_packed):
     iv, rk, out = self.get_iv_rk()
     ina, s, pp = self.get_decrypt(self.key, data_packed)
     if s or pp:

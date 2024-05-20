@@ -19,24 +19,6 @@ def test_lotordb_key() -> None:
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
-"""
-def test_lotordb_table() -> None:
-  time.sleep(0.1)
-  t = time.perf_counter()
-  tables = Tables('.lib/db1')
-  Server('127.0.0.1', 1337, test=True, dbtype='table').set_tables(tables)
-  time.sleep(0.1)
-  context: List = [123] * 125
-  dindex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex')
-  ddata = DbData(1, 1, 1, 1, 1, 1, context)
-  index = tables.init_index(dindex)
-  data = tables.init_data(ddata, index)[0]  # type: ignore
-  tables.set_index_data(index, data)
-  Client('127.0.0.1', 1337, dbtype='table').set_tables(tables).start()
-  print('time {:.4f}'.format(time.perf_counter() - t))
-"""
-
-
 def test_lotordb_hash():
   t = time.perf_counter()
   has = Hash('smurfd').get()
@@ -114,12 +96,12 @@ def test_lotordb_new_encrypt_decrypt_write_read():
   cip = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
   i = tables.index_to_bytearray_encrypt(ind, cip)
   d = tables.data_to_bytearray_encrypt(dad, ind, cip)
-  tables.write_index3(i)
-  tables.write_data3(d)
+  tables.write_index(i)
+  tables.write_data(d)
   bi = tables.decrypt_bytearray_to_index(i, cip)
   bd = tables.decrypt_bytearray_to_data(d, cip)
-  ri = tables.read_index3()
-  rd = tables.read_data3()
+  ri = tables.read_index()
+  rd = tables.read_data()
   rbi = tables.decrypt_bytearray_to_index(ri, cip)
   rbd = tables.decrypt_bytearray_to_data(rd, cip)
   tables.set_index_data(i, d)
