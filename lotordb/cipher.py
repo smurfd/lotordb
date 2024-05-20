@@ -235,6 +235,7 @@ class Cipher(threading.Thread):
     out = out[: len(out) - p if isinstance(p, int) else int.from_bytes(p, 'big')]
     return ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
 
+  """
   def encrypt_list_data(self, ret):
     iv, rk, out = self.get_iv_rk()
     ba = bytearray()
@@ -258,6 +259,7 @@ class Cipher(threading.Thread):
       iv = ina[i:]
     out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
     return gzip.decompress(bytearray(''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out))
+  """
 
   def encrypt_index(self, p):
     iv, rk, out = self.get_iv_rk()
@@ -268,6 +270,7 @@ class Cipher(threading.Thread):
       iv = out[i:]
     return self.get_encrypt(self.key, p, out, pad)
 
+  """
   def decrypt_index(self, index_packed):
     iv, rk, out = self.get_iv_rk()
     ina, s, pp = self.get_decrypt(self.key, index_packed)
@@ -277,6 +280,7 @@ class Cipher(threading.Thread):
     out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
     ret = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
     return DbIndex(*ret[:8], ''.join(chr(y) for y in ret[8:]))
+  """
 
   def decrypt_index2(self, index_packed):
     iv, rk, out = self.get_iv_rk()

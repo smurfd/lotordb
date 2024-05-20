@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import threading, signal, socket, ssl
-from lotordb.vars import DbIndex, DbData
-from lotordb.cipher import Cipher
+
+# from lotordb.vars import DbIndex, DbData
+# from lotordb.cipher import Cipher
 from lotordb.tables import Tables
 from lotordb.keys import Keys
 from typing import Union, Any, Self
-import sys, secrets
+import sys  # , secrets
 
 
 # TODO: Check if received index/data is bytes, then dont encode
@@ -59,6 +60,27 @@ class Server(threading.Thread):
             kvs.write_key() if h.decode('UTF-8') == kvs.get_key_value_store()[3] else print('Will not write key, hash does not match!')
         finally:
           self.close()
+    elif self.type == 'tablesecure' and self.test and self.tables:  # database server, hack so you can run server in tests
+      self.listen()
+      self.tables.set_ssl_socket(self.ssl_sock)
+      index = self.tables.recv_encrypted_index()
+      data = self.tables.recv_encrypted_data()
+      self.tables.write_index3(index)
+      self.tables.write_data3(data)
+      self.close()
+    elif self.type == 'tablesecure' and self.tables:  # database server
+      while not self.event.is_set():
+        self.listen()
+        try:
+          self.tables.set_ssl_socket(self.ssl_sock)
+          index = self.tables.recv_encrypted_index()
+          data = self.tables.recv_encrypted_data()
+          self.tables.write_index3(index)
+          self.tables.write_data3(data)
+          self.tables.close_file()
+        finally:
+          self.close()
+    """
     elif self.type == 'table' and self.test and self.tables:  # database server, hack so you can run server in tests
       self.listen()
       cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
@@ -86,26 +108,7 @@ class Server(threading.Thread):
           self.tables.close_file()
         finally:
           self.close()
-    elif self.type == 'tablesecure' and self.test and self.tables:  # database server, hack so you can run server in tests
-      self.listen()
-      self.tables.set_ssl_socket(self.ssl_sock)
-      index = self.tables.recv_encrypted_index()
-      data = self.tables.recv_encrypted_data()
-      self.tables.write_index3(index)
-      self.tables.write_data3(data)
-      self.close()
-    elif self.type == 'tablesecure' and self.tables:  # database server
-      while not self.event.is_set():
-        self.listen()
-        try:
-          self.tables.set_ssl_socket(self.ssl_sock)
-          index = self.tables.recv_encrypted_index()
-          data = self.tables.recv_encrypted_data()
-          self.tables.write_index3(index)
-          self.tables.write_data3(data)
-          self.tables.close_file()
-        finally:
-          self.close()
+    """
 
   def init_server_socket(self) -> None:
     self.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -132,9 +135,10 @@ class Server(threading.Thread):
 if __name__ == '__main__':
   print('Server')
   tables = Tables('.lib/db10')
-  if sys.argv[1] == 'table':
-    Server('127.0.0.1', 1337, dbtype='table').set_tables(tables)
-  elif sys.argv[1] == 'tablesecure':
+  # if sys.argv[1] == 'table':
+  #  Server('127.0.0.1', 1337, dbtype='table').set_tables(tables)
+  # elif sys.argv[1] == 'tablesecure':
+  if sys.argv[1] == 'tablesecure':
     Server('127.0.0.1', 1337, dbtype='tablesecure').set_tables(tables)
   elif sys.argv[1] == 'key':
     Server('127.0.0.1', 1337, dbtype='key')

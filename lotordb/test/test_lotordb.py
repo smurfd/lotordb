@@ -19,6 +19,7 @@ def test_lotordb_key() -> None:
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
+"""
 def test_lotordb_table() -> None:
   time.sleep(0.1)
   t = time.perf_counter()
@@ -33,6 +34,7 @@ def test_lotordb_table() -> None:
   tables.set_index_data(index, data)
   Client('127.0.0.1', 1337, dbtype='table').set_tables(tables).start()
   print('time {:.4f}'.format(time.perf_counter() - t))
+"""
 
 
 def test_lotordb_hash():
@@ -103,6 +105,7 @@ def test_lotordb_cipher_pad():
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
+"""
 def test_lotordb_cipher_list():
   t = time.perf_counter()
   index, data = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db1.dbindex'), DbData(1, 1, 1, 1, 1, 1, [123] * 1234)
@@ -155,7 +158,7 @@ def test_lotordb_cipher_read_write_more():
   d = tables.read_data2(i, cipher)
   assert len(d) == 12  # 3(dbdata) * 4
   print('time {:.4f}'.format(time.perf_counter() - t))
-
+"""
 
 """
 def test_lotordb_table_list2():

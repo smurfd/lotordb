@@ -1,19 +1,11 @@
 #!/usr/bin/env python3
-from typing import List, Union, BinaryIO, Tuple, IO, Any
+from typing import List, Union, BinaryIO, IO  # , Tuple, Any
 import struct, gzip, threading, mmap, socket, secrets
 from lotordb.vars import DbIndex, DbData
 from lotordb.cipher import Cipher
 import io
 
 
-# TODO: Rename read/write*2
-# TODO: rewrite to always use encrypted data
-#       init_index
-#       init_data
-#       send_index
-#       send_data
-#       recv_index
-#       recv_data
 # Sending byte array: time 0.4790!!! (python 3.11.7)
 # gzip command: time 1.539226
 class Tables(threading.Thread):  # Table store
@@ -51,6 +43,7 @@ class Tables(threading.Thread):  # Table store
     self.fi.close() if self.fi and not self.fi.closed else None
     self.fd.close() if self.fd and not self.fd.closed else None
 
+  """
   def init_index(self, index: Union[DbIndex, Tuple, None]) -> DbIndex:
     if isinstance(index, DbIndex) and index and isinstance(index.file, str):
       var: List = [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek]
@@ -143,6 +136,7 @@ class Tables(threading.Thread):  # Table store
   def recv_data(self, size: int = 4096) -> Tuple:
     r = self.ssl_sock.recv(size) if self.ssl_sock else ()  # Size of DbData, below separate per variable
     return (r[0:8], r[8:16], r[16:24], r[24:32], r[32:40], r[40:48], r[48:4096])
+  """
 
   def set_index_data(self, index: DbIndex, data: DbData):
     self.index = index

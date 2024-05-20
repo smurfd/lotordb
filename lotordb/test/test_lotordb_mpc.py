@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
+"""
 from lotordb.bitrs.bitrs.bitrs import Bitrs
 from lotordb.tables import Tables
 from lotordb.vars import DbIndex, DbData
 from lotordb.cipher import Cipher
 from typing import List
 import time, secrets
+"""
 
-
+"""
 def test_without_bitrs():
   time.sleep(0.1)
   t = time.perf_counter()
@@ -43,8 +45,9 @@ def test_with_bitrs():
   a = b.stop()
   print('time {:.4f}'.format(time.perf_counter() - t))
   print(a)
-
+"""
 
 if __name__ == '__main__':
-  test_without_bitrs()
-  test_with_bitrs()
+  print('bitrs')
+  # test_without_bitrs()
+  # test_with_bitrs()
