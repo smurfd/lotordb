@@ -238,7 +238,6 @@ class Cipher(threading.Thread):
   def encrypt_index(self, p):
     iv, rk, out = self.get_iv_rk()
     pad, p = self.pad_data(p)
-    print('PAD', pad, len(p), p)
     for i in range(0, len(p), 16):
       out[i:] = self.encrypt_block(self.xor(iv, p[i:], 16), rk)
       iv = out[i:]
