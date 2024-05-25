@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 import threading, socket, ssl
 from lotordb.keys import Keys
-from lotordb.cipher import Cipher
 from lotordb.tables import Tables, DbIndex, DbData
 from typing import Union, Self, List, Any
-import sys, secrets
+import sys
 
 
 class Client(threading.Thread):
@@ -68,9 +67,8 @@ if __name__ == '__main__':
     tables = Tables()
     ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db10.dbindex')
     dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
-    cip = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
-    i = tables.index_to_bytearray_encrypt(ind, cip)
-    d = tables.data_to_bytearray_encrypt(dad, ind, cip)
+    i = tables.index_to_bytearray_encrypt(ind)
+    d = tables.data_to_bytearray_encrypt(dad, ind)
     tables.set_index_data(i, d)
     Client('127.0.0.1', 1337, dbtype='tablesecure').set_tables(tables).start()
   elif sys.argv[1] == 'key':

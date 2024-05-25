@@ -2,9 +2,8 @@
 from lotordb.bitrs.bitrs.bitrs import Bitrs
 from lotordb.vars import DbIndex, DbData
 from lotordb.tables import Tables
-from lotordb.cipher import Cipher
 from typing import List
-import time, secrets
+import time
 
 
 def test_without_bitrs():
@@ -14,9 +13,8 @@ def test_without_bitrs():
   tables = Tables('.lib/db6')
   ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db6.dbindex')
   dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
-  cip = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
-  i = tables.index_to_bytearray_encrypt(ind, cip)
-  d = tables.data_to_bytearray_encrypt(dad, ind, cip)
+  i = tables.index_to_bytearray_encrypt(ind)
+  d = tables.data_to_bytearray_encrypt(dad, ind)
   tables.write_index(i)
   tables.write_data(d)
   tables.read_index()
@@ -29,9 +27,8 @@ def _with_bitrs():
   tables = Tables('.lib/db7')
   ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db7.dbindex')
   dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
-  cip = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
-  i = tables.index_to_bytearray_encrypt(ind, cip)
-  d = tables.data_to_bytearray_encrypt(dad, ind, cip)
+  i = tables.index_to_bytearray_encrypt(ind)
+  d = tables.data_to_bytearray_encrypt(dad, ind)
   tables.write_index(i)
   tables.write_data(d)
   tables.read_index()

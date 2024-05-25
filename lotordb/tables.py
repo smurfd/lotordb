@@ -50,17 +50,17 @@ class Tables(threading.Thread):  # Table store
   def set_ssl_socket(self, sslsock):
     self.ssl_sock = sslsock
 
-  def index_to_bytearray_encrypt(self, index, cip):
+  def index_to_bytearray_encrypt(self, index):
     b: bytes = bytearray()
     var: List = [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek]
     packed: List[Union[bytes, None]] = [None] * 8
     packed[:7] = [struct.pack('>Q', c) for c in var]
     packed[8] = struct.pack('>255s', bytes(index.file.ljust(255, ' '), 'UTF-8'))
     [b.extend(i) for i in packed]
-    return cip.encrypt_index(b)
+    return self.cip.encrypt_index(b)
 
-  def decrypt_bytearray_to_index(self, indexba, cip):
-    return cip.decrypt_index(indexba)
+  def decrypt_bytearray_to_index(self, indexba):
+    return self.cip.decrypt_index(indexba)
 
   def send_encrypted_index(self, index):
     self.ssl_sock.send(struct.pack('>Q', len(index))) if self.ssl_sock else b''
@@ -78,15 +78,15 @@ class Tables(threading.Thread):  # Table store
     size = self.ssl_sock.recv(8) if self.ssl_sock else ()
     return self.ssl_sock.recv(int.from_bytes(size)) if self.ssl_sock else ()
 
-  def data_to_bytearray_encrypt_segment(self, data, index, cip):
+  def data_to_bytearray_encrypt_segment(self, data, index):
     b: bytes = bytearray()
     dad: DbData = DbData(1, 1, 1, 1, 1, 1, [])
     for i in range(0, len(data.data), 4096):
       dad.data = data.data[i : i + 4096]
-      b.extend(self.data_to_bytearray_encrypt(dad, index, cip))
+      b.extend(self.data_to_bytearray_encrypt(dad, index))
     return b
 
-  def data_to_bytearray_encrypt(self, data, index, cip):
+  def data_to_bytearray_encrypt(self, data, index):
     b: bytes = bytearray()
     if isinstance(data, DbData) and data and data.data:
       pvr: List = [struct.pack('>Q', c) for c in [data.index, data.database, data.table, data.relative, data.row, data.col]]
@@ -100,18 +100,18 @@ class Tables(threading.Thread):  # Table store
       zlen: int = (gzlsize) if not (gzl - ((gzlsize) * self.size) > 0) else (gzlsize) + 1
       [b.extend(pvr[i]) for i in range(6)]
       [b.extend(gzd[i * self.size : (i + 1) * self.size]) for i in range(zlen)]
-      return cip.encrypt_index(b)
+      return self.cip.encrypt_index(b)
 
-  def decrypt_bytearray_to_data_segmented(self, data, cip):
+  def decrypt_bytearray_to_data_segmented(self, data):
     dad: DbData = DbData(1, 1, 1, 1, 1, 1, [])
     dret: DbData = DbData(1, 1, 1, 1, 1, 1, [])
     for i in range(0, len(data), 162):
-      dad = cip.decrypt_data(data[i : i + 162])
+      dad = self.cip.decrypt_data(data[i : i + 162])
       dret.data.extend(dad.data)
     return dret
 
-  def decrypt_bytearray_to_data(self, databa, cip):
-    return cip.decrypt_data(databa)
+  def decrypt_bytearray_to_data(self, databa):
+    return self.cip.decrypt_data(databa)
 
   def write_index(self, index):
     self.open_index_file(self.fn[0], 'ab+') if self.fi.closed else None
