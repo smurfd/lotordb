@@ -78,6 +78,14 @@ class Tables(threading.Thread):  # Table store
     size = self.ssl_sock.recv(8) if self.ssl_sock else ()
     return self.ssl_sock.recv(int.from_bytes(size)) if self.ssl_sock else ()
 
+  def data_to_bytearray_encrypt_segment(self, data, index, cip):
+    b: bytes = bytearray()
+    dad: DbData = DbData(1, 1, 1, 1, 1, 1, [])
+    for i in range(0, len(data.data), 4096):
+      dad.data = data.data[i : i + 4096]
+      b.extend(self.data_to_bytearray_encrypt(dad, index, cip))
+    return b
+
   def data_to_bytearray_encrypt(self, data, index, cip):
     b: bytes = bytearray()
     if isinstance(data, DbData) and data and data.data:
@@ -86,14 +94,21 @@ class Tables(threading.Thread):  # Table store
       gzl: int = len(gzd)
       gzlsize: int = gzl // self.size
       if isinstance(index.seek, bytes) and self.fd:
-        if not struct.unpack('>Q', index.seek):
-          index.seek = struct.pack('>Q', self.fd.tell())
+        index.seek = struct.pack('>Q', self.fd.tell()) if not struct.unpack('>Q', index.seek) else 0
         self.fd.seek(struct.unpack('>Q', index.seek)[0], 0)
       # Calculate diff between length of gz data, if not divisable with self.size, add 1 to zlen
       zlen: int = (gzlsize) if not (gzl - ((gzlsize) * self.size) > 0) else (gzlsize) + 1
       [b.extend(pvr[i]) for i in range(6)]
       [b.extend(gzd[i * self.size : (i + 1) * self.size]) for i in range(zlen)]
       return cip.encrypt_index(b)
+
+  def decrypt_bytearray_to_data_segmented(self, data, cip):
+    dad: DbData = DbData(1, 1, 1, 1, 1, 1, [])
+    dret: DbData = DbData(1, 1, 1, 1, 1, 1, [])
+    for i in range(0, len(data), 162):
+      dad = cip.decrypt_data(data[i : i + 162])
+      dret.data.extend(dad.data)
+    return dret
 
   def decrypt_bytearray_to_data(self, databa, cip):
     return cip.decrypt_data(databa)

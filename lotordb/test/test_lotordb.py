@@ -110,5 +110,28 @@ def test_lotordb_new_encrypt_decrypt_write_read():
   assert bd == rbd
 
 
+def test_lotordb_new_encrypt_decrypt_write_read_segmented():
+  tables = Tables('.lib/db10')
+  Server('127.0.0.1', 1337, test=True, dbtype='tablesecure').set_tables(tables)
+  context: List = [123] * 123456
+  ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db10.dbindex')
+  dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
+  cip = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
+  i = tables.index_to_bytearray_encrypt(ind, cip)
+  d = tables.data_to_bytearray_encrypt_segment(dad, ind, cip)
+  tables.write_index(i)
+  tables.write_data(d)
+  bi = tables.decrypt_bytearray_to_index(i, cip)
+  bd = tables.decrypt_bytearray_to_data_segmented(d, cip)
+  ri = tables.read_index()
+  rd = tables.read_data()
+  rbi = tables.decrypt_bytearray_to_index(ri, cip)
+  rbd = tables.decrypt_bytearray_to_data_segmented(rd, cip)
+  tables.set_index_data(i, d)
+  Client('127.0.0.1', 1337, dbtype='tablesecure').set_tables(tables).start()
+  assert bi == rbi
+  assert bd == rbd
+
+
 if __name__ == '__main__':
   print('OK')
