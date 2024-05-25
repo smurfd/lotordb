@@ -6,6 +6,10 @@ from lotordb.cipher import Cipher
 import io
 
 
+# TODO: where are we in index/data files
+# TODO: figure out encrypted data length dynamicly?
+
+
 # Sending byte array: time 0.4790!!! (python 3.11.7)
 # gzip command: time 1.539226
 class Tables(threading.Thread):  # Table store
