@@ -150,7 +150,7 @@ class Cipher(threading.Thread):
     return self.arr_from_state(s)
 
   def get_key_hmac_iv(self, password, salt, workload=100000) -> Tuple:
-    stretched = pbkdf2_hmac('sha256', password, salt, workload, self.vars.KEY + self.vars.KEY + self.vars.HMAC)
+    stretched = pbkdf2_hmac('sha3_256', password, salt, workload, self.vars.KEY + self.vars.KEY + self.vars.HMAC)
     aes_key, stretched = stretched[: self.vars.KEY], stretched[self.vars.KEY :]
     hmac_key, stretched = stretched[: self.vars.HMAC], stretched[self.vars.HMAC :]
     return aes_key, hmac_key, stretched[: self.vars.KEY]
@@ -162,7 +162,7 @@ class Cipher(threading.Thread):
     salt = secrets.token_bytes(self.vars.SALT)
     key, hmac_key, _ = self.get_key_hmac_iv(key, salt, 100000)
     out = bytes(out)
-    hmac = new_hmac(hmac_key, salt + out, 'sha256').digest()
+    hmac = new_hmac(hmac_key, salt + out, 'sha3_256').digest()
     assert len(hmac) == self.vars.HMAC
     return hmac + salt + out + int(pad).to_bytes(1, 'big') + int(s).to_bytes(1, 'big')
 
@@ -176,7 +176,7 @@ class Cipher(threading.Thread):
       if type(salt) != type(ina):
         ina = bytes(ina)
     key, hmac_key, _ = self.get_key_hmac_iv(key, salt, 100000)
-    expected_hmac = new_hmac(hmac_key, salt + ina, 'sha256').digest()
+    expected_hmac = new_hmac(hmac_key, salt + ina, 'sha3_256').digest()
     if type(hmac) != type(expected_hmac):
       hmac = bytes(hmac)
     assert compare_digest(hmac, expected_hmac), 'cipher incorrect'
