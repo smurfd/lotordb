@@ -54,6 +54,35 @@ class Tables(threading.Thread):  # Table store
   def set_ssl_socket(self, sslsock):
     self.ssl_sock = sslsock
 
+  def encrypt(self, p):
+    iv, rk, out = self.cip.get_iv_rk()
+    pad, p = self.cip.pad_data(p)
+    for i in range(0, len(p), 16):
+      out[i:] = self.cip.encrypt_block(self.cip.xor(iv, p[i:], 16), rk)
+      iv = out[i:]
+    return self.cip.get_encrypt(self.cip.key, p, out, pad)
+
+  def decrypt_index(self, index_packed):
+    iv, rk, out = self.cip.get_iv_rk()
+    ina, s, pp = self.cip.get_decrypt(self.cip.key, index_packed)
+    for i in range(0, len(ina), 16):
+      out[i:] = self.cip.xor(iv, self.cip.decrypt_block(ina[i:], rk), 16)
+      iv = ina[i:]
+    out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
+    ret = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
+    return DbIndex(*(int.from_bytes(ret[i : i + 8]) for i in range(0, 64, 8)), ''.join(chr(y) for y in ret[64:]))
+
+  def decrypt_data(self, data_packed):
+    iv, rk, out = self.cip.get_iv_rk()
+    ina, s, pp = self.cip.get_decrypt(self.cip.key, data_packed)
+    if s or pp:
+      pass  # TODO: string or padded, needed now?
+    for i in range(0, len(ina), 16):
+      out[i:] = self.cip.xor(iv, self.cip.decrypt_block(ina[i:], rk), 16)
+      iv = ina[i:]
+    outdata = gzip.decompress(bytes([i for i in out[48 : len(out)]]))
+    return DbData(*(int.from_bytes(out[i : i + 8]) for i in range(0, 48, 8)), outdata)
+
   def index_to_bytearray_encrypt(self, index):
     b: bytes = bytearray()
     var: List = [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek]
@@ -61,10 +90,10 @@ class Tables(threading.Thread):  # Table store
     packed[:7] = [struct.pack('>Q', c) for c in var]
     packed[8] = struct.pack('>255s', bytes(index.file.ljust(255, ' '), 'UTF-8'))
     [b.extend(i) for i in packed]
-    return self.cip.encrypt_index(b)
+    return self.encrypt(b)
 
   def decrypt_bytearray_to_index(self, indexba):
-    return self.cip.decrypt_index(indexba)
+    return self.decrypt_index(indexba)
 
   def send_encrypted_index(self, index):
     self.ssl_sock.send(struct.pack('>Q', len(index))) if self.ssl_sock else b''
@@ -104,18 +133,18 @@ class Tables(threading.Thread):  # Table store
       zlen: int = (gzlsize) if not (gzl - ((gzlsize) * self.size) > 0) else (gzlsize) + 1
       [b.extend(pvr[i]) for i in range(6)]
       [b.extend(gzd[i * self.size : (i + 1) * self.size]) for i in range(zlen)]
-      return self.cip.encrypt_index(b)
+      return self.encrypt(b)
 
   def decrypt_bytearray_to_data_segmented(self, data):
     dad: DbData = DbData(1, 1, 1, 1, 1, 1, [])
     dret: DbData = DbData(1, 1, 1, 1, 1, 1, [])
     for i in range(0, len(data), 162):
-      dad = self.cip.decrypt_data(data[i : i + 162])
+      dad = self.decrypt_data(data[i : i + 162])
       dret.data.extend(dad.data)
     return dret
 
   def decrypt_bytearray_to_data(self, databa):
-    return self.cip.decrypt_data(databa)
+    return self.decrypt_data(databa)
 
   def write_index(self, index):
     self.open_index_file(self.fn[0], 'ab+') if self.fi.closed else None

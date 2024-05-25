@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 from hmac import new as new_hmac, compare_digest
-from lotordb.vars import Vars, DbIndex, DbData
 from typing import Union, List, Tuple, Any
 from hashlib import pbkdf2_hmac
-import threading, secrets, gzip
+from lotordb.vars import Vars
+import threading, secrets
 
 
 # TODO: fix type: ignore
@@ -234,44 +234,6 @@ class Cipher(threading.Thread):
       iv = ina[i:]
     out = out[: len(out) - p if isinstance(p, int) else int.from_bytes(p, 'big')]
     return ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
-
-  def encrypt_index(self, p):
-    iv, rk, out = self.get_iv_rk()
-    pad, p = self.pad_data(p)
-    for i in range(0, len(p), 16):
-      out[i:] = self.encrypt_block(self.xor(iv, p[i:], 16), rk)
-      iv = out[i:]
-    return self.get_encrypt(self.key, p, out, pad)
-
-  def decrypt_index(self, index_packed):
-    iv, rk, out = self.get_iv_rk()
-    ina, s, pp = self.get_decrypt(self.key, index_packed)
-    for i in range(0, len(ina), 16):
-      out[i:] = self.xor(iv, self.decrypt_block(ina[i:], rk), 16)
-      iv = ina[i:]
-    out = out[: len(out) - pp if isinstance(pp, int) else int.from_bytes(pp, 'big')]
-    ret = ''.join(map(str, (chr(i) for i in out))).encode('UTF-8') if s else out
-    return DbIndex(*(int.from_bytes(ret[i : i + 8]) for i in range(0, 64, 8)), ''.join(chr(y) for y in ret[64:]))
-
-  def decrypt_data(self, data_packed):
-    iv, rk, out = self.get_iv_rk()
-    ina, s, pp = self.get_decrypt(self.key, data_packed)
-    if s or pp:
-      pass  # TODO: string or padded, needed now?
-    for i in range(0, len(ina), 16):
-      out[i:] = self.xor(iv, self.decrypt_block(ina[i:], rk), 16)
-      iv = ina[i:]
-    outdata = gzip.decompress(bytes([i for i in out[48 : len(out)]]))
-    return DbData(*(int.from_bytes(out[i : i + 8]) for i in range(0, 48, 8)), outdata)
-
-  def get_decrypted_data(self, d):
-    ret: List = []
-    u: List = [0, 48, 8]
-    v: List = [48, 4096, 8]
-    for i in range(len(d) // 4096):
-      j = i * 4096
-      ret += [DbData(*[int.from_bytes(d[j + k : j + k + 8]) for k in range(*u)], [int.from_bytes(d[j + k : j + k + 8]) for k in range(*v)])]
-    return ret
 
 
 """
