@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from typing import List, Union, BinaryIO, IO
 import struct, gzip, threading, mmap, socket, secrets
-from lotordb.vars import DbIndex, DbData
+from lotordb.vars import DbIndex, DbData, Vars
 from lotordb.cipher import Cipher
 import io
 
@@ -114,8 +114,8 @@ class Tables(threading.Thread):  # Table store
   def data_to_bytearray_encrypt_segment(self, data, index):
     b: bytes = bytearray()
     dad: DbData = DbData(1, 1, 1, 1, 1, 1, [])
-    for i in range(0, len(data.data), 4096):
-      dad.data = data.data[i : i + 4096]
+    for i in range(0, len(data.data), Vars.SEGM):
+      dad.data = data.data[i : i + Vars.SEGM]
       b.extend(self.data_to_bytearray_encrypt(dad, index))
     return b
 
@@ -138,8 +138,8 @@ class Tables(threading.Thread):  # Table store
   def decrypt_bytearray_to_data_segmented(self, data):
     dad: DbData = DbData(1, 1, 1, 1, 1, 1, [])
     dret: DbData = DbData(1, 1, 1, 1, 1, 1, [])
-    for i in range(0, len(data), 162):
-      dad = self.decrypt_data(data[i : i + 162])
+    for i in range(0, len(data), Vars.ZSIZ):
+      dad = self.decrypt_data(data[i : i + Vars.ZSIZ])
       dret.data.extend(dad.data)
     return dret
 

@@ -50,6 +50,8 @@ class Vars:
   KEY: int = field(default=16, init=False)
   SALT: int = field(default=16, init=False)
   HMAC: int = field(default=32, init=False)
+  SEGM: int = field(default=16384, init=False)
+  ZSIZ: int = field(default=210, init=False)
 
   # https://en.wikipedia.org/wiki/Rijndael_MixColumns
   # https://en.wikipedia.org/wiki/Rijndael_MixColumns & Matrix representation
