@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-from typing import Tuple, Any, List
+from typing import Tuple, Any, List, Self
 from lotordb.hash import Hash
 from lotordb.vars import Key
 import os, pathlib, struct
 
 
 class Keys:  # Key Value Store
-  def __init__(self, k: str = '', v: str = '', s: str = '') -> None:
+  def __init__(self, k: str = '', v: str = '', s: str = '', sock=None) -> None:
     self.k = Key()
+    self.sock: Any = sock
     if k and v and s:
       self.set_key_value_hash(k, v)
       self.set_store(s)
@@ -32,11 +33,15 @@ class Keys:  # Key Value Store
   def read_key(self) -> Tuple:
     return (True, open(os.path.join(self.k.store, self.k.key), 'rb+').read()) if os.path.exists(os.path.join(self.k.store, self.k.key)) else (False,)
 
-  def send_key(self, sock: Any, kvsh: Tuple) -> None:
+  def set_sock(self, sock) -> Self:
+    self.sock = sock
+    return self
+
+  def send_key(self, kvsh: Tuple) -> None:
     b: List = []
     [b.extend(struct.pack('>%ds' % len((kvsh[i] + '\n')), (kvsh[i] + '\n').encode('UTF-8'))) for i in range(4)]  # type: ignore
     assert len(kvsh[3]) == 128  # assert hash is 128 length
-    sock.send(bytes(b))
+    self.sock.send(bytes(b))
 
-  def recv_key(self, sock: Any, size: int = 2048) -> Tuple:
-    return tuple(sock.recv(4096).strip(b'\n').split(b'\n', 3))
+  def recv_key(self, size: int = 2048) -> Tuple:
+    return tuple(self.sock.recv(4096).strip(b'\n').split(b'\n', 3))

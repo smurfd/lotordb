@@ -23,7 +23,7 @@ class Client(threading.Thread):
       self.thread.start()
       self.connect()
       if self.type == 'key' and self.key:  # key value client
-        self.key.send_key(self.sock, self.key.get_key_value_store())
+        self.key.set_sock(self.sock).send_key(self.key.get_key_value_store())
       elif self.type == 'tablesecure' and self.tables:
         self.tables.set_ssl_socket(self.sock)
         self.tables.send_encrypted_index(self.tables.index)

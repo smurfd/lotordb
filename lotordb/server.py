@@ -41,13 +41,13 @@ class Server(threading.Thread):
     self.init_server_socket()
     if self.type == 'key' and self.test:  # key value server, hack so you can run server in tests
       self.listen()
-      Keys().recv_key(self.ssl_sock, 4096)
+      Keys().set_sock(self.ssl_sock).recv_key(4096)
       self.close()
     elif self.type == 'key':  # key value server
       while not self.event.is_set():
         self.listen()
         try:
-          k, v, s, h = Keys().recv_key(self.ssl_sock)
+          k, v, s, h = Keys().set_sock(self.ssl_sock).recv_key()
           print('serv', k, v, s, h)
           if k and v and s:
             kvs = Keys(k, v, s)
