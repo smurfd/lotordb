@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-import threading, socket, ssl
+import threading, socket, ssl, sys
 from lotordb.keys import Keys
 from lotordb.tables import Tables, DbIndex, DbData
 from typing import Union, Self, List, Any
-import sys
 
 
 class Client(threading.Thread):

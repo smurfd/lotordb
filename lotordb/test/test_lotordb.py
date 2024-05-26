@@ -29,9 +29,8 @@ def test_lotordb_hash():
 def test_lotordb_cipher_cbc():
   t = time.perf_counter()
   cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
-  plain = [i for i in range(ord('a'), ord('q'))]
+  plain = [i for i in range(ord('a'), ord('q'))] * 100
   ina, out = [0] * 16, [0] * 16
-  plain *= 100  # big "text" to encrypt / decrypt
   out = cipher.encrypt_cbc(plain)
   ina = cipher.decrypt_cbc(out)
   assert plain == ina
@@ -41,9 +40,8 @@ def test_lotordb_cipher_cbc():
 def test_lotordb_cipher_cfb():
   t = time.perf_counter()
   cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
-  plain = [i for i in range(ord('a'), ord('q'))]
+  plain = [i for i in range(ord('a'), ord('q'))] * 100
   ina, out = [0] * 16, [0] * 16
-  plain *= 100  # big "text" to encrypt / decrypt
   out = cipher.encrypt_cfb(plain)
   ina = cipher.decrypt_cfb(out)
   assert plain == ina
@@ -53,21 +51,19 @@ def test_lotordb_cipher_cfb():
 def test_lotordb_cipher_bytes():
   t = time.perf_counter()
   cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
-  plain = 'sometextiwanttoX'.encode('utf-8')
+  plain = 'sometextiwanttoX'.encode('utf-8') * 100
   ina, out = [0] * 16, [0] * 16
-  plain *= 100  # big "text" to encrypt / decrypt
   out = cipher.encrypt_cbc(plain)
   ina = cipher.decrypt_cbc(out)
-  assert plain == bytearray(ina)
+  assert plain == bytes(ina)
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 
 def test_lotordb_cipher_string():
   t = time.perf_counter()
   cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
-  plain = 'sometextiwanttoX'
+  plain = 'sometextiwanttoX' * 100
   ina, out = [0] * 16, [0] * 16
-  plain *= 100  # big "text" to encrypt / decrypt
   out = cipher.encrypt_cbc(plain)
   ina = cipher.decrypt_cbc(out)
   if isinstance(ina, str):
@@ -78,9 +74,8 @@ def test_lotordb_cipher_string():
 def test_lotordb_cipher_pad():
   t = time.perf_counter()
   cipher = Cipher(key=[secrets.randbelow(256) for _ in range(0x20)], iv=[secrets.randbelow(256) for _ in range(16)])
-  plain = [i for i in range(ord('b'))]
+  plain = [i for i in range(ord('b'))] * 100
   ina, out = [0] * 16, [0] * 16
-  plain *= 100  # big "text" to encrypt / decrypt
   out = cipher.encrypt_cbc(plain)  # type: ignore
   ina = cipher.decrypt_cbc(out)  # type: ignore
   assert plain == ina
@@ -112,7 +107,7 @@ def test_lotordb_new_encrypt_decrypt_write_read():
 def test_lotordb_new_encrypt_decrypt_write_read_segmented():
   tables = Tables('.lib/db10')
   Server('127.0.0.1', 1338, test=True, dbtype='tablesecure').set_tables(tables)
-  context: List = [123] * 123456
+  context: List = [1234] * 123456
   ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db10.dbindex')
   dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
   i = tables.index_to_bytearray_encrypt(ind)

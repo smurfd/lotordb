@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-from typing import Tuple, Any
+from typing import Tuple, Any, List
 from lotordb.hash import Hash
 from lotordb.vars import Key
-import os, pathlib
+import os, pathlib, struct
 
 
 class Keys:  # Key Value Store
@@ -33,9 +33,10 @@ class Keys:  # Key Value Store
     return (True, open(os.path.join(self.k.store, self.k.key), 'rb+').read()) if os.path.exists(os.path.join(self.k.store, self.k.key)) else (False,)
 
   def send_key(self, sock: Any, kvsh: Tuple) -> None:
-    b = bytearray()
-    [b.extend((i + '\n').encode('UTF-8')) for i in kvsh]  # type: ignore
-    sock.send(b)
+    b: List = []
+    [b.extend(struct.pack('>%ds' % len((kvsh[i] + '\n')), (kvsh[i] + '\n').encode('UTF-8'))) for i in range(4)]  # type: ignore
+    assert len(kvsh[3]) == 128  # assert hash is 128 length
+    sock.send(bytes(b))
 
   def recv_key(self, sock: Any, size: int = 2048) -> Tuple:
     return tuple(sock.recv(4096).strip(b'\n').split(b'\n', 3))

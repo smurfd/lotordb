@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-import threading, signal, socket, ssl
+import threading, signal, socket, ssl, sys
 from lotordb.tables import Tables
 from lotordb.keys import Keys
 from typing import Union, Any, Self
-import sys
 
 
 class Server(threading.Thread):
@@ -42,7 +41,7 @@ class Server(threading.Thread):
     self.init_server_socket()
     if self.type == 'key' and self.test:  # key value server, hack so you can run server in tests
       self.listen()
-      self.recv()
+      Keys().recv_key(self.ssl_sock, 4096)
       self.close()
     elif self.type == 'key':  # key value server
       while not self.event.is_set():

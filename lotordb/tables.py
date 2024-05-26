@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
+import struct, gzip, threading, mmap, socket, secrets, io
 from typing import List, Union, BinaryIO, IO
-import struct, gzip, threading, mmap, socket, secrets
 from lotordb.vars import DbIndex, DbData, Vars
 from lotordb.cipher import Cipher
-import io
 
 
 # TODO: where are we in index/data files
@@ -84,13 +83,13 @@ class Tables(threading.Thread):  # Table store
     return DbData(*(int.from_bytes(out[i : i + 8]) for i in range(0, 48, 8)), outdata)
 
   def index_to_bytearray_encrypt(self, index):
-    b: bytes = bytearray()
+    b: List = []
     var: List = [index.index, index.dbindex, index.database, index.table, index.row, index.col, index.segments, index.seek]
     packed: List[Union[bytes, None]] = [None] * 8
     packed[:7] = [struct.pack('>Q', c) for c in var]
     packed[8] = struct.pack('>255s', bytes(index.file.ljust(255, ' '), 'UTF-8'))
     [b.extend(i) for i in packed]
-    return self.encrypt(b)
+    return self.encrypt(bytes(b))
 
   def decrypt_bytearray_to_index(self, indexba):
     return self.decrypt_index(indexba)
@@ -112,18 +111,18 @@ class Tables(threading.Thread):  # Table store
     return self.ssl_sock.recv(int.from_bytes(size)) if self.ssl_sock else ()
 
   def data_to_bytearray_encrypt_segment(self, data, index):
-    b: bytes = bytearray()
+    b: List = []
     dad: DbData = DbData(1, 1, 1, 1, 1, 1, [])
     for i in range(0, len(data.data), Vars.SEGM):
       dad.data = data.data[i : i + Vars.SEGM]
       b.extend(self.data_to_bytearray_encrypt(dad, index))
-    return b
+    return bytes(b)
 
   def data_to_bytearray_encrypt(self, data, index):
-    b: bytes = bytearray()
+    b: List = []
     if isinstance(data, DbData) and data and data.data:
       pvr: List = [struct.pack('>Q', c) for c in [data.index, data.database, data.table, data.relative, data.row, data.col]]
-      gzd: bytes = gzip.compress(bytearray(data.data), compresslevel=3)
+      gzd: List = gzip.compress(struct.pack('>%dQ' % len(data.data), *data.data), compresslevel=3)
       gzl: int = len(gzd)
       gzlsize: int = gzl // self.size
       if isinstance(index.seek, bytes) and self.fd:
@@ -133,7 +132,7 @@ class Tables(threading.Thread):  # Table store
       zlen: int = (gzlsize) if not (gzl - ((gzlsize) * self.size) > 0) else (gzlsize) + 1
       [b.extend(pvr[i]) for i in range(6)]
       [b.extend(gzd[i * self.size : (i + 1) * self.size]) for i in range(zlen)]
-      return self.encrypt(b)
+      return self.encrypt(bytes(b))
 
   def decrypt_bytearray_to_data_segmented(self, data):
     dad: DbData = DbData(1, 1, 1, 1, 1, 1, [])
