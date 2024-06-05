@@ -126,52 +126,5 @@ def test_lotordb_new_encrypt_decrypt_write_read_segmented():
   assert bd == rbd
 
 
-def test_server_cli_prototype():
-  from socketserver import TCPServer, ThreadingMixIn, StreamRequestHandler
-  import ssl, socket, threading
-
-  class TCPServerSSL(TCPServer):
-    def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True):
-      TCPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
-
-    def get_request(self):
-      newsocket, fromaddr = self.socket.accept()
-      ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-      ctx.load_cert_chain('.lib/selfsigned.cert', '.lib/selfsigned.key')
-      return ctx.wrap_socket(sock=newsocket, server_side=True), fromaddr
-
-  class ThreadingTCPServerSSL(ThreadingMixIn, TCPServerSSL):
-    TCPServerSSL.allow_reuse_address = True
-
-  class Handler(StreamRequestHandler):
-    def handle(self):
-      data = self.connection.recv(4096)
-      self.wfile.write(data)
-
-  def client():
-    for i in range(5):
-      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-      ctx.load_verify_locations('.lib/selfsigned.cert')
-      ssl_sock = ctx.wrap_socket(s, server_hostname='localhost')
-      ssl_sock.connect(('localhost', 1337))
-      ssl_sock.send(b'elloH')
-      print(ssl_sock.recv(4096))
-      ssl_sock.close()
-
-  server = ThreadingTCPServerSSL(('localhost', 1337), Handler)
-  server_thread = threading.Thread(target=server.serve_forever)
-  server_thread.daemon = True
-  server_thread.block_on_close = False
-  server_thread.start()
-
-  client()
-
-  server.shutdown()
-  server.socket.close()
-  server.server_close()
-  server_thread.join()
-
-
 if __name__ == '__main__':
   print('OK')
