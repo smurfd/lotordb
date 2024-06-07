@@ -1,13 +1,21 @@
 from socketserver import TCPServer, ThreadingMixIn, StreamRequestHandler
+from lotordb.keys import Keys
 import ssl, socket, threading
 
 
 class Hand:
   class HandlerKey(StreamRequestHandler):
     def handle(self):
+      # while not self.event.is_set():  # for actual server usage
       print('key handler')
-      data = self.connection.recv(4096)
-      self.wfile.write(data)
+      try:
+        k, v, s, h = Keys().set_sock(self.connection).recv_key()
+        print('serv', k, v, s, h)
+        if k and v and s:
+          kvs = Keys(k, v, s)
+          kvs.write_key() if h.decode('UTF-8') == kvs.get_key_value_store()[3] else print('Will not write key, hash does not match!')
+      finally:
+        pass
 
   class HandlerTable(StreamRequestHandler):
     def handle(self):
@@ -18,8 +26,15 @@ class Hand:
   class HandlerKeyTest(StreamRequestHandler):
     def handle(self):
       print('key handler test')
-      data = self.connection.recv(4096)
-      self.wfile.write(data)
+      try:
+        k, v, s, h = Keys().set_sock(self.connection).recv_key()
+        print('serv', k, v, s, h)
+        if k and v and s:
+          kvs = Keys(k, v, s)
+          kvs.write_key() if h.decode('UTF-8') == kvs.get_key_value_store()[3] else print('Will not write key, hash does not match!')
+      finally:
+        pass
+        # self.close()
 
   class HandlerTableTest(StreamRequestHandler):
     def handle(self):
@@ -36,8 +51,8 @@ class Cli:
       ctx.load_verify_locations('.lib/selfsigned.cert')
       ssl_sock = ctx.wrap_socket(s, server_hostname='localhost')
       ssl_sock.connect(('localhost', 7331))
-      ssl_sock.send(b'elloH key')
-      print(ssl_sock.recv(4096))
+      k = Keys(k='1122', v='abc', s='/tmp')
+      k.set_sock(ssl_sock).send_key(k.get_key_value_store())
       ssl_sock.close()
 
   def client_table(self):
@@ -58,8 +73,8 @@ class Cli:
       ctx.load_verify_locations('.lib/selfsigned.cert')
       ssl_sock = ctx.wrap_socket(s, server_hostname='localhost')
       ssl_sock.connect(('localhost', 7333))
-      ssl_sock.send(b'elloH key')
-      print(ssl_sock.recv(4096))
+      k = Keys(k='1122', v='abctest', s='/tmp')
+      k.set_sock(ssl_sock).send_key(k.get_key_value_store())
       ssl_sock.close()
 
   def client_table_test(self):
