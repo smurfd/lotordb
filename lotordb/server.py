@@ -27,10 +27,8 @@ class Handler:
       print('table handler')
       self.table = Tables('.lib/db34')
       self.table.set_sock(self.connection)
-      enc_i = self.table.recv_encrypted_index()
-      enc_d = self.table.recv_encrypted_data()
-      self.table.write_index(enc_i)
-      self.table.write_data(enc_d)
+      self.table.write_index(self.table.recv_encrypted_index())
+      self.table.write_data(self.table.recv_encrypted_data())
 
 
 class Server(threading.Thread):
@@ -52,27 +50,22 @@ class Server(threading.Thread):
     pass
 
   class Listener:
-    def __init__(self, host, port, handler, test=False):
+    def __init__(self, host, port, handler, test=False) -> None:
       self.server = Server.ThreadingTCPServerSSL((host, port), handler)
       self.server_thread = threading.Thread(target=self.server.serve_forever)
-      self.server_thread.daemon = True if test else None
-      self.server_thread.block_on_close = False
+      self.server_thread.daemon = True if test else False
       self.server_thread.start()
 
-    def __exit__(self):
+    def __exit__(self) -> None:
       self.server.shutdown()
       self.server.socket.close()
       self.server.server_close()
       self.server_thread.join()
 
-  def __init__(
-    self, dbhost: str = 'localhost', dbport: int = 1337, dbmaster: bool = True, dbnode: int = 0, test: bool = False, dbtype: Union[bool, str] = False
-  ) -> None:
+  def __init__(self, dbmaster: bool = True, dbnode: int = 0, test: bool = False, dbtype: Union[bool, str] = False) -> None:
     signal.signal(signal.SIGTERM, self.service_shutdown)
     signal.signal(signal.SIGINT, self.service_shutdown)
     threading.Thread.__init__(self)
-    self.host: str = dbhost
-    self.port: int = dbport
     self.sock: Union[socket.socket, Any] = None
     self.ssl_sock: Union[socket.socket, Any] = None
     self.context: Union[ssl.SSLContext, Any] = None
@@ -92,12 +85,6 @@ class Server(threading.Thread):
   def __exit__(self, exc_type, exc_value, traceback) -> None:
     self.close()
 
-  def get_host(self):
-    return self.host
-
-  def get_port(self):
-    return self.port
-
   def close(self) -> None:
     self.ssl_sock.close()
 
@@ -108,22 +95,10 @@ class Server(threading.Thread):
     self.tables = tables
     return self
 
-  def server_key(self):
-    return Server.Listener('localhost', 7331, Handler.HandlerKey, test=False)
-
-  def server_table(self):
-    return Server.Listener('localhost', 7332, Handler.HandlerTable, test=False)
-
-  def server_key_test(self):
-    return Server.Listener('localhost', 7333, Handler.HandlerKey, test=True)
-
-  def server_table_test(self):
-    return Server.Listener('localhost', 7334, Handler.HandlerTable, test=True)
-
 
 if __name__ == '__main__':
   print('Server')
   if sys.argv[1] == 'table':
-    Server().server_table()
+    Server.Listener('localhost', 7332, Handler.HandlerTable, test=False)
   elif sys.argv[1] == 'key':
-    Server().server_key()
+    Server.Listener('localhost', 7331, Handler.HandlerKey, test=False)

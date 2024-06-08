@@ -43,34 +43,19 @@ class Client(threading.Thread):
     self.tables = tables
     return self
 
-  def client_key(self):
-    sock = Client.Connection('localhost', 7331).get_socket()
-    k = Keys(k='1122', v='abc', s='/tmp')
-    k.set_sock(sock).send_key(k.get_key_value_store())
+  def client_key(self, host, port, k='0001', v='test', s='/tmp'):
+    sock = Client.Connection(host, port).get_socket()
+    key = Keys(k=k, v=v, s=s)
+    key.set_sock(sock).send_key(key.get_key_value_store())
     sock.close()
 
-  def client_table(self):
-    sock = Client.Connection('localhost', 7332).get_socket()
+  def client_table(self, host, port):
+    sock = Client.Connection(host, port).get_socket()
     table = Tables()
     context: List = [123] * 123
     ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db9.dbindex')
     dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
-    table.send(sock, table.index_to_bytearray_encrypt(ind), table.data_to_bytearray_encrypt(dad, ind))
-    sock.close()
-
-  def client_key_test(self):
-    sock = Client.Connection('localhost', 7333).get_socket()
-    k = Keys(k='1123', v='abctest', s='/tmp')
-    k.set_sock(sock).send_key(k.get_key_value_store())
-    sock.close()
-
-  def client_table_test(self):
-    sock = Client.Connection('localhost', 7334).get_socket()
-    table = Tables()
     table.set_sock(sock)
-    context: List = [123] * 123
-    ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db9.dbindex')
-    dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
     table.send(sock, table.index_to_bytearray_encrypt(ind), table.data_to_bytearray_encrypt(dad, ind))
     sock.close()
 
@@ -78,6 +63,6 @@ class Client(threading.Thread):
 if __name__ == '__main__':
   print('Client')
   if sys.argv[1] == 'table':
-    Client().client_table()
+    Client().client_table('localhost', 7332)
   elif sys.argv[1] == 'key':
-    Client().client_key()
+    Client().client_key('localhost', 7331)
