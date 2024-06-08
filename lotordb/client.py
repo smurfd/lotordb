@@ -1,8 +1,67 @@
 #!/usr/bin/env python3
 import threading, socket, ssl, sys
-from lotordb.keys import Keys
-from lotordb.tables import Tables, DbIndex, DbData
 from typing import Union, Self, List, Any
+from lotordb.tables import Tables, DbIndex, DbData
+from lotordb.keys import Keys
+
+
+class Cli:
+  def client_key(self):
+    for i in range(5):
+      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+      ctx.load_verify_locations('.lib/selfsigned.cert')
+      ssl_sock = ctx.wrap_socket(s, server_hostname='localhost')
+      ssl_sock.connect(('localhost', 7331))
+      k = Keys(k='1122', v='abc', s='/tmp')
+      k.set_sock(ssl_sock).send_key(k.get_key_value_store())
+      ssl_sock.close()
+
+  def client_table(self):
+    for i in range(5):
+      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+      ctx.load_verify_locations('.lib/selfsigned.cert')
+      ssl_sock = ctx.wrap_socket(s, server_hostname='localhost')
+      ssl_sock.connect(('localhost', 7332))
+
+      table = Tables()
+      context: List = [123] * 123
+      ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db9.dbindex')
+      dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
+      i = table.index_to_bytearray_encrypt(ind)
+      d = table.data_to_bytearray_encrypt(dad, ind)
+      table.send(ssl_sock, i, d)
+      ssl_sock.close()
+
+  def client_key_test(self):
+    for i in range(5):
+      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+      ctx.load_verify_locations('.lib/selfsigned.cert')
+      ssl_sock = ctx.wrap_socket(s, server_hostname='localhost')
+      ssl_sock.connect(('localhost', 7333))
+      k = Keys(k='1122', v='abctest', s='/tmp')
+      k.set_sock(ssl_sock).send_key(k.get_key_value_store())
+      ssl_sock.close()
+
+  def client_table_test(self):
+    for i in range(5):
+      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+      ctx.load_verify_locations('.lib/selfsigned.cert')
+      ssl_sock = ctx.wrap_socket(s, server_hostname='localhost')
+      ssl_sock.connect(('localhost', 7334))
+
+      table = Tables()
+      table.set_sock(ssl_sock)
+      context: List = [123] * 123
+      ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db9.dbindex')
+      dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
+      i = table.index_to_bytearray_encrypt(ind)
+      d = table.data_to_bytearray_encrypt(dad, ind)
+      table.send(ssl_sock, i, d)
+      ssl_sock.close()
 
 
 class Client(threading.Thread):
@@ -25,7 +84,7 @@ class Client(threading.Thread):
       if self.type == 'key' and self.key:  # key value client
         self.key.set_sock(self.sock).send_key(self.key.get_key_value_store())
       elif self.type == 'tablesecure' and self.tables:
-        self.tables.set_ssl_socket(self.sock)
+        self.tables.set_sock(self.sock)
         self.tables.send_encrypted_index(self.tables.index)
         self.tables.send_encrypted_data(self.tables.data)
       self.close()

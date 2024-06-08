@@ -1,8 +1,96 @@
 #!/usr/bin/env python3
 import threading, signal, socket, ssl, sys
+from socketserver import TCPServer, ThreadingMixIn, StreamRequestHandler
+from typing import Union, Any, Self
 from lotordb.tables import Tables
 from lotordb.keys import Keys
-from typing import Union, Any, Self
+
+
+class Srv:
+  class TCPServerSSL(TCPServer):
+    def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True):
+      TCPServer.__init__(self, server_address, RequestHandlerClass, bind_and_activate)
+      TCPServer.allow_reuse_address = True
+
+    def get_request(self):
+      newsocket, fromaddr = self.socket.accept()
+      ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+      ctx.load_cert_chain('.lib/selfsigned.cert', '.lib/selfsigned.key')
+      return ctx.wrap_socket(sock=newsocket, server_side=True), fromaddr
+
+  class ThreadingTCPServerSSL(ThreadingMixIn, TCPServerSSL):
+    pass
+
+  def server_key(self):
+    key_server = Srv.ThreadingTCPServerSSL(('localhost', 7331), Handler.HandlerKey)
+    key_server_thread = threading.Thread(target=key_server.serve_forever)
+    # key_server_thread.daemon = True
+    key_server_thread.block_on_close = False
+    key_server_thread.start()
+    return key_server, key_server_thread
+
+  def server_table(self):
+    table_server = Srv.ThreadingTCPServerSSL(('localhost', 7332), Handler.HandlerTable)
+    table_server_thread = threading.Thread(target=table_server.serve_forever)
+    # table_server_thread.daemon = True
+    table_server_thread.block_on_close = False
+    table_server_thread.start()
+    return table_server, table_server_thread
+
+  def server_key_test(self):
+    key_server = Srv.ThreadingTCPServerSSL(('localhost', 7333), Handler.HandlerKey)
+    key_server_thread = threading.Thread(target=key_server.serve_forever)
+    key_server_thread.daemon = True
+    key_server_thread.block_on_close = False
+    key_server_thread.start()
+    return key_server, key_server_thread
+
+  def server_table_test(self):
+    table_server = Srv.ThreadingTCPServerSSL(('localhost', 7334), Handler.HandlerTable)
+    table_server_thread = threading.Thread(target=table_server.serve_forever)
+    table_server_thread.daemon = True
+    table_server_thread.block_on_close = False
+    table_server_thread.start()
+    return table_server, table_server_thread
+
+  def server_key_end(self, key_server, key_server_thread):
+    key_server.shutdown()
+    key_server.socket.close()
+    key_server.server_close()
+    key_server_thread.join()
+
+  def server_table_end(self, table_server, table_server_thread):
+    table_server.shutdown()
+    table_server.socket.close()
+    table_server.server_close()
+    table_server_thread.join()
+
+
+class Handler:
+  # Would we need different handlings for Test server, we create copies of these and use in Srv class
+  class HandlerKey(StreamRequestHandler):
+    def handle(self):
+      print('key handler')
+      try:
+        k, v, s, h = Keys().set_sock(self.connection).recv_key()
+        print('serv', k, v, s, h)
+        if k and v and s:
+          kvs = Keys(k, v, s)
+          kvs.write_key() if h.decode('UTF-8') == kvs.get_key_value_store()[3] else print('Will not write key, hash does not match!')
+      except ValueError:
+        print('Value error')
+      finally:
+        pass
+
+  class HandlerTable(StreamRequestHandler):
+    def handle(self):
+      print('table handler')
+      self.table = Tables('.lib/db34')
+      self.table.set_sock(self.connection)
+      enc_i = self.table.recv_encrypted_index()
+      enc_d = self.table.recv_encrypted_data()
+      self.table.write_index(enc_i)
+      self.table.write_data(enc_d)
 
 
 class Server(threading.Thread):
@@ -56,7 +144,7 @@ class Server(threading.Thread):
           self.close()
     elif self.type == 'tablesecure' and self.test and self.tables:  # database server, hack so you can run server in tests
       self.listen()
-      self.tables.set_ssl_socket(self.ssl_sock)
+      self.tables.set_sock(self.ssl_sock)
       index = self.tables.recv_encrypted_index()
       data = self.tables.recv_encrypted_data()
       self.tables.write_index(index)
@@ -66,7 +154,7 @@ class Server(threading.Thread):
       while not self.event.is_set():
         self.listen()
         try:
-          self.tables.set_ssl_socket(self.ssl_sock)
+          self.tables.set_sock(self.ssl_sock)
           index = self.tables.recv_encrypted_index()
           data = self.tables.recv_encrypted_data()
           self.tables.write_index(index)
