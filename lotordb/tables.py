@@ -11,8 +11,6 @@ from lotordb.cipher import Cipher
 
 # Sending byte array: time 0.4790!!! (python 3.11.7)
 # gzip command: time 1.539226
-
-
 class Tables(threading.Thread):  # Table store
   def __init__(self, fn='') -> None:
     self.fi: Union[None, BinaryIO, IO] = None
@@ -163,12 +161,3 @@ class Tables(threading.Thread):  # Table store
 
   def decrypt_bytearray_to_data(self, data):
     return self.decrypt_data(data)
-
-  # TODO: remove these two
-  def send_encrypted_data(self, data):
-    self.ssl_sock.send(struct.pack('>Q', len(data))) if self.ssl_sock else b''
-    self.ssl_sock.send(data) if self.ssl_sock else b''
-
-  def send_encrypted_index(self, index):
-    self.ssl_sock.send(struct.pack('>Q', len(index))) if self.ssl_sock else b''
-    self.ssl_sock.send(index) if self.ssl_sock else b''

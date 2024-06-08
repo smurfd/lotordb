@@ -85,8 +85,7 @@ class Client(threading.Thread):
         self.key.set_sock(self.sock).send_key(self.key.get_key_value_store())
       elif self.type == 'tablesecure' and self.tables:
         self.tables.set_sock(self.sock)
-        self.tables.send_encrypted_index(self.tables.index)
-        self.tables.send_encrypted_data(self.tables.data)
+        self.tables.send(self.sock, self.tables.index, self.tables.data)
       self.close()
       self.thread.join(timeout=0.1)
     except Exception as e:
