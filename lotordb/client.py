@@ -29,34 +29,6 @@ class Client(threading.Thread):
     self.tables: Union[None, Tables] = None
     self.thread = threading.Thread()
 
-  # TODO: Remove this
-  def run(self) -> None:
-    try:
-      self.thread.start()
-      self.connect()
-      if self.type == 'key' and self.key:  # key value client
-        self.key.set_sock(self.sock).send_key(self.key.get_key_value_store())
-      elif self.type == 'tablesecure' and self.tables:
-        self.tables.set_sock(self.sock)
-        self.tables.send(self.sock, self.tables.index, self.tables.data)
-      self.close()
-      self.thread.join(timeout=0.1)
-    except Exception as e:
-      print('Could not connect to server', e)
-
-  # TODO: Remove this
-  def connect(self):
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    context.load_verify_locations('.lib/selfsigned.cert')
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-    self.sock = context.wrap_socket(sock, server_hostname=socket.gethostbyaddr(self.host)[0])  # Get hostname from ip
-    self.sock.connect((self.host, self.port))
-    return self.sock
-
-  # TODO: Remove this
-  def close(self) -> None:
-    self.sock.close() if self.sock else None
-
   def send(self, data: bytes) -> None:
     self.sock.send(data) if self.sock else None
 
@@ -105,7 +77,7 @@ class Client(threading.Thread):
 
 if __name__ == '__main__':
   print('Client')
-  if sys.argv[1] == 'tablesecure':
+  if sys.argv[1] == 'table':
     Client().client_table()
   elif sys.argv[1] == 'key':
     Client().client_key()

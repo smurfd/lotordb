@@ -133,6 +133,24 @@ def test_lotordb_newprototype():
   Server().server_table_test()
   Client().client_table_test()
 
+  tables = Tables('.lib/db33')
+  context: List = [1234] * 123456
+  ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db10.dbindex')
+  dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
+  i = tables.index_to_bytearray_encrypt(ind)
+  d = tables.data_to_bytearray_encrypt_segment(dad, ind)
+  tables.write_index(i)
+  tables.write_data(d)
+  bi = tables.decrypt_bytearray_to_index(i)
+  bd = tables.decrypt_bytearray_to_data_segmented(d)
+  ri = tables.read_index()
+  rd = tables.read_data()
+  rbi = tables.decrypt_bytearray_to_index(ri)
+  rbd = tables.decrypt_bytearray_to_data_segmented(rd)
+  # tables.set_index_data(i, d)
+  assert bi == rbi
+  assert bd == rbd
+
 
 if __name__ == '__main__':
   print('OK')
