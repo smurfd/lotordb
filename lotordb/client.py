@@ -5,67 +5,19 @@ from lotordb.tables import Tables, DbIndex, DbData
 from lotordb.keys import Keys
 
 
-class Cli:
-  def client_key(self):
-    for i in range(5):
-      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-      ctx.load_verify_locations('.lib/selfsigned.cert')
-      ssl_sock = ctx.wrap_socket(s, server_hostname='localhost')
-      ssl_sock.connect(('localhost', 7331))
-      k = Keys(k='1122', v='abc', s='/tmp')
-      k.set_sock(ssl_sock).send_key(k.get_key_value_store())
-      ssl_sock.close()
-
-  def client_table(self):
-    for i in range(5):
-      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-      ctx.load_verify_locations('.lib/selfsigned.cert')
-      ssl_sock = ctx.wrap_socket(s, server_hostname='localhost')
-      ssl_sock.connect(('localhost', 7332))
-
-      table = Tables()
-      context: List = [123] * 123
-      ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db9.dbindex')
-      dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
-      i = table.index_to_bytearray_encrypt(ind)
-      d = table.data_to_bytearray_encrypt(dad, ind)
-      table.send(ssl_sock, i, d)
-      ssl_sock.close()
-
-  def client_key_test(self):
-    for i in range(5):
-      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-      ctx.load_verify_locations('.lib/selfsigned.cert')
-      ssl_sock = ctx.wrap_socket(s, server_hostname='localhost')
-      ssl_sock.connect(('localhost', 7333))
-      k = Keys(k='1122', v='abctest', s='/tmp')
-      k.set_sock(ssl_sock).send_key(k.get_key_value_store())
-      ssl_sock.close()
-
-  def client_table_test(self):
-    for i in range(5):
-      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-      ctx.load_verify_locations('.lib/selfsigned.cert')
-      ssl_sock = ctx.wrap_socket(s, server_hostname='localhost')
-      ssl_sock.connect(('localhost', 7334))
-
-      table = Tables()
-      table.set_sock(ssl_sock)
-      context: List = [123] * 123
-      ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db9.dbindex')
-      dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
-      i = table.index_to_bytearray_encrypt(ind)
-      d = table.data_to_bytearray_encrypt(dad, ind)
-      table.send(ssl_sock, i, d)
-      ssl_sock.close()
-
-
 class Client(threading.Thread):
-  def __init__(self, dbhost: str, dbport: int, dbmaster: bool = True, dbnode: int = 0, dbtype: Union[bool, str] = False) -> None:
+  class Connection:
+    def __init__(self, host, port):
+      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+      ctx.load_verify_locations('.lib/selfsigned.cert')
+      self.ssl_sock = ctx.wrap_socket(s, server_hostname='localhost')
+      self.ssl_sock.connect((host, port))
+
+    def get_socket(self):
+      return self.ssl_sock
+
+  def __init__(self, dbhost: str = 'localhost', dbport: int = 1337, dbmaster: bool = True, dbnode: int = 0, dbtype: Union[bool, str] = False) -> None:
     threading.Thread.__init__(self, group=None)
     self.client = Union[None, Client]
     self.event = threading.Event()
@@ -77,6 +29,7 @@ class Client(threading.Thread):
     self.tables: Union[None, Tables] = None
     self.thread = threading.Thread()
 
+  # TODO: Remove this
   def run(self) -> None:
     try:
       self.thread.start()
@@ -91,6 +44,7 @@ class Client(threading.Thread):
     except Exception as e:
       print('Could not connect to server', e)
 
+  # TODO: Remove this
   def connect(self):
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.load_verify_locations('.lib/selfsigned.cert')
@@ -99,6 +53,7 @@ class Client(threading.Thread):
     self.sock.connect((self.host, self.port))
     return self.sock
 
+  # TODO: Remove this
   def close(self) -> None:
     self.sock.close() if self.sock else None
 
@@ -116,17 +71,41 @@ class Client(threading.Thread):
     self.tables = tables
     return self
 
+  def client_key(self):
+    sock = Client.Connection('localhost', 7331).get_socket()
+    k = Keys(k='1122', v='abc', s='/tmp')
+    k.set_sock(sock).send_key(k.get_key_value_store())
+    sock.close()
+
+  def client_table(self):
+    sock = Client.Connection('localhost', 7332).get_socket()
+    table = Tables()
+    context: List = [123] * 123
+    ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db9.dbindex')
+    dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
+    table.send(sock, table.index_to_bytearray_encrypt(ind), table.data_to_bytearray_encrypt(dad, ind))
+    sock.close()
+
+  def client_key_test(self):
+    sock = Client.Connection('localhost', 7333).get_socket()
+    k = Keys(k='1123', v='abctest', s='/tmp')
+    k.set_sock(sock).send_key(k.get_key_value_store())
+    sock.close()
+
+  def client_table_test(self):
+    sock = Client.Connection('localhost', 7334).get_socket()
+    table = Tables()
+    table.set_sock(sock)
+    context: List = [123] * 123
+    ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db9.dbindex')
+    dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
+    table.send(sock, table.index_to_bytearray_encrypt(ind), table.data_to_bytearray_encrypt(dad, ind))
+    sock.close()
+
 
 if __name__ == '__main__':
   print('Client')
-  context: List = [123] * 123456
   if sys.argv[1] == 'tablesecure':
-    tables = Tables()
-    ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db10.dbindex')
-    dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
-    i = tables.index_to_bytearray_encrypt(ind)
-    d = tables.data_to_bytearray_encrypt(dad, ind)
-    tables.set_index_data(i, d)
-    Client('127.0.0.1', 1337, dbtype='tablesecure').set_tables(tables).start()
+    Client().client_table()
   elif sys.argv[1] == 'key':
-    Client('127.0.0.1', 1337, dbtype='key').set_key(Keys(k='1122', v='abc', s='/tmp')).start()
+    Client().client_key()

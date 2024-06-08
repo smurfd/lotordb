@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 from lotordb.tables import Tables
 from lotordb.vars import DbIndex, DbData
-from lotordb.server import Server, Srv
-from lotordb.client import Client, Cli
+from lotordb.server import Server
+from lotordb.client import Client
 from lotordb.cipher import Cipher
 from lotordb.keys import Keys
 from lotordb.hash import Hash
@@ -127,23 +127,12 @@ def test_lotordb_new_encrypt_decrypt_write_read_segmented():
 
 
 def test_lotordb_newprototype():
-  # key_server, key_server_thread = Srv().server_key()
-  # Cli().client_key()
-  # Srv().server_key_end(key_server, key_server_thread)
+  Server().server_key_test()
+  Client().client_key_test()
 
-  key_server, key_server_thread = Srv().server_key_test()
-  Cli().client_key_test()
-  Srv().server_key_end(key_server, key_server_thread)
-
-  # table_server, table_server_thread = Srv().server_table()
-  # Cli().client_table()
-  # Srv().server_table_end(table_server, table_server_thread)
-
-  table_server, table_server_thread = Srv().server_table_test()
-  Cli().client_table_test()
-  Srv().server_table_end(table_server, table_server_thread)
+  Server().server_table_test()
+  Client().client_table_test()
 
 
 if __name__ == '__main__':
-  test_lotordb_newprototype()
   print('OK')
