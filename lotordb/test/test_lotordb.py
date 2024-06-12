@@ -82,7 +82,7 @@ def test_lotordb_key_client_server():
 def test_lotordb_table_client_server():
   t = time.perf_counter()
   Server.Listener('localhost', 7336, Handler.HandlerTable, test=True)
-  Client().client_table('localhost', 7336)
+  Client().client_table('localhost', 7336, DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db9.dbindex'), DbData(1, 1, 1, 1, 1, 1, [1234] * 1234))
   print('time {:.4f}'.format(time.perf_counter() - t))
 
 

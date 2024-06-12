@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import threading, socket, ssl, sys
-from typing import Union, Self, List, Any
+from typing import Union, Self, Any
 from lotordb.tables import Tables, DbIndex, DbData
 from lotordb.keys import Keys
 
@@ -49,12 +49,9 @@ class Client(threading.Thread):
     key.set_sock(sock).send_key(key.get_key_value_store())
     sock.close()
 
-  def client_table(self, host, port):
+  def client_table(self, host, port, ind, dad):
     sock = Client.Connection(host, port).get_socket()
     table = Tables()
-    context: List = [123] * 123
-    ind: DbIndex = DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db9.dbindex')
-    dad: DbData = DbData(1, 1, 1, 1, 1, 1, context)
     table.set_sock(sock)
     table.send(sock, table.index_to_bytearray_encrypt(ind), table.data_to_bytearray_encrypt(dad, ind))
     sock.close()
@@ -63,6 +60,6 @@ class Client(threading.Thread):
 if __name__ == '__main__':
   print('Client')
   if sys.argv[1] == 'table':
-    Client().client_table('localhost', 7332)
+    Client().client_table('localhost', 7332, DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db9.dbindex'), DbData(1, 1, 1, 1, 1, 1, [1234] * 1234))
   elif sys.argv[1] == 'key':
     Client().client_key('localhost', 7331)
