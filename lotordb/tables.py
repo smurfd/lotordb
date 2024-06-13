@@ -32,7 +32,7 @@ class Tables(threading.Thread):  # Table store
 
   def __exit__(self) -> None:
     self.close_file()
-    self.join(timeout=0.1)
+    self.join()
 
   def set_sock(self, sslsock):
     self.ssl_sock = sslsock
