@@ -24,6 +24,7 @@ jobs:
       - name: Test with pytest
         run: python -m pytest lotordb/test
 
+
   mac-tests:
     runs-on: macos-14
     strategy:
