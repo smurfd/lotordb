@@ -5,3 +5,6 @@
 */__pycache__
 */test/__pycache__
 .lib/
+lotordb/src/*.o
+lotordb/src/lotordb
+lotordb/src/tests/tests
