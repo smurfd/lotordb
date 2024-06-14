@@ -1,12 +1,11 @@
 name: Scheduled Tests
 
 on:
-workflow_dispatch:
-schedule:
-  - cron: ‘14 14 * * *’
+  schedule:
+    - cron: ‘14 14 * * *’
 
 jobs:
-  linus-tests:
+  linux-tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
