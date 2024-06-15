@@ -11,7 +11,6 @@ typedef struct keys key;
 typedef struct header head;
 typedef struct sockaddr sock;
 typedef struct sockaddr_in sock_in;
-//typedef struct secure_socket sock_ssl;
 
 struct header {u64 len, ver, g, p;};
 struct keys {u64 publ, priv, shar;};
@@ -25,19 +24,18 @@ static u64 n1[] = {0x000003f, 0x0000fc0, 0x003f000, 0x01c0000, 0x0000800, 0x0000
 
 int client_init(const char *host, const char *port);
 int server_init(const char *host, const char *port);
-sock_ssl ssl_client_init(const char *host, const char *port);
-sock_ssl ssl_server_init(const char *host, const char *port);
 
 void send_data(const int s, void* data, head *h, u64 len);
 void send_key(int s, head *h, key *k);
 void receive_data(const int s, void* data, head *h, u64 len);
 void receive_key(int s, head *h, key *k);
 
-void crypto_gen_share(key *k1, key *k2, u64 p, bool srv);
-key crypto_gen_keys(u64 g, u64 p);
-int crypto_gen_keys_local(void);
-int crypto_srv_listen(int s, sock *cli);
-int ssl_srv_listen(int s, sock *cli);
+void cli_gen_shared_key(key *k1, key *k2, u64 p);
+void srv_gen_shared_key(key *k1, key *k2, u64 p);
+
+key gen_keys(u64 g, u64 p);
+int gen_keys_local(void);
+int server_listen(int s, sock *cli);
 void cryption(u64 data, key k, u64 *enc);
 void crypto_end(int s);
 
