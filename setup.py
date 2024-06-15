@@ -13,7 +13,7 @@ setuptools.setup(
   long_description_content_type='text/markdown',
   url='https://github.com/smurfd/lotordb',
   license='MIT',
-  python_requires='>=3.11',
+  #python_requires='>=3.11',
   extras_require={
     'testing': [
       'pytest',
