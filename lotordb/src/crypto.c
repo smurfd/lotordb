@@ -35,24 +35,28 @@ static void snd_key(int s, head *h, key *k) {
   send(s, &kk, sizeof(key), 0);
 }
 
-static void clear_key(key *k) {
+//static void clear_key(key *k) {
+static key *clear_key(key *k) {
   (*k).publ = 0;
   (*k).priv = 0;
   (*k).shar = 0;
+  return k;
 }
 
+static head *set_header(head *h, u64 a, u64 b) {
+  (*h).g = a;
+  (*h).p = b;
+  return h;
+}
 //
 // SSL server handler
-static void *ssl_srv_handler(void *sdesc) {
+static void *handler_ssl_server(void *sdesc) {
   // Switch to SSL
   // Decrypt the data
-  u64 dat[BLOCK], cd[BLOCK], g1 = RAND64(), p1 = RAND64();
+  u64 dat[BLOCK], cd[BLOCK];
   int sock = *(int*)sdesc;
-  head h;
-  key k2;
-  h.g = g1;
-  h.p = p1;
-  clear_key(&k2);
+  key k2 = *clear_key(&k2);
+  head h = *set_header(&h, RAND64(), RAND64());
   receive_data(sock, &dat, &h, BLOCK - 1);
   for (u64 i = 0; i < 10; i++) cryption(dat[i], k2, &cd[i]);
   printf("ssl 0x%.16llx 0x%.16llx 0x%.16llx\n", dat[0], dat[1], dat[2]);
@@ -62,22 +66,18 @@ static void *ssl_srv_handler(void *sdesc) {
 
 //
 // Server handler
-static void *srv_handler(void *sdesc) {
+static void *handler_server(void *sdesc) {
   u64 dat[BLOCK], cd[BLOCK], g1 = RAND64(), p1 = RAND64();
   int sock = *(int*)sdesc;
 
   if (sock == -1) return (void*) - 1;
-  key k1 = gen_keys(g1, p1), k2;
-  clear_key(&k2);
-  head h;
-  h.g = g1;
-  h.p = p1;
-
+  key k1 = generate_keys(g1, p1), k2 = *clear_key(&k2);
+  head h = *set_header(&h, g1, p1);
   // Send and receive stuff
   if (h.len > BLOCK) return (void*) - 1;
   send_key(sock, &h, &k1);
   receive_key(sock, &h, &k2);
-  srv_gen_shared_key(&k1, &k2, h.p);
+  generate_shared_key_server(&k1, &k2, h.p);
   printf("share : 0x%.16llx\n", k2.shar);
   pthread_exit(NULL);
   return 0;
@@ -107,6 +107,7 @@ int server_init(const char *host, const char *port) {
   int sck = socket(AF_INET, SOCK_STREAM, 0);
   sock_in adr = communication_init(host, port);
   bind(sck, (sock*)&adr, sizeof(adr));
+  printf("\"[o.o]\" eating food...\n");
   return sck;
 }
 
@@ -116,6 +117,7 @@ int client_init(const char *host, const char *port) {
   int sck = socket(AF_INET, SOCK_STREAM, 0);
   sock_in adr = communication_init(host, port);
   if (connect(sck, (sock*)&adr, sizeof(adr)) < 0) return -1;
+  printf("\"[o.o]\" finding food...\n");
   return sck;
 }
 
@@ -150,16 +152,15 @@ void crypto_end(int s) {close(s);}
 int server_listen(const int s, sock *cli) {
   int c = 1, ns[sizeof(int)], len = sizeof(sock_in);
 
-  printf("._o listening...\n");
   listen(s, 3);
   while (c >= 1) {
     c = accept(s, (sock*)&cli, (socklen_t*)&len);
     pthread_t thrd;
     *ns = c;
-    if (pthread_create(&thrd, NULL, srv_handler, (void*)ns) < 0) return -1;
+    if (pthread_create(&thrd, NULL, handler_server, (void*)ns) < 0) return -1;
     pthread_join(thrd, NULL);
     // TODO: Only if handshake OK
-    if (pthread_create(&thrd, NULL, ssl_srv_handler, (void*)ns) < 0) return -1;
+    if (pthread_create(&thrd, NULL, handler_ssl_server, (void*)ns) < 0) return -1;
     pthread_join(thrd, NULL);
   }
   return c;
@@ -167,19 +168,20 @@ int server_listen(const int s, sock *cli) {
 
 //
 // Generate the server shared key
-void srv_gen_shared_key(key *k1, key *k2, u64 p) {
+void generate_shared_key_server(key *k1, key *k2, u64 p) {
   (*k2).shar = p % (int64_t)pow((*k2).publ, (*k1).priv);
 }
 
 //
 // Generate the client shared key
-void cli_gen_shared_key(key *k1, key *k2, u64 p) {
+void generate_shared_key_client(key *k1, key *k2, u64 p) {
   (*k1).shar = p % (int64_t)pow((*k1).publ, (*k2).priv);
 }
 
 //
 // Generate a public and private keypair
-key gen_keys(u64 g, u64 p) {
+//key gen_keys(u64 g, u64 p) {
+key generate_keys(u64 g, u64 p) {
   key k;
 
   k.priv = RAND64();
@@ -189,12 +191,13 @@ key gen_keys(u64 g, u64 p) {
 
 //
 // Generate a keypair & shared key then print it (test / demo)
-int gen_keys_local(void) {
+//int gen_keys_local(void) {
+int generate_keys_local(void) {
   u64 g1 = RAND64(), g2 = RAND64(), p1 = RAND64(), p2 = RAND64(), c = 123456, d = 1, e = 1;
-  key k1 = gen_keys(g1, p1), k2 = gen_keys(g2, p2);
+  key k1 = generate_keys(g1, p1), k2 = generate_keys(g2, p2);
 
-  cli_gen_shared_key(&k1, &k2, p1);
-  srv_gen_shared_key(&k1, &k2, p1);
+  generate_shared_key_client(&k1, &k2, p1);
+  generate_shared_key_server(&k1, &k2, p1);
   printf("Alice public & private key: 0x%.16llx 0x%.16llx\n", k1.publ, k1.priv);
   printf("Bobs public & private key: 0x%.16llx 0x%.16llx\n", k2.publ, k2.priv);
   printf("Alice & Bobs shared key: 0x%.16llx 0x%.16llx\n", k1.shar, k2.shar);

@@ -15,9 +15,9 @@ int main(void) {
     head h;
 
     receive_key(s, &h, &k1);
-    k2 = gen_keys(h.g, h.p);
+    k2 = generate_keys(h.g, h.p);
     send_key(s, &h, &k2);
-    cli_gen_shared_key(&k1, &k2, h.p);
+    generate_shared_key_client(&k1, &k2, h.p);
     printf("share : 0x%.16llx\n", k1.shar);
     for (u64 i = 0; i < 12; i++) {
       dat[i] = (u64)i;
@@ -28,6 +28,6 @@ int main(void) {
   }
   // locally generate two keypairs
   srand(time(0));
-  gen_keys_local();
+  generate_keys_local();
   printf("OK\n");
 }

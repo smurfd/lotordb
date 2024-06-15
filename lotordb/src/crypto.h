@@ -11,10 +11,11 @@ typedef struct keys key;
 typedef struct header head;
 typedef struct sockaddr sock;
 typedef struct sockaddr_in sock_in;
+typedef struct secure_socket {sock_in ssls; int ssl;} sock_ssl;
 
 struct header {u64 len, ver, g, p;};
 struct keys {u64 publ, priv, shar;};
-typedef struct secure_socket {sock_in ssls; int ssl;} sock_ssl;
+
 static char enc[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
   'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
   's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'};
@@ -29,12 +30,10 @@ void send_data(const int s, void* data, head *h, u64 len);
 void send_key(int s, head *h, key *k);
 void receive_data(const int s, void* data, head *h, u64 len);
 void receive_key(int s, head *h, key *k);
-
-void cli_gen_shared_key(key *k1, key *k2, u64 p);
-void srv_gen_shared_key(key *k1, key *k2, u64 p);
-
-key gen_keys(u64 g, u64 p);
-int gen_keys_local(void);
+void generate_shared_key_client(key *k1, key *k2, u64 p);
+void generate_shared_key_server(key *k1, key *k2, u64 p);
+key generate_keys(u64 g, u64 p);
+int generate_keys_local(void);
 int server_listen(int s, sock *cli);
 void cryption(u64 data, key k, u64 *enc);
 void crypto_end(int s);
