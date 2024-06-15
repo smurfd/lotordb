@@ -3,6 +3,7 @@
 #define CRYPTO_H 1
 #include <stdbool.h>
 #include <inttypes.h>
+#include <netinet/in.h>
 #include "defs.h"
 
 typedef struct asn asn;
@@ -10,34 +11,11 @@ typedef struct keys key;
 typedef struct header head;
 typedef struct sockaddr sock;
 typedef struct sockaddr_in sock_in;
+//typedef struct secure_socket sock_ssl;
 
 struct header {u64 len, ver, g, p;};
 struct keys {u64 publ, priv, shar;};
-struct asn {
-  uint8_t type, pos;
-  uint32_t len;
-  const uint8_t *data;
-};
-#define A1INTEGER 0x02 // Header byte of the ASN.1 type INTEGER
-#define A1BITSTRI 0x03 // Header byte of the ASN.1 type BIT STRING
-#define A1OCTSTRI 0x04 // Header byte of the ASN.1 type OCTET STRING
-#define A1NULL000 0x05 // Header byte of the ASN.1 type NULL
-#define A1OBJIDEN 0x06 // Header byte of the ASN.1 type OBJECT IDENTIFIER
-#define A1SEQUENC 0x30 // Header byte of the ASN.1 type SEQUENCE
-#define A1SET0000 0x31 // Header byte of the ASN.1 type SET
-#define A1UTF8STR 0x12 // Header byte of the ASN.1 type UTF8String
-#define A1PRNTSTR 0x19 // Header byte of the ASN.1 type PrintableString
-#define A1T61STRI 0x20 // Header byte of the ASN.1 type T61String
-#define A1IA5STRI 0x22 // Header byte of the ASN.1 type IA5String
-#define A1UTCTIME 0x23 // Header byte of the ASN.1 type UTCTime
-#define A1GENTIME 0x24 // Header byte of the ASN.1 type GeneralizedTime
-
-static uint8_t AA[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x07, 0x06,0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x07,0x06};
-static uint8_t AB[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x07, 0x01};
-static uint8_t AC[] = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x01, 0x02};
-static uint8_t AD[] = {0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x01 ,0x2a};
-static uint8_t AE[] = {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x03, 0x02 ,0x30};
-
+typedef struct secure_socket {sock_in ssls; int ssl;} sock_ssl;
 static char enc[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
   'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
   's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'};
@@ -47,12 +25,19 @@ static u64 n1[] = {0x000003f, 0x0000fc0, 0x003f000, 0x01c0000, 0x0000800, 0x0000
 
 int client_init(const char *host, const char *port);
 int server_init(const char *host, const char *port);
-void crypto_transfer_key(int s, bool snd, head *h, key *k);
-void crypto_transfer_data(const int s, void* data, head *h, bool snd, u64 len);
+sock_ssl ssl_client_init(const char *host, const char *port);
+sock_ssl ssl_server_init(const char *host, const char *port);
+
+void send_data(const int s, void* data, head *h, u64 len);
+void send_key(int s, head *h, key *k);
+void receive_data(const int s, void* data, head *h, u64 len);
+void receive_key(int s, head *h, key *k);
+
 void crypto_gen_share(key *k1, key *k2, u64 p, bool srv);
 key crypto_gen_keys(u64 g, u64 p);
 int crypto_gen_keys_local(void);
 int crypto_srv_listen(int s, sock *cli);
+int ssl_srv_listen(int s, sock *cli);
 void cryption(u64 data, key k, u64 *enc);
 void crypto_end(int s);
 
