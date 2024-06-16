@@ -8,3 +8,4 @@
 lotordb/src/*.o
 lotordb/src/lotordb
 lotordb/src/tests/tests
+.python-version

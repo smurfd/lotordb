@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-from typing import Tuple, Any, List, Self
+from typing import Tuple, Any, List
+from typing_extensions import Self
 from lotordb.hash import Hash
 from lotordb.vars import Key
 import os, pathlib, struct
