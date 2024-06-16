@@ -54,12 +54,9 @@ static head *set_header(head *h, u64 a, u64 b) {
 static void *handler_ssl_server(void *sdesc) {
   // Switch to SSL
   // Decrypt the data
-  //srand(time(0));
   u64 dat[BLOCK], cd[BLOCK];
   int sock = *(int*)sdesc;
   key k2 = *clear_key(&k2);
-  //head h = *set_header(&h, RAND64(), RAND64());
-  //head h = *set_header(&h, R64(), R64());
   head h = *set_header(&h, u64rnd(), u64rnd());
   receive_data(sock, &dat, &h, BLOCK - 1);
   for (u64 i = 0; i < 10; i++) cryption(dat[i], k2, &cd[i]);
@@ -71,9 +68,6 @@ static void *handler_ssl_server(void *sdesc) {
 //
 // Server handler
 static void *handler_server(void *sdesc) {
-  //srand(time(0));
-  //u64 dat[BLOCK], cd[BLOCK], g1 = RAND64(), p1 = RAND64();
-  //u64 dat[BLOCK], cd[BLOCK], g1 = R64(), p1 = R64();
   u64 dat[BLOCK], cd[BLOCK], g1 = u64rnd(), p1 = u64rnd();
   int sock = *(int*)sdesc;
 
@@ -90,25 +84,14 @@ static void *handler_server(void *sdesc) {
   return 0;
 }
 
-int getrnd() {
-  int f = open("/dev/urandom", O_RDONLY);
-  int myrnd;
-  read(f, &myrnd, sizeof myrnd);
-  close(f);
-  return myrnd;
-}
-
 u64 u64rnd() {
-  int f = open("/dev/urandom", O_RDONLY);
-  int r[5];
+  int r[5], f = open("/dev/urandom", O_RDONLY);
   read(f, &r, sizeof r);
   close(f);
-  u64 r64 = (r[0] & 0x7fffffffffffffff) << 48 ^ (r[1] & 0x7fffffffffffffff) << 35 ^\
-            (r[2] & 0x7fffffffffffffff) << 22 ^ (r[3] & 0x7fffffffffffffff) << 9 ^ (r[4] & 0x7fffffffffffffff) >> 4;
-
-  return r64;
-
+  return (r[0] & 0x7fffffffffffffff) << 48 ^ (r[1] & 0x7fffffffffffffff) << 35 ^\
+         (r[2] & 0x7fffffffffffffff) << 22 ^ (r[3] & 0x7fffffffffffffff) << 9 ^ (r[4] & 0x7fffffffffffffff) >> 4;
 }
+
 //
 // Encrypt and decrypt data with shared key
 void cryption(u64 data, key k, u64 *enc) {
@@ -210,9 +193,6 @@ void generate_shared_key_client(key *k1, key *k2, u64 p) {
 key generate_keys(u64 g, u64 p) {
   key k;
 
-  //srand(time(0));
-  //k.priv = RAND64();
-  //k.priv = R64();
   k.priv = u64rnd();
   k.publ = (int64_t)pow(g, k.priv) % p;
   return k;
@@ -222,9 +202,6 @@ key generate_keys(u64 g, u64 p) {
 // Generate a keypair & shared key then print it (test / demo)
 //int gen_keys_local(void) {
 int generate_keys_local(void) {
-  //srand(time(0));
-  //u64 g1 = RAND64(), g2 = RAND64(), p1 = RAND64(), p2 = RAND64(), c = 123456, d = 1, e = 1;
-  //u64 g1 = R64(), g2 = R64(), p1 = R64(), p2 = R64(), c = 123456, d = 1, e = 1;
   u64 g1 = u64rnd(), g2 = u64rnd(), p1 = u64rnd(), p2 = u64rnd(), c = 123456, d = 1, e = 1;
   key k1 = generate_keys(g1, p1), k2 = generate_keys(g2, p2);
 

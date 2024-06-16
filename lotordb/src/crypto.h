@@ -23,11 +23,7 @@ static char enc[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
 static u64 n1[] = {0x000003f, 0x0000fc0, 0x003f000, 0x01c0000, 0x0000800, 0x0000c080, 0x0010000, 0x00e08080, 0xf0808080},
            n2[] = {0x00efbfbf, 0x000f0000, 0x003f0000, 0x07000000, 0x00003f00, 0x0000003f};
 
-#define R64() (getrnd() & 0x7fffffffffffffff) << 48 ^ (getrnd() & 0x7fffffffffffffff) << 35 ^\
-              (getrnd() & 0x7fffffffffffffff) << 22 ^ (getrnd() & 0x7fffffffffffffff) << 9 ^ (getrnd() & 0x7fffffffffffffff) >> 4
-
 u64 u64rnd();
-int getrnd();
 int client_init(const char *host, const char *port);
 int server_init(const char *host, const char *port);
 

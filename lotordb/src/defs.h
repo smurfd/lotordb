@@ -13,10 +13,6 @@
 // Imitate pythons %. -1 % 5 = 4, not -1
 #define MOD(n, m) (((int)n % (int)m) + (int)m) % (int)m
 
-// SSL
-#define RAND64() (rand() & 0x7fffffffffffffff) << 48 ^ (rand() & 0x7fffffffffffffff) << 35 ^\
-                 (rand() & 0x7fffffffffffffff) << 22 ^ (rand() & 0x7fffffffffffffff) << 9 ^ (rand() & 0x7fffffffffffffff) >> 4
-
 // Lightciphers
 #define NB 4
 #define NK 8
