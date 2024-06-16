@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import threading, signal, socket, ssl, sys
 from socketserver import TCPServer, ThreadingMixIn, StreamRequestHandler
-from typing_extensions import Self
+from typing import Union, Any, Self
 from lotordb.tables import Tables
-from typing import Union, Any
 from lotordb.keys import Keys
 
 

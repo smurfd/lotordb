@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import threading, socket, ssl, sys
-from typing_extensions import Self
-from typing import Union, Any
+from typing import Union, Any, Self
 from lotordb.tables import Tables, DbIndex, DbData
 from lotordb.keys import Keys
 
