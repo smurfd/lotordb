@@ -10,6 +10,7 @@ int main(void) {
   int s = client_init("127.0.0.1", "9998");
 
   if (s >= 0) {
+    //srand(time(0));
     u64 dat[BLOCK], cd[BLOCK];
     key k1, k2;
     head h;
@@ -27,7 +28,7 @@ int main(void) {
     crypto_end(s);
   }
   // locally generate two keypairs
-  srand(time(0));
+  //srand(time(0));
   generate_keys_local();
   printf("OK\n");
 }
