@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -14,6 +15,8 @@
 #include <sys/socket.h>
 #include "crypto.h"
 #include "defs.h"
+
+// Static functions
 
 //
 // Receive key (clears private key if we receive it for some reason)
@@ -72,18 +75,35 @@ static void *handler_server(void *sdesc) {
   int sock = *(int*)sdesc;
 
   if (sock == -1) return (void*) - 1;
-  key k1 = generate_keys(g1, p1), k2 = *clear_key(&k2);
   head h = *set_header(&h, g1, p1);
+  key k1 = generate_keys(&h), k2 = *clear_key(&k2);
   // Send and receive stuff
   if (h.len > BLOCK) return (void*) - 1;
   send_key(sock, &h, &k1);
   receive_key(sock, &h, &k2);
-  generate_shared_key_server(&k1, &k2, h.p);
+  generate_shared_key_server(&k1, &k2, &h);//h.p);
   printf("share : 0x%.16llx\n", k2.shar);
   pthread_exit(NULL);
   return 0;
 }
 
+//
+// Communication init
+static sock_in communication_init(const char *host, const char *port) {
+  sock_in adr;
+
+  memset(&adr, '\0', sizeof(adr));
+  adr.sin_family = AF_INET;
+  adr.sin_port = atoi(port);
+  adr.sin_addr.s_addr = inet_addr(host);
+  return adr;
+}
+
+
+// Public functions
+
+//
+// urandom generate u64
 u64 u64rnd() {
   int r[5], f = open("/dev/urandom", O_RDONLY);
   read(f, &r, sizeof r);
@@ -96,18 +116,6 @@ u64 u64rnd() {
 // Encrypt and decrypt data with shared key
 void cryption(u64 data, key k, u64 *enc) {
   (*enc) = data ^ k.shar;
-}
-
-//
-// Communication init
-sock_in communication_init(const char *host, const char *port) {
-  sock_in adr;
-
-  memset(&adr, '\0', sizeof(adr));
-  adr.sin_family = AF_INET;
-  adr.sin_port = atoi(port);
-  adr.sin_addr.s_addr = inet_addr(host);
-  return adr;
 }
 
 //
@@ -130,20 +138,28 @@ int client_init(const char *host, const char *port) {
   return sck;
 }
 
+//
+// Send data to client/server
 void send_data(const int s, void* data, head *h, u64 len) {
   send(s, h, sizeof(head), 0);
   send(s, data, sizeof(u64)*len, 0);
 }
 
+//
+// Receive data from client/server
 void receive_data(const int s, void* data, head *h, u64 len) {
   recv(s, h, sizeof(head), 0);
   recv(s, data, sizeof(u64) * len, 0);
 }
 
+//
+// Send key to client/server
 void send_key(int s, head *h, key *k) {
   snd_key(s, h, k);
 }
 
+//
+// Receive key from client/server
 void receive_key(int s, head *h, key *k) {
   key tmp;
 
@@ -154,12 +170,21 @@ void receive_key(int s, head *h, key *k) {
 
 //
 // End connection
-void crypto_end(int s) {close(s);}
+void client_end(int s) {
+  close(s);
+}
+
+//
+// End connection
+void server_end(int s) {
+  close(s);
+}
 
 //
 // Server listener
-int server_listen(const int s, sock *cli) {
+int server_listen(const int s) {
   int c = 1, ns[sizeof(int)], len = sizeof(sock_in);
+  sock *cli = NULL;
 
   listen(s, 3);
   while (c >= 1) {
@@ -168,7 +193,7 @@ int server_listen(const int s, sock *cli) {
     *ns = c;
     if (pthread_create(&thrd, NULL, handler_server, (void*)ns) < 0) return -1;
     pthread_join(thrd, NULL);
-    // TODO: Only if handshake OK
+    // TODO: Only if handshake OK, we create SSL thread
     if (pthread_create(&thrd, NULL, handler_ssl_server, (void*)ns) < 0) return -1;
     pthread_join(thrd, NULL);
   }
@@ -177,42 +202,43 @@ int server_listen(const int s, sock *cli) {
 
 //
 // Generate the server shared key
-void generate_shared_key_server(key *k1, key *k2, u64 p) {
-  (*k2).shar = p % (int64_t)pow((*k2).publ, (*k1).priv);
+void generate_shared_key_server(key *k1, key *k2, head *h) {
+  (*k2).shar = (*h).p % (int64_t)pow((*k2).publ, (*k1).priv);
 }
 
 //
 // Generate the client shared key
-void generate_shared_key_client(key *k1, key *k2, u64 p) {
-  (*k1).shar = p % (int64_t)pow((*k1).publ, (*k2).priv);
+void generate_shared_key_client(key *k1, key *k2, head *h) {
+  (*k1).shar = (*h).p % (int64_t)pow((*k1).publ, (*k2).priv);
 }
 
 //
 // Generate a public and private keypair
-//key gen_keys(u64 g, u64 p) {
-key generate_keys(u64 g, u64 p) {
+key generate_keys(head *h) {
   key k;
 
   k.priv = u64rnd();
-  k.publ = (int64_t)pow(g, k.priv) % p;
+  k.publ = (int64_t)pow((*h).g, k.priv) % (*h).p;
   return k;
 }
 
 //
 // Generate a keypair & shared key then print it (test / demo)
-//int gen_keys_local(void) {
 int generate_keys_local(void) {
-  u64 g1 = u64rnd(), g2 = u64rnd(), p1 = u64rnd(), p2 = u64rnd(), c = 123456, d = 1, e = 1;
-  key k1 = generate_keys(g1, p1), k2 = generate_keys(g2, p2);
+  head h1 = *set_header(&h1, u64rnd(), u64rnd());
+  head h2 = *set_header(&h2, u64rnd(), u64rnd());
+  u64 c = 123456, d = 1, e = 1;
+  key k1 = generate_keys(&h1), k2 = generate_keys(&h2);
 
-  generate_shared_key_client(&k1, &k2, p1);
-  generate_shared_key_server(&k1, &k2, p1);
+  generate_shared_key_client(&k1, &k2, &h1);
+  generate_shared_key_server(&k1, &k2, &h1);
   printf("Alice public & private key: 0x%.16llx 0x%.16llx\n", k1.publ, k1.priv);
   printf("Bobs public & private key: 0x%.16llx 0x%.16llx\n", k2.publ, k2.priv);
   printf("Alice & Bobs shared key: 0x%.16llx 0x%.16llx\n", k1.shar, k2.shar);
   cryption(c, k1, &d);
   cryption(d, k2, &e);
   printf("Before:  0x%.16llx\nEncrypt: 0x%.16llx\nDecrypt: 0x%.16llx\n",c,d,e);
+  assert(c == e);
   return c == e;
 }
 

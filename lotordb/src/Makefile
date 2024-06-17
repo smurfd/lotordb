@@ -1,8 +1,8 @@
 CL:=clang -O3
-all: tests crypto client server
+all: crypto client server tests
 
-tests: tests/tests
-	make -f tests/Makefile
+tests: crypto.o
+	make -Ctests
 
 crypto: crypto.o
 	${CL} -c crypto.c
@@ -13,5 +13,5 @@ client: crypto.o
 server: crypto.o
 	${CL} -o server server.c crypto.o -fuse-ld=lld -lpthread -lm
 
-clean :
+clean:
 	rm tests/tests crypto.o client server

@@ -1,8 +1,6 @@
 CL:=clang -O3
 
+all: tests
+
 tests:
-	${CL} -o tests tests.o -fuse-ld=lld
-
-tests.o: tests.c ../defs.h
-	${CL} -c tests.c
-
+	${CL} -o tests tests.c ../crypto.o -fuse-ld=lld -lpthread -lm

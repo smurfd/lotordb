@@ -25,3 +25,11 @@ Start Table server in one terminal: `PYTHONPATH="." python3 lotordb/server.py ta
 Start Key server in one terminal: `PYTHONPATH="." python3 lotordb/server.py key`<br>
 Start Table client in one terminal: `PYTHONPATH="." python3 lotordb/client.py table`<br>
 Start Key client in one terminal: `PYTHONPATH="." python3 lotordb/client.py key`<br>
+
+### C backend
+```
+make -Clotordb/src
+./lotordb/src/server (in one terminal)
+./lotordb/src/client (in one terminal)
+```
+"[o.o]"

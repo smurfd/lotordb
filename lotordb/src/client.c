@@ -15,16 +15,16 @@ int main(void) {
     head h;
 
     receive_key(s, &h, &k1);
-    k2 = generate_keys(h.g, h.p);
+    k2 = generate_keys(&h);
     send_key(s, &h, &k2);
-    generate_shared_key_client(&k1, &k2, h.p);
+    generate_shared_key_client(&k1, &k2, &h);
     printf("share : 0x%.16llx\n", k1.shar);
     for (u64 i = 0; i < 12; i++) {
       dat[i] = (u64)i;
       cryption(dat[i], k1, &cd[i]);
     }
     send_data(s, cd, &h, 11);
-    crypto_end(s);
+    client_end(s);
   }
   // locally generate two keypairs
   generate_keys_local();
