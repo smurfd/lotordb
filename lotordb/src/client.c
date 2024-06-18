@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include "crypto.h"
+#include "keys.h"
 
 int main(void) {
   int s = client_init("127.0.0.1", "9998");
@@ -24,6 +25,19 @@ int main(void) {
       cryption(dat[i], k1, &cd[i]);
     }
     send_data(s, cd, &h, 11);
+    printf("\n\n");
+    kvsh k;
+    set_key_value_store(&k, "0002", "testvalue", "/tmp");
+    key_write(&k);
+    key_del(&k);
+    key_send(s, &k);
+
+
+    //char *mem = malloc(1000);
+    //char *ptr =(char*)(&k);
+    //memcpy(mem, ptr, sizeof(kvsh));
+
+
     client_end(s);
   }
   // locally generate two keypairs

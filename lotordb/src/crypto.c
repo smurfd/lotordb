@@ -14,6 +14,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include "crypto.h"
+#include "keys.h"
 #include "defs.h"
 
 // Static functions
@@ -39,7 +40,6 @@ static void snd_key(int s, head *h, key *k) {
   send(s, &kk, sizeof(key), 0);
 }
 
-//static void clear_key(key *k) {
 static key *clear_key(key *k) {
   (*k).publ = 0;
   (*k).priv = 0;
@@ -52,6 +52,7 @@ static head *set_header(head *h, u64 a, u64 b) {
   (*h).p = b;
   return h;
 }
+
 //
 // SSL server handler
 static void *handler_ssl_server(void *sdesc) {
@@ -64,6 +65,10 @@ static void *handler_ssl_server(void *sdesc) {
   receive_data(sock, &dat, &h, BLOCK - 1);
   for (u64 i = 0; i < 10; i++) cryption(dat[i], k2, &cd[i]);
   printf("ssl 0x%.16llx 0x%.16llx 0x%.16llx\n", dat[0], dat[1], dat[2]);
+
+  kvsh k;
+  key_recv(sock, &k);
+
   pthread_exit(NULL);
   return 0;
 }
@@ -71,7 +76,7 @@ static void *handler_ssl_server(void *sdesc) {
 //
 // Server handler
 static void *handler_server(void *sdesc) {
-  u64 dat[BLOCK], cd[BLOCK], g1 = u64rnd(), p1 = u64rnd();
+  u64 g1 = u64rnd(), p1 = u64rnd();
   int sock = *(int*)sdesc;
 
   if (sock == -1) return (void*) - 1;
@@ -81,7 +86,7 @@ static void *handler_server(void *sdesc) {
   if (h.len > BLOCK) return (void*) - 1;
   send_key(sock, &h, &k1);
   receive_key(sock, &h, &k2);
-  generate_shared_key_server(&k1, &k2, &h);//h.p);
+  generate_shared_key_server(&k1, &k2, &h);
   printf("share : 0x%.16llx\n", k2.shar);
   pthread_exit(NULL);
   return 0;
@@ -105,11 +110,11 @@ static sock_in communication_init(const char *host, const char *port) {
 //
 // urandom generate u64
 u64 u64rnd() {
+  u64 f7 = 0x7fffffffffffffff;
   int r[5], f = open("/dev/urandom", O_RDONLY);
   read(f, &r, sizeof r);
   close(f);
-  return (r[0] & 0x7fffffffffffffff) << 48 ^ (r[1] & 0x7fffffffffffffff) << 35 ^\
-         (r[2] & 0x7fffffffffffffff) << 22 ^ (r[3] & 0x7fffffffffffffff) << 9 ^ (r[4] & 0x7fffffffffffffff) >> 4;
+  return (r[0] & f7) << 48 ^ (r[1] & f7) << 35 ^ (r[2] & f7) << 22 ^ (r[3] & f7) << 9 ^ (r[4] & f7) >> 4;
 }
 
 //

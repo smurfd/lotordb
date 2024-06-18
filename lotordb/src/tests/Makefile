@@ -1,6 +1,6 @@
-CL:=clang -O3
+CL:=clang -O3 -Wall
 
 all: tests
 
 tests:
-	${CL} -o tests tests.c ../crypto.o -fuse-ld=lld -lpthread -lm
+	${CL} -o tests tests.c ../crypto.o ../keys.o ../hash.o -fuse-ld=lld -lpthread -lm

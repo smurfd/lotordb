@@ -1,17 +1,23 @@
-CL:=clang -O3
-all: crypto client server tests
+CL:=clang -O3 -Wall
+all: crypto keys hash client server tests
 
-tests: crypto.o
+tests: crypto.o keys.o
 	make -Ctests
 
-crypto: crypto.o
+crypto: crypto.o keys.o
 	${CL} -c crypto.c
 
-client: crypto.o
-	${CL} -o client client.c crypto.o -fuse-ld=lld -lpthread -lm
+keys: keys.o
+	${CL} -c keys.c
 
-server: crypto.o
-	${CL} -o server server.c crypto.o -fuse-ld=lld -lpthread -lm
+hash: hash.o crypto.o
+	${CL} -c hash.c
+
+client: crypto.o keys.o hash.o
+	${CL} -o client client.c crypto.o keys.o hash.o -fuse-ld=lld -lpthread -lm
+
+server: crypto.o keys.o hash.o
+	${CL} -o server server.c crypto.o keys.o hash.o -fuse-ld=lld -lpthread -lm
 
 clean:
-	rm tests/tests crypto.o client server
+	rm tests/tests crypto.o keys.o hash.o client server
