@@ -12,13 +12,13 @@ int main(void) {
 
   if (s >= 0) {
     u64 dat[BLOCK], cd[BLOCK];
-    key k1, k2;
+    cryptokey k1, k2;
     head h;
 
-    receive_key(s, &h, &k1);
-    k2 = generate_keys(&h);
-    send_key(s, &h, &k2);
-    generate_shared_key_client(&k1, &k2, &h);
+    receive_cryptokey(s, &h, &k1);
+    k2 = generate_cryptokeys(&h);
+    send_cryptokey(s, &h, &k2);
+    generate_shared_cryptokey_client(&k1, &k2, &h);
     printf("share : 0x%.16llx\n", k1.shar);
     for (u64 i = 0; i < 12; i++) {
       dat[i] = (u64)i;
@@ -33,14 +33,14 @@ int main(void) {
     key_send(s, &k);
 
 
-    //char *mem = malloc(1000);
-    //char *ptr =(char*)(&k);
-    //memcpy(mem, ptr, sizeof(kvsh));
+    char *mem = malloc(1000);
+    char *ptr =(char*)(&k);
+    memcpy(mem, ptr, sizeof(kvsh));
 
 
     client_end(s);
   }
   // locally generate two keypairs
-  generate_keys_local();
+  generate_cryptokeys_local();
   printf("OK\n");
 }

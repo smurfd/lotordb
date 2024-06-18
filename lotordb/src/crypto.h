@@ -7,14 +7,14 @@
 #include "defs.h"
 
 typedef struct asn asn;
-typedef struct keys key;
 typedef struct header head;
 typedef struct sockaddr sock;
 typedef struct sockaddr_in sock_in;
+typedef struct cryptokeys cryptokey;
 typedef struct secure_socket {sock_in ssls; int ssl;} sock_ssl;
 
 struct header {u64 len, ver, g, p;};
-struct keys {u64 publ, priv, shar;};
+struct cryptokeys {u64 publ, priv, shar;};
 
 static char enc[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
   'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
@@ -28,15 +28,15 @@ int client_init(const char *host, const char *port);
 int server_init(const char *host, const char *port);
 
 void send_data(const int s, void* data, head *h, u64 len);
-void send_key(int s, head *h, key *k);
+void send_cryptokey(int s, head *h, cryptokey *k);
 void receive_data(const int s, void* data, head *h, u64 len);
-void receive_key(int s, head *h, key *k);
-void generate_shared_key_client(key *k1, key *k2, head *h);
-void generate_shared_key_server(key *k1, key *k2, head *h);
-key generate_keys(head *h);
-int generate_keys_local(void);
+void receive_cryptokey(int s, head *h, cryptokey *k);
+void generate_shared_cryptokey_client(cryptokey *k1, cryptokey *k2, head *h);
+void generate_shared_cryptokey_server(cryptokey *k1, cryptokey *k2, head *h);
+cryptokey generate_cryptokeys(head *h);
+int generate_cryptokeys_local(void);
 int server_listen(int s);
-void cryption(u64 data, key k, u64 *enc);
+void cryption(u64 data, cryptokey k, u64 *enc);
 void client_end(int s);
 void server_end(int s);
 

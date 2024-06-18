@@ -21,26 +21,26 @@
 
 //
 // Receive key (clears private key if we receive it for some reason)
-static void recv_key(int s, head *h, key *k) {
+static void recv_cryptokey(int s, head *h, cryptokey *k) {
   recv(s, h, sizeof(head), 0);
-  recv(s, k, sizeof(key), 0);
+  recv(s, k, sizeof(cryptokey), 0);
   (*k).priv = 0;
 }
 
 //
 // Send key
-static void snd_key(int s, head *h, key *k) {
+static void snd_cryptokey(int s, head *h, cryptokey *k) {
   // This to ensure not to send the private key
-  key kk;
+  cryptokey kk;
 
   kk.publ = (*k).publ;
   kk.shar = (*k).shar;
   kk.priv = 0;
   send(s, h, sizeof(head), 0);
-  send(s, &kk, sizeof(key), 0);
+  send(s, &kk, sizeof(cryptokey), 0);
 }
 
-static key *clear_key(key *k) {
+static cryptokey *clear_cryptokey(cryptokey *k) {
   (*k).publ = 0;
   (*k).priv = 0;
   (*k).shar = 0;
@@ -60,7 +60,7 @@ static void *handler_ssl_server(void *sdesc) {
   // Decrypt the data
   u64 dat[BLOCK], cd[BLOCK];
   int sock = *(int*)sdesc;
-  key k2 = *clear_key(&k2);
+  cryptokey k2 = *clear_cryptokey(&k2);
   head h = *set_header(&h, u64rnd(), u64rnd());
   receive_data(sock, &dat, &h, BLOCK - 1);
   for (u64 i = 0; i < 10; i++) cryption(dat[i], k2, &cd[i]);
@@ -81,12 +81,12 @@ static void *handler_server(void *sdesc) {
 
   if (sock == -1) return (void*) - 1;
   head h = *set_header(&h, g1, p1);
-  key k1 = generate_keys(&h), k2 = *clear_key(&k2);
+  cryptokey k1 = generate_cryptokeys(&h), k2 = *clear_cryptokey(&k2);
   // Send and receive stuff
   if (h.len > BLOCK) return (void*) - 1;
-  send_key(sock, &h, &k1);
-  receive_key(sock, &h, &k2);
-  generate_shared_key_server(&k1, &k2, &h);
+  send_cryptokey(sock, &h, &k1);
+  receive_cryptokey(sock, &h, &k2);
+  generate_shared_cryptokey_server(&k1, &k2, &h);
   printf("share : 0x%.16llx\n", k2.shar);
   pthread_exit(NULL);
   return 0;
@@ -119,7 +119,7 @@ u64 u64rnd() {
 
 //
 // Encrypt and decrypt data with shared key
-void cryption(u64 data, key k, u64 *enc) {
+void cryption(u64 data, cryptokey k, u64 *enc) {
   (*enc) = data ^ k.shar;
 }
 
@@ -159,17 +159,17 @@ void receive_data(const int s, void* data, head *h, u64 len) {
 
 //
 // Send key to client/server
-void send_key(int s, head *h, key *k) {
-  snd_key(s, h, k);
+void send_cryptokey(int s, head *h, cryptokey *k) {
+  snd_cryptokey(s, h, k);
 }
 
 //
 // Receive key from client/server
-void receive_key(int s, head *h, key *k) {
-  key tmp;
+void receive_cryptokey(int s, head *h, cryptokey *k) {
+  cryptokey tmp;
 
   // This to ensure if we receive a private key we clear it
-  recv_key(s, h, &tmp);
+  recv_cryptokey(s, h, &tmp);
   (*k).publ = tmp.publ; (*k).shar = tmp.shar; (*k).priv = 0;
 }
 
@@ -207,20 +207,20 @@ int server_listen(const int s) {
 
 //
 // Generate the server shared key
-void generate_shared_key_server(key *k1, key *k2, head *h) {
+void generate_shared_cryptokey_server(cryptokey *k1, cryptokey *k2, head *h) {
   (*k2).shar = (*h).p % (int64_t)pow((*k2).publ, (*k1).priv);
 }
 
 //
 // Generate the client shared key
-void generate_shared_key_client(key *k1, key *k2, head *h) {
+void generate_shared_cryptokey_client(cryptokey *k1, cryptokey *k2, head *h) {
   (*k1).shar = (*h).p % (int64_t)pow((*k1).publ, (*k2).priv);
 }
 
 //
 // Generate a public and private keypair
-key generate_keys(head *h) {
-  key k;
+cryptokey generate_cryptokeys(head *h) {
+  cryptokey k;
 
   k.priv = u64rnd();
   k.publ = (int64_t)pow((*h).g, k.priv) % (*h).p;
@@ -229,14 +229,14 @@ key generate_keys(head *h) {
 
 //
 // Generate a keypair & shared key then print it (test / demo)
-int generate_keys_local(void) {
+int generate_cryptokeys_local(void) {
   head h1 = *set_header(&h1, u64rnd(), u64rnd());
   head h2 = *set_header(&h2, u64rnd(), u64rnd());
   u64 c = 123456, d = 1, e = 1;
-  key k1 = generate_keys(&h1), k2 = generate_keys(&h2);
+  cryptokey k1 = generate_cryptokeys(&h1), k2 = generate_cryptokeys(&h2);
 
-  generate_shared_key_client(&k1, &k2, &h1);
-  generate_shared_key_server(&k1, &k2, &h1);
+  generate_shared_cryptokey_client(&k1, &k2, &h1);
+  generate_shared_cryptokey_server(&k1, &k2, &h1);
   printf("Alice public & private key: 0x%.16llx 0x%.16llx\n", k1.publ, k1.priv);
   printf("Bobs public & private key: 0x%.16llx 0x%.16llx\n", k2.publ, k2.priv);
   printf("Alice & Bobs shared key: 0x%.16llx 0x%.16llx\n", k1.shar, k2.shar);

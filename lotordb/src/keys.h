@@ -9,8 +9,8 @@
 typedef struct kvsh {char key[256]; char value[256]; char store[256]; char hash[131];} kvsh;
 
 void set_key_value_store(kvsh *k, char key[256], char value[256], char store[256]);
-void get_key_value_store();
-void key_set_store();
+//void get_key_value_store();
+//void key_set_store();
 void key_write(kvsh *k);
 void key_del(kvsh *k);
 void key_send(const int s, kvsh *k);

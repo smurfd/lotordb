@@ -15,9 +15,9 @@ void set_key_value_store(kvsh *k, char key[256], char value[256], char store[256
   printf("KVSH: %s %s %s %s\n", key, value, store, (*k).hash);
 }
 
-void get_key_value_store() {
-
-}
+//void get_key_value_store() {
+//
+//}
 
 void key_del(kvsh *k) {
   char s[512];
@@ -27,9 +27,9 @@ void key_del(kvsh *k) {
   unlink(s);
 }
 
-void key_set_store() {
-
-}
+//void key_set_store() {
+//
+//}
 
 void key_write(kvsh *k) {
   struct stat st = {0};
