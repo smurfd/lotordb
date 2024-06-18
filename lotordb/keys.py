@@ -27,6 +27,7 @@ class Keys:  # Key Value Store
 
   def write_key(self) -> bool:
     os.makedirs(self.k.store, exist_ok=True)
+    assert Hash(self.k.value) == self.k.hash
     f = open(os.path.join(self.k.store, self.k.key), 'wb+')
     return f.write(self.k.value) > 0 if isinstance(self.k.value, bytes) else f.write(self.k.value.encode('UTF-8')) > 0  # type: ignore
 
