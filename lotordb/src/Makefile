@@ -3,6 +3,7 @@ all: crypto keys hash client server tests
 
 tests: crypto.o keys.o
 	make -Ctests
+	./tests/tests
 
 crypto: crypto.o keys.o
 	${CL} -c crypto.c

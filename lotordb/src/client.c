@@ -22,9 +22,9 @@ int main(void) {
     printf("share : 0x%.16llx\n", k1.shar);
     for (u64 i = 0; i < 12; i++) {
       dat[i] = (u64)i;
-      cryption(dat[i], k1, &cd[i]);
+      handler_cryptography(dat[i], k1, &cd[i]);
     }
-    send_data(s, cd, &h, 11);
+    send_cryptodata(s, cd, &h, 11);
     kvsh k;
     set_key_value_store(&k, "0002", "testvalue", "/tmp");
     key_write(&k);

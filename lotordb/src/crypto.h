@@ -24,25 +24,29 @@ static u64 n1[] = {0x000003f, 0x0000fc0, 0x003f000, 0x01c0000, 0x0000800, 0x0000
            n2[] = {0x00efbfbf, 0x000f0000, 0x003f0000, 0x07000000, 0x00003f00, 0x0000003f};
 
 u64 u64rnd();
+
+// Client/Server
 int client_init(const char *host, const char *port);
 int server_init(const char *host, const char *port);
+int server_listen(int s);
+void client_end(int s);
+void server_end(int s);
 
-void send_data(const int s, void* data, head *h, u64 len);
+// Send/Receive
+void send_cryptodata(const int s, void* data, head *h, u64 len);
 void send_cryptokey(int s, head *h, cryptokey *k);
-void receive_data(const int s, void* data, head *h, u64 len);
+void receive_cryptodata(const int s, void* data, head *h, u64 len);
 void receive_cryptokey(int s, head *h, cryptokey *k);
+
+// Generators
 void generate_shared_cryptokey_client(cryptokey *k1, cryptokey *k2, head *h);
 void generate_shared_cryptokey_server(cryptokey *k1, cryptokey *k2, head *h);
 cryptokey generate_cryptokeys(head *h);
 int generate_cryptokeys_local(void);
-int server_listen(int s);
-void cryption(u64 data, cryptokey k, u64 *enc);
-void client_end(int s);
-void server_end(int s);
 
-u64 crypto_handle_cert(char d[LEN], const char *cert);
-u64 crypto_handle_asn(char c[LEN], const char *cert);
+void handler_cryptography(u64 data, cryptokey k, u64 *enc);
 
+// Tooling
 uint32_t utf8enc(uint32_t c);
 uint32_t utf8dec(uint32_t c);
 int err(char *s);

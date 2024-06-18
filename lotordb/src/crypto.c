@@ -62,8 +62,8 @@ static void *handler_ssl_server(void *sdesc) {
   int sock = *(int*)sdesc;
   cryptokey k2 = *clear_cryptokey(&k2);
   head h = *set_header(&h, u64rnd(), u64rnd());
-  receive_data(sock, &dat, &h, BLOCK - 1);
-  for (u64 i = 0; i < 10; i++) cryption(dat[i], k2, &cd[i]);
+  receive_cryptodata(sock, &dat, &h, BLOCK - 1);
+  for (u64 i = 0; i < 10; i++) handler_cryptography(dat[i], k2, &cd[i]);
   printf("ssl 0x%.16llx 0x%.16llx 0x%.16llx\n", dat[0], dat[1], dat[2]);
 
   kvsh k;
@@ -119,7 +119,7 @@ u64 u64rnd() {
 
 //
 // Encrypt and decrypt data with shared key
-void cryption(u64 data, cryptokey k, u64 *enc) {
+void handler_cryptography(u64 data, cryptokey k, u64 *enc) {
   (*enc) = data ^ k.shar;
 }
 
@@ -145,14 +145,14 @@ int client_init(const char *host, const char *port) {
 
 //
 // Send data to client/server
-void send_data(const int s, void* data, head *h, u64 len) {
+void send_cryptodata(const int s, void* data, head *h, u64 len) {
   send(s, h, sizeof(head), 0);
   send(s, data, sizeof(u64)*len, 0);
 }
 
 //
 // Receive data from client/server
-void receive_data(const int s, void* data, head *h, u64 len) {
+void receive_cryptodata(const int s, void* data, head *h, u64 len) {
   recv(s, h, sizeof(head), 0);
   recv(s, data, sizeof(u64) * len, 0);
 }
@@ -240,8 +240,8 @@ int generate_cryptokeys_local(void) {
   printf("Alice public & private key: 0x%.16llx 0x%.16llx\n", k1.publ, k1.priv);
   printf("Bobs public & private key: 0x%.16llx 0x%.16llx\n", k2.publ, k2.priv);
   printf("Alice & Bobs shared key: 0x%.16llx 0x%.16llx\n", k1.shar, k2.shar);
-  cryption(c, k1, &d);
-  cryption(d, k2, &e);
+  handler_cryptography(c, k1, &d);
+  handler_cryptography(d, k2, &e);
   printf("Before:  0x%.16llx\nEncrypt: 0x%.16llx\nDecrypt: 0x%.16llx\n",c,d,e);
   assert(c == e);
   return c == e;
