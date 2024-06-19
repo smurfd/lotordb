@@ -109,7 +109,7 @@ static sock_in communication_init(const char *host, const char *port) {
 
 //
 // urandom generate u64
-u64 u64rnd() {
+u64 u64rnd(void) {
   u64 f7 = 0x7fffffffffffffff;
   int r[5], f = open("/dev/urandom", O_RDONLY);
   read(f, &r, sizeof r);

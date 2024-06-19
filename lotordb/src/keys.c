@@ -1,7 +1,9 @@
+#include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
+#include <assert.h>
 #include <stdio.h>
 #include "keys.h"
 #include "hash.h"
@@ -15,10 +17,6 @@ void set_key_value_store(kvsh *k, char key[256], char value[256], char store[256
   printf("KVSH: %s %s %s %s\n", key, value, store, (*k).hash);
 }
 
-//void get_key_value_store() {
-//
-//}
-
 void key_del(kvsh *k) {
   char s[512];
   strncpy(s, (*k).store, strlen((*k).store) + 1);
@@ -26,10 +24,6 @@ void key_del(kvsh *k) {
   strncat(s, (*k).key, strlen((*k).key) + 1);
   unlink(s);
 }
-
-//void key_set_store() {
-//
-//}
 
 void key_write(kvsh *k) {
   struct stat st = {0};
@@ -53,7 +47,10 @@ void key_send(const int s, kvsh *k) {
 }
 
 void key_recv(const int s, kvsh *k) {
+  char tmphash[131];
   recv(s, k, sizeof(struct kvsh), 0);
   (*k).hash[130] = '\0';
+  hash_new(tmphash, (uint8_t *)(*k).value);
+  assert(strcmp(tmphash, (*k).hash) == 0);  // assert received hash and generated hash is the same
   printf("recv: %s %s %s %s\n", (*k).key, (*k).value, (*k).store, (*k).hash);
 }

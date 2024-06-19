@@ -1,4 +1,4 @@
-CL:=clang -O3 -Wall
+CL:=clang -O3 -Wall -pedantic
 all: crypto keys hash client server tests
 
 tests: crypto.o keys.o

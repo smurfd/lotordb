@@ -2,7 +2,7 @@
 #include <assert.h>
 #include "../crypto.h"
 
-void test() {
+void test(void) {
   head h1, h2;
   h1.g = u64rnd(); h1.p = u64rnd(); h2.g = u64rnd(); h2.p = u64rnd();
   u64 c = 123456, d = 1, e = 1;
@@ -19,7 +19,7 @@ void test() {
   assert(c == e);
 }
 
-int main() {
+int main(void) {
   printf("\"[o.o]\"              testing ....              \"[o.o]\"\n\n");
   printf("lotordb test\n");
   test();

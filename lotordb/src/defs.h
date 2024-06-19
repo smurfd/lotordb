@@ -1,8 +1,6 @@
 #ifndef DEFS_H
 #define DEFS_H 1
 
-//int variable=666;
-
 #include <stdint.h>
 
 // Only defines here, no typedefs
