@@ -15,6 +15,7 @@ typedef struct secure_socket {sock_in ssls; int ssl;} sock_ssl;
 
 struct header {u64 len, ver, g, p;};
 struct cryptokeys {u64 publ, priv, shar;};
+struct connection {int socket, type;};
 
 static char enc[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
   'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
@@ -28,6 +29,7 @@ u64 u64rnd(void);
 // Client/Server
 int client_init(const char *host, const char *port);
 int server_init(const char *host, const char *port);
+int client_connect(const int s);
 int server_listen(int s);
 void client_end(int s);
 void server_end(int s);

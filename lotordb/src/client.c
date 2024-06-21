@@ -7,32 +7,13 @@
 #include "crypto.h"
 #include "keys.h"
 
-int main(void) {
+int main(int argc, char** argv) {//void) {
   int s = client_init("127.0.0.1", "9998");
 
-  if (s >= 0) {
-    u64 dat[BLOCK], cd[BLOCK];
-    cryptokey k1, k2;
-    head h;
-
-    receive_cryptokey(s, &h, &k1);
-    k2 = generate_cryptokeys(&h);
-    send_cryptokey(s, &h, &k2);
-    generate_shared_cryptokey_client(&k1, &k2, &h);
-    printf("share : 0x%.16llx\n", k1.shar);
-    for (u64 i = 0; i < 12; i++) {
-      dat[i] = (u64)i;
-      handler_cryptography(dat[i], k1, &cd[i]);
-    }
-    send_cryptodata(s, cd, &h, 11);
-    kvsh k;
-    set_key_value_store(&k, "0002", "testvalue", "/tmp");
-    key_write(&k);
-    key_del(&k);
-    key_send(s, &k);
-    client_end(s);
+  if (client_connect(s) < 0) {
+    printf("Cant connect to server\n");
+    exit(0);
   }
-  // locally generate two keypairs
-  generate_cryptokeys_local();
+  client_end(s);
   printf("OK\n");
 }

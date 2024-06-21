@@ -23,5 +23,6 @@ int main(void) {
   printf("\"[o.o]\"              testing ....              \"[o.o]\"\n\n");
   printf("lotordb test\n");
   test();
+  generate_cryptokeys_local();
   printf("OK\n");
 }

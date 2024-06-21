@@ -92,6 +92,39 @@ static void *handler_server(void *sdesc) {
   return 0;
 }
 
+static void *handler_client(void *sock) {
+  int s = *(int*)sock;
+  u64 dat[BLOCK], cd[BLOCK];
+  cryptokey k1, k2;
+  head h;
+
+  receive_cryptokey(s, &h, &k1);
+  k2 = generate_cryptokeys(&h);
+  send_cryptokey(s, &h, &k2);
+  generate_shared_cryptokey_client(&k1, &k2, &h);
+  printf("share : 0x%.16llx\n", k1.shar);
+  for (u64 i = 0; i < 12; i++) {
+    dat[i] = (u64)i;
+    handler_cryptography(dat[i], k1, &cd[i]);
+  }
+  send_cryptodata(s, cd, &h, 11);
+  pthread_exit(NULL);
+  return 0;
+}
+
+static void *handler_client_ssl(void *sock) {
+  int s = *(int*)sock;
+  kvsh k;
+
+  set_key_value_store(&k, "0002", "testvalue", "/tmp");
+  key_write(&k);
+  key_del(&k);
+  key_send(s, &k);
+  client_end(s);
+  pthread_exit(NULL);
+  return 0;
+}
+
 //
 // Communication init
 static sock_in communication_init(const char *host, const char *port) {
@@ -191,7 +224,7 @@ int server_listen(const int s) {
   int c = 1, ns[sizeof(int)], len = sizeof(sock_in);
   sock *cli = NULL;
 
-  listen(s, 3);
+  listen(s, 10);
   while (c >= 1) {
     c = accept(s, (sock*)&cli, (socklen_t*)&len);
     pthread_t thrd;
@@ -203,6 +236,16 @@ int server_listen(const int s) {
     pthread_join(thrd, NULL);
   }
   return c;
+}
+
+int client_connect(const int s) {
+  pthread_t thrd;
+  if (pthread_create(&thrd, NULL, handler_client, (void*)&s) < 0) return -1;
+  pthread_join(thrd, NULL);
+  // TODO: Only if handshake OK, we create SSL thread
+  if (pthread_create(&thrd, NULL, handler_client_ssl, (void*)&s) < 0) return -1;
+  pthread_join(thrd, NULL);
+  return 0;
 }
 
 //
