@@ -1,4 +1,5 @@
 CL:=clang -O3 -Wall -pedantic
+CC:=clang -O3 -Wall -pedantic
 
 all: tests
 
