@@ -55,72 +55,71 @@ static head *set_header(head *h, u64 a, u64 b) {
 
 //
 // SSL server handler
-static void *handler_ssl_server(void *sdesc) {
+static void *handler_ssl_server(void *conn) {
   // Switch to SSL
   // Decrypt the data
+  kvsh k;
   u64 dat[BLOCK], cd[BLOCK];
-  int sock = *(int*)sdesc;
   cryptokey k2 = *clear_cryptokey(&k2);
   head h = *set_header(&h, u64rnd(), u64rnd());
-  receive_cryptodata(sock, &dat, &h, BLOCK - 1);
+  receive_cryptodata(*(connection*)conn, &dat, &h, BLOCK - 1);
   for (u64 i = 0; i < 10; i++) handler_cryptography(dat[i], k2, &cd[i]);
   printf("ssl 0x%.16llx 0x%.16llx 0x%.16llx\n", dat[0], dat[1], dat[2]);
 
-  kvsh k;
-  key_recv(sock, &k);
-
+  if (((connection*)conn)->type == 1)
+    key_recv(((connection*)conn)->socket, &k);
   pthread_exit(NULL);
   return 0;
 }
 
 //
 // Server handler
-static void *handler_server(void *sdesc) {
+static void *handler_server(void *conn) {
   u64 g1 = u64rnd(), p1 = u64rnd();
-  int sock = *(int*)sdesc;
 
-  if (sock == -1) return (void*) - 1;
+  if (((connection*)conn)->socket == -1) return (void*) - 1;
   head h = *set_header(&h, g1, p1);
   cryptokey k1 = generate_cryptokeys(&h), k2 = *clear_cryptokey(&k2);
   // Send and receive stuff
   if (h.len > BLOCK) return (void*) - 1;
-  send_cryptokey(sock, &h, &k1);
-  receive_cryptokey(sock, &h, &k2);
+  send_cryptokey(*(connection*)conn, &h, &k1);
+  receive_cryptokey(*(connection*)conn, &h, &k2);
   generate_shared_cryptokey_server(&k1, &k2, &h);
   printf("share : 0x%.16llx\n", k2.shar);
   pthread_exit(NULL);
   return 0;
 }
 
-static void *handler_client(void *sock) {
-  int s = *(int*)sock;
+static void *handler_client(void *conn) {
   u64 dat[BLOCK], cd[BLOCK];
   cryptokey k1, k2;
   head h;
 
-  receive_cryptokey(s, &h, &k1);
+  receive_cryptokey(*(connection*)conn, &h, &k1);
   k2 = generate_cryptokeys(&h);
-  send_cryptokey(s, &h, &k2);
+  send_cryptokey(*(connection*)conn, &h, &k2);
   generate_shared_cryptokey_client(&k1, &k2, &h);
   printf("share : 0x%.16llx\n", k1.shar);
   for (u64 i = 0; i < 12; i++) {
     dat[i] = (u64)i;
     handler_cryptography(dat[i], k1, &cd[i]);
   }
-  send_cryptodata(s, cd, &h, 11);
+  send_cryptodata(*(connection*)conn, cd, &h, 11);
   pthread_exit(NULL);
   return 0;
 }
 
-static void *handler_client_ssl(void *sock) {
-  int s = *(int*)sock;
+static void *handler_client_ssl(void *conn) {
+  int s = ((connection*)conn)->socket;
   kvsh k;
 
-  set_key_value_store(&k, "0002", "testvalue", "/tmp");
-  key_write(&k);
-  key_del(&k);
-  key_send(s, &k);
-  client_end(s);
+  if (((connection*)conn)->type == 1) {
+    set_key_value_store(&k, "0002", "testvalue", "/tmp");
+    key_write(&k);
+    key_del(&k);
+    key_send(s, &k);
+  }
+  client_end(*(connection*)conn);
   pthread_exit(NULL);
   return 0;
 }
@@ -141,6 +140,22 @@ static sock_in communication_init(const char *host, const char *port) {
 // Public functions
 
 //
+// Print usage information
+int usage(char *arg, int count, char *clisrv) {
+  if (count != 2) {
+    printf("Usage:\n");
+    printf("  %s keys   # for keyvaluestore client\n", clisrv);
+    printf("  %s table  # for table database client\n", clisrv);
+    exit(0);
+  }
+  int type = 0;
+  if (strcmp(arg, "keys")==0) {type = 1;}
+  else if (strcmp(arg, "talbe")==0) {type = 2;}
+  else {printf("wrong %s type\n", clisrv); exit(0);}
+  return type;
+}
+
+//
 // urandom generate u64
 u64 u64rnd(void) {
   u64 f7 = 0x7fffffffffffffff;
@@ -158,92 +173,110 @@ void handler_cryptography(u64 data, cryptokey k, u64 *enc) {
 
 //
 // Initialize server
-int server_init(const char *host, const char *port) {
+connection server_init(const char *host, const char *port, int type) {
   int sck = socket(AF_INET, SOCK_STREAM, 0);
   sock_in adr = communication_init(host, port);
   bind(sck, (sock*)&adr, sizeof(adr));
   printf("\"[o.o]\" eating food...\n");
-  return sck;
+  connection c;
+  c.socket = sck;
+  c.type = type;
+  if (sck >= 0)
+    c.err = 0;
+  else
+    c.err = -1;
+  return c;
 }
 
 //
 // Initialize client
-int client_init(const char *host, const char *port) {
+connection client_init(const char *host, const char *port, int type) {
   int sck = socket(AF_INET, SOCK_STREAM, 0);
   sock_in adr = communication_init(host, port);
-  if (connect(sck, (sock*)&adr, sizeof(adr)) < 0) return -1;
+  connection c;
+  if (connect(sck, (sock*)&adr, sizeof(adr)) < 0) {
+    c.err = -1;
+    return c;
+  }
   printf("\"[o.o]\" finding food...\n");
-  return sck;
+  c.socket = sck;
+  c.type = type;
+  if (sck >= 0)
+    c.err = 0;
+  else
+    c.err = -1;
+  return c;
 }
 
 //
 // Send data to client/server
-void send_cryptodata(const int s, void* data, head *h, u64 len) {
-  send(s, h, sizeof(head), 0);
-  send(s, data, sizeof(u64)*len, 0);
+void send_cryptodata(connection c, void* data, head *h, u64 len) {
+  send(c.socket, h, sizeof(head), 0);
+  send(c.socket, data, sizeof(u64)*len, 0);
 }
 
 //
 // Receive data from client/server
-void receive_cryptodata(const int s, void* data, head *h, u64 len) {
-  recv(s, h, sizeof(head), 0);
-  recv(s, data, sizeof(u64) * len, 0);
+void receive_cryptodata(connection c, void* data, head *h, u64 len) {
+  recv(c.socket, h, sizeof(head), 0);
+  recv(c.socket, data, sizeof(u64) * len, 0);
 }
 
 //
 // Send key to client/server
-void send_cryptokey(int s, head *h, cryptokey *k) {
-  snd_cryptokey(s, h, k);
+void send_cryptokey(connection c, head *h, cryptokey *k) {
+  snd_cryptokey(c.socket, h, k);
 }
 
 //
 // Receive key from client/server
-void receive_cryptokey(int s, head *h, cryptokey *k) {
+void receive_cryptokey(connection c, head *h, cryptokey *k) {
   cryptokey tmp;
 
   // This to ensure if we receive a private key we clear it
-  recv_cryptokey(s, h, &tmp);
+  recv_cryptokey(c.socket, h, &tmp);
   (*k).publ = tmp.publ; (*k).shar = tmp.shar; (*k).priv = 0;
 }
 
 //
 // End connection
-void client_end(int s) {
-  close(s);
+void client_end(connection c) {
+  close(c.socket);
 }
 
 //
 // End connection
-void server_end(int s) {
-  close(s);
+void server_end(connection c) {
+  close(c.socket);
 }
 
 //
 // Server listener
-int server_listen(const int s) {
-  int c = 1, ns[sizeof(int)], len = sizeof(sock_in);
+int server_listen(connection c) {
+  int cl = 1, len = sizeof(sock_in);
   sock *cli = NULL;
 
-  listen(s, 10);
-  while (c >= 1) {
-    c = accept(s, (sock*)&cli, (socklen_t*)&len);
+  listen(c.socket, 10);
+  int tmpsock = c.socket;
+  while (cl >= 1) {
+    cl = accept(tmpsock, (sock*)&cli, (socklen_t*)&len);
     pthread_t thrd;
-    *ns = c;
-    if (pthread_create(&thrd, NULL, handler_server, (void*)ns) < 0) return -1;
+    c.socket = cl;
+    if (pthread_create(&thrd, NULL, handler_server, (void*)&c) < 0) return -1;
     pthread_join(thrd, NULL);
     // TODO: Only if handshake OK, we create SSL thread
-    if (pthread_create(&thrd, NULL, handler_ssl_server, (void*)ns) < 0) return -1;
+    if (pthread_create(&thrd, NULL, handler_ssl_server, (void*)&c) < 0) return -1;
     pthread_join(thrd, NULL);
   }
-  return c;
+  return cl;
 }
 
-int client_connect(const int s) {
+int client_connect(connection c) {
   pthread_t thrd;
-  if (pthread_create(&thrd, NULL, handler_client, (void*)&s) < 0) return -1;
+  if (pthread_create(&thrd, NULL, handler_client, (void*)&c) < 0) return -1;
   pthread_join(thrd, NULL);
   // TODO: Only if handshake OK, we create SSL thread
-  if (pthread_create(&thrd, NULL, handler_client_ssl, (void*)&s) < 0) return -1;
+  if (pthread_create(&thrd, NULL, handler_client_ssl, (void*)&c) < 0) return -1;
   pthread_join(thrd, NULL);
   return 0;
 }
@@ -272,6 +305,7 @@ cryptokey generate_cryptokeys(head *h) {
 
 //
 // Generate a keypair & shared key then print it (test / demo)
+// TODO: remove, since we have this in test
 int generate_cryptokeys_local(void) {
   head h1 = *set_header(&h1, u64rnd(), u64rnd());
   head h2 = *set_header(&h2, u64rnd(), u64rnd());

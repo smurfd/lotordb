@@ -10,12 +10,17 @@ typedef struct asn asn;
 typedef struct header head;
 typedef struct sockaddr sock;
 typedef struct sockaddr_in sock_in;
+typedef struct connection connection;
 typedef struct cryptokeys cryptokey;
 typedef struct secure_socket {sock_in ssls; int ssl;} sock_ssl;
 
 struct header {u64 len, ver, g, p;};
 struct cryptokeys {u64 publ, priv, shar;};
-struct connection {int socket, type;};
+struct connection {
+  int socket; // socket used for connection
+  int type;   // what type of client/server: 1 = keyvaluestore, 2 = tables db
+  int err;    // error
+};
 
 static char enc[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
   'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
@@ -25,20 +30,20 @@ static u64 n1[] = {0x000003f, 0x0000fc0, 0x003f000, 0x01c0000, 0x0000800, 0x0000
            n2[] = {0x00efbfbf, 0x000f0000, 0x003f0000, 0x07000000, 0x00003f00, 0x0000003f};
 
 u64 u64rnd(void);
-
 // Client/Server
-int client_init(const char *host, const char *port);
-int server_init(const char *host, const char *port);
-int client_connect(const int s);
-int server_listen(int s);
-void client_end(int s);
-void server_end(int s);
+int usage(char *arg, int count, char *clisrv);
+connection client_init(const char *host, const char *port, int type);
+connection server_init(const char *host, const char *port, int type);
+int client_connect(connection c);
+int server_listen(connection c);
+void client_end(connection c);
+void server_end(connection c);
 
 // Send/Receive
-void send_cryptodata(const int s, void* data, head *h, u64 len);
-void send_cryptokey(int s, head *h, cryptokey *k);
-void receive_cryptodata(const int s, void* data, head *h, u64 len);
-void receive_cryptokey(int s, head *h, cryptokey *k);
+void send_cryptodata(connection c, void* data, head *h, u64 len);
+void send_cryptokey(connection c, head *h, cryptokey *k);
+void receive_cryptodata(connection c, void* data, head *h, u64 len);
+void receive_cryptokey(connection c, head *h, cryptokey *k);
 
 // Generators
 void generate_shared_cryptokey_client(cryptokey *k1, cryptokey *k2, head *h);
