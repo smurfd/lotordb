@@ -2,6 +2,8 @@
 #include <assert.h>
 #include "../crypto.h"
 
+//
+// Generate a keypair & shared key then print it (test / demo)
 void test(void) {
   head h1, h2;
   h1.g = u64rnd(); h1.p = u64rnd(); h2.g = u64rnd(); h2.p = u64rnd();
@@ -23,6 +25,5 @@ int main(void) {
   printf("\"[o.o]\"              testing ....              \"[o.o]\"\n\n");
   printf("lotordb test\n");
   test();
-  generate_cryptokeys_local();
   printf("OK\n");
 }

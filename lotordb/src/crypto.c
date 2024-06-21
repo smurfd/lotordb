@@ -303,27 +303,6 @@ cryptokey generate_cryptokeys(head *h) {
   return k;
 }
 
-//
-// Generate a keypair & shared key then print it (test / demo)
-// TODO: remove, since we have this in test
-int generate_cryptokeys_local(void) {
-  head h1 = *set_header(&h1, u64rnd(), u64rnd());
-  head h2 = *set_header(&h2, u64rnd(), u64rnd());
-  u64 c = 123456, d = 1, e = 1;
-  cryptokey k1 = generate_cryptokeys(&h1), k2 = generate_cryptokeys(&h2);
-
-  generate_shared_cryptokey_client(&k1, &k2, &h1);
-  generate_shared_cryptokey_server(&k1, &k2, &h1);
-  printf("Alice public & private key: 0x%.16llx 0x%.16llx\n", k1.publ, k1.priv);
-  printf("Bobs public & private key: 0x%.16llx 0x%.16llx\n", k2.publ, k2.priv);
-  printf("Alice & Bobs shared key: 0x%.16llx 0x%.16llx\n", k1.shar, k2.shar);
-  handler_cryptography(c, k1, &d);
-  handler_cryptography(d, k2, &e);
-  printf("Before:  0x%.16llx\nEncrypt: 0x%.16llx\nDecrypt: 0x%.16llx\n",c,d,e);
-  assert(c == e);
-  return c == e;
-}
-
 static uint32_t oct(int i, int inl, const uint8_t d[]) {
   if (i < inl) return d[i];
   return 0;
@@ -332,32 +311,6 @@ static uint32_t oct(int i, int inl, const uint8_t d[]) {
 static uint32_t sex(const char d[], char c[], int i) {
   if (d[i] == '=') return (0 & i++);
   return c[(int)d[i]];
-}
-
-//
-// Random rotate
-static u64 prng_rotate(u64 x, u64 k) {
-  return (x << k) | (x >> (32 - k));
-}
-
-//
-// Random next
-static u64 prng_next(void) {
-  u64 e = prng_ctx.a - prng_rotate(prng_ctx.b, 27);
-
-  prng_ctx.a = prng_ctx.b ^ prng_rotate(prng_ctx.c, 17);
-  prng_ctx.b = prng_ctx.c + prng_ctx.d;
-  prng_ctx.c = prng_ctx.d + e; prng_ctx.d = e + prng_ctx.a;
-  return prng_ctx.d;
-}
-
-//
-// Random init
-static void prng_init(u64 seed) {
-  prng_ctx.a = 0xea7f00d1;
-
-  prng_ctx.b = prng_ctx.c = prng_ctx.d = seed;
-  for (u64 i = 0; i < 31; ++i) (void)prng_next();
 }
 
 //
@@ -421,16 +374,6 @@ int base64dec(uint8_t dd[], const char *data, int inl) {
         dd[j++] = (tri >> k * 8) & 0xff;
   }
   return ol;
-}
-
-//
-// "Randomizer"
-int lrand(uint8_t h[], u64 k[]) {
-  prng_init((u64)(0xea1 ^ 0x31ee7 ^ 42) | 0xe1ee77ee | 31337);
-  for (int i = 0; i < BYTES; ++i) {
-    h[i] = (uint8_t)prng_next(); k[i] = prng_next();
-  }
-  return 1;
 }
 
 // big[i] =
