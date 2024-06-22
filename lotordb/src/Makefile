@@ -1,25 +1,28 @@
 CL:=clang -O3 -Wall -pedantic
 CC:=clang -O3 -Wall -pedantic
-all: crypto keys hash client server tests
+BUILD:=.build
 
-tests: crypto.o keys.o
+all: crypto keys hash client server test
+
+crypto:
+	mkdir -p ${BUILD}
+	${CL} -c crypto.c -o ${BUILD}/crypto.o
+
+keys:
+	${CL} -c keys.c -o ${BUILD}/keys.o
+
+hash:
+	${CL} -c hash.c -o ${BUILD}/hash.o
+
+client:
+	${CL} -o ${BUILD}/client client.c ${BUILD}/crypto.o ${BUILD}/keys.o ${BUILD}/hash.o -fuse-ld=lld -lpthread -lm
+
+server:
+	${CL} -o ${BUILD}/server server.c ${BUILD}/crypto.o ${BUILD}/keys.o ${BUILD}/hash.o -fuse-ld=lld -lpthread -lm
+
+test:
 	make -Ctests
-	./tests/tests
-
-crypto: crypto.o keys.o
-	${CL} -c crypto.c
-
-keys: keys.o
-	${CL} -c keys.c
-
-hash: hash.o crypto.o
-	${CL} -c hash.c
-
-client: crypto.o keys.o hash.o
-	${CL} -o client client.c crypto.o keys.o hash.o -fuse-ld=lld -lpthread -lm
-
-server: crypto.o keys.o hash.o
-	${CL} -o server server.c crypto.o keys.o hash.o -fuse-ld=lld -lpthread -lm
+	${BUILD}/tests
 
 clean:
-	rm tests/tests crypto.o keys.o hash.o client server
+	rm ${BUILD}/crypto.o ${BUILD}/keys.o ${BUILD}/hash.o ${BUILD}/client ${BUILD}/server ${BUILD}/tests

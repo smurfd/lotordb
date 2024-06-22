@@ -1,7 +1,8 @@
 CL:=clang -O3 -Wall -pedantic
 CC:=clang -O3 -Wall -pedantic
+BUILD:=../.build
 
 all: tests
 
 tests:
-	${CL} -o tests tests.c ../crypto.o ../keys.o ../hash.o -fuse-ld=lld -lpthread -lm
+	${CL} -o ${BUILD}/tests tests.c ${BUILD}/crypto.o ${BUILD}/keys.o ${BUILD}/hash.o -fuse-ld=lld -lpthread -lm
