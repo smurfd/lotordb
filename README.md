@@ -29,7 +29,10 @@ Start Key client in one terminal: `PYTHONPATH="." python3 lotordb/client.py key`
 ### C backend
 ```
 make -Clotordb/src
-./lotordb/src/server (in one terminal)
-./lotordb/src/client (in one terminal)
+./lotordb/src/server keys (in one terminal, keyvalue store server)
+./lotordb/src/client keys (in one terminal, keyvalue store client)
+
+./lotordb/src/server table (in one terminal, table server)
+./lotordb/src/client table (in one terminal, table client)
 ```
 "[o.o]"

@@ -12,24 +12,23 @@ typedef struct sockaddr sock;
 typedef struct sockaddr_in sock_in;
 typedef struct connection connection;
 typedef struct cryptokeys cryptokey;
-typedef struct secure_socket {sock_in ssls; int ssl;} sock_ssl;
 
-struct header {u64 len, ver, g, p;};
-struct cryptokeys {u64 publ, priv, shar;};
+struct header {
+  u64 len;    // length
+  u64 ver;    // version
+  u64 g;      // global
+  u64 p;      // private
+};
+struct cryptokeys {
+  u64 publ;   // public key
+  u64 priv;   // private key
+  u64 shar;   // shared key
+};
 struct connection {
   int socket; // socket used for connection
   int type;   // what type of client/server: 1 = keyvaluestore, 2 = tables db
   int err;    // error
 };
-
-// base64encode/decode
-static char enc[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
-  'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
-  's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'};
-
-// utf8encode/decode
-static u64 n1[] = {0x000003f, 0x0000fc0, 0x003f000, 0x01c0000, 0x0000800, 0x0000c080, 0x0010000, 0x00e08080, 0xf0808080};
-static u64 n2[] = {0x00efbfbf, 0x000f0000, 0x003f0000, 0x07000000, 0x00003f00, 0x0000003f};
 
 u64 u64rnd(void);
 // Client/Server

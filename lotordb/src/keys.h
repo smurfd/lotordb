@@ -6,7 +6,12 @@
 #include <netinet/in.h>
 #include "defs.h"
 
-typedef struct kvsh {char key[256]; char value[256]; char store[256]; char hash[131];} kvsh;
+typedef struct kvsh {
+  char key[256];
+  char value[256];
+  char store[256];
+  char hash[131];
+} kvsh;
 
 void set_key_value_store(kvsh *k, char key[256], char value[256], char store[256]);
 void key_write(kvsh *k);
