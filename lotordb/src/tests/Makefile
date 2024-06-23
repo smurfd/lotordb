@@ -5,4 +5,4 @@ BUILD:=../.build
 all: tests
 
 tests:
-	${CL} -o ${BUILD}/tests tests.c ${BUILD}/crypto.o ${BUILD}/keys.o ${BUILD}/hash.o -fuse-ld=lld -lpthread -lm
+	${CL} -o ${BUILD}/tests tests.c ${BUILD}/crypto.o ${BUILD}/keys.o ${BUILD}/hash.o ${BUILD}/tables.o -fuse-ld=lld -lpthread -lm

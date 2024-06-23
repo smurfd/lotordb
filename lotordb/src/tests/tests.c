@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <assert.h>
 #include "../crypto.h"
+#include "../tables.h"
+#include "../keys.h"
 
 //
 // Generate a keypair & shared key then print it (test / demo)
-void test(void) {
+void test_genkeys(void) {
   head h1, h2;
   h1.g = u64rnd(); h1.p = u64rnd(); h2.g = u64rnd(); h2.p = u64rnd();
   u64 c = 123456, d = 1, e = 1;
@@ -24,6 +26,6 @@ void test(void) {
 int main(void) {
   printf("\"[o.o]\"              testing ....              \"[o.o]\"\n\n");
   printf("lotordb test\n");
-  test();
+  test_genkeys();
   printf("OK\n");
 }

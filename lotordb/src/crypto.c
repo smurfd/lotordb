@@ -14,6 +14,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include "crypto.h"
+#include "tables.h"
 #include "keys.h"
 #include "defs.h"
 
@@ -58,6 +59,7 @@ static head *set_header(head *h, u64 a, u64 b) {
 static void *handler_ssl_server(void *conn) {
   // Switch to SSL
   // Decrypt the data
+  tbls t;
   kvsh k;
   u64 dat[BLOCK], cd[BLOCK];
   cryptokey k2 = *clear_cryptokey(&k2);
@@ -66,8 +68,11 @@ static void *handler_ssl_server(void *conn) {
   for (u64 i = 0; i < 10; i++) handler_cryptography(dat[i], k2, &cd[i]);
   printf("ssl 0x%.16llx 0x%.16llx 0x%.16llx\n", dat[0], dat[1], dat[2]);
 
-  if (((connection*)conn)->type == 1)
+  if (((connection*)conn)->type == 1) {
     key_recv(((connection*)conn)->socket, &k);
+  } else if (((connection*)conn)->type == 2) {
+    table_recv(((connection*)conn)->socket, &t);
+  }
   pthread_exit(NULL);
   return 0;
 }
@@ -111,6 +116,7 @@ static void *handler_client(void *conn) {
 
 static void *handler_client_ssl(void *conn) {
   int s = ((connection*)conn)->socket;
+  tbls t;
   kvsh k;
 
   if (((connection*)conn)->type == 1) {
@@ -118,6 +124,8 @@ static void *handler_client_ssl(void *conn) {
     key_write(&k);
     key_del(&k);
     key_send(s, &k);
+  } else if (((connection*)conn)->type == 2) {
+    table_send(s, &t);
   }
   client_end(*(connection*)conn);
   pthread_exit(NULL);

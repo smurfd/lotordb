@@ -1,11 +1,11 @@
+#include <sys/socket.h>
 #include "tables.h"
 #include "defs.h"
 
-void tables_send(const int s, tables *t) {
-
+void table_send(const int s, tbls *t) {
+  send(s, t, sizeof(struct tbls), 0);
 }
 
-void tables_recv(const int s, tables *t) {
-
+void table_recv(const int s, tbls *t) {
+  recv(s, t, sizeof(struct tbls), 0);
 }
-

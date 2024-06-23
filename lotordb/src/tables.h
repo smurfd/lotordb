@@ -1,9 +1,9 @@
-#ifndef CRYPTO_H
-#define CRYPTO_H 1
+#ifndef TABLES_H
+#define TABLES_H 1
 #include <stdbool.h>
 #include "defs.h"
 
-typedef struct index {
+typedef struct dbindex {
   u64 index;
   u64 dbindex;
   u64 database;
@@ -12,9 +12,9 @@ typedef struct index {
   u64 col;
   u64 segments;
   u64 seek;
-} index;
+} dbindex;
 
-typedef struct data {
+typedef struct dbdata {
   u64 index;
   u64 database;
   u64 table;
@@ -22,14 +22,13 @@ typedef struct data {
   u64 row;
   u64 col;
   char data[4048];
-} data;
+} dbdata;
 
+typedef struct tbls {
+  dbindex i;
+  dbdata d;
+} tbls;
 
-typedef struct tables {
-  index i;
-  data d;
-} tables;
-
-void tables_send(const int s, tables *t);
-void tables_recv(const int s, tables *t);
+void table_send(const int s, tbls *t);
+void table_recv(const int s, tbls *t);
 #endif
