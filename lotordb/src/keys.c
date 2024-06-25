@@ -48,7 +48,7 @@ void key_send(const int s, kvsh *k) {
 
 void key_recv(const int s, kvsh *k) {
   char tmphash[131];
-  recv(s, k, sizeof(struct kvsh), 0);
+  printf("key recv %d\n", recv(s, k, sizeof(struct kvsh), 0));
   (*k).hash[130] = '\0';
   hash_new(tmphash, (uint8_t *)(*k).value);
   printf("tmp %s\n", tmphash);

@@ -67,11 +67,18 @@ static void *handler_ssl_server(void *conn) {
   receive_cryptodata(*(connection*)conn, &dat, &h, BLOCK - 1);
   for (u64 i = 0; i < 10; i++) handler_cryptography(dat[i], k2, &cd[i]);
   printf("ssl 0x%.16llx 0x%.16llx 0x%.16llx\n", dat[0], dat[1], dat[2]);
-
+  int s = ((connection*)conn)->socket;
   if (((connection*)conn)->type == 1) {
+    printf("recv sock %d\n", ((connection*)conn)->socket);
     key_recv(((connection*)conn)->socket, &k);
   } else if (((connection*)conn)->type == 2) {
-    table_recv(((connection*)conn)->socket, &t);
+    dbdata k2;
+    dbindex k3;
+    table_recv2(((connection*)conn)->socket, &k2);
+    table_recv3(((connection*)conn)->socket, &k3);
+    printf("tbl recv %s %llu %llu\n", k2.unique_id, k2.xxx, k3.index);
+    table_write_index(&k3, "/tmp/dbindex1.db1");
+    table_write_data(&k2, &k3);
   }
   pthread_exit(NULL);
   return 0;
@@ -81,7 +88,6 @@ static void *handler_ssl_server(void *conn) {
 // Server handler
 static void *handler_server(void *conn) {
   u64 g1 = u64rnd(), p1 = u64rnd();
-
   if (((connection*)conn)->socket == -1) return (void*) - 1;
   head h = *set_header(&h, g1, p1);
   cryptokey k1 = generate_cryptokeys(&h), k2 = *clear_cryptokey(&k2);
@@ -99,7 +105,6 @@ static void *handler_client(void *conn) {
   u64 dat[BLOCK], cd[BLOCK];
   cryptokey k1, k2;
   head h;
-
   receive_cryptokey(*(connection*)conn, &h, &k1);
   k2 = generate_cryptokeys(&h);
   send_cryptokey(*(connection*)conn, &h, &k2);
@@ -118,14 +123,19 @@ static void *handler_client_ssl(void *conn) {
   int s = ((connection*)conn)->socket;
   tbls t;
   kvsh k;
-
   if (((connection*)conn)->type == 1) {
     set_key_value_store(&k, "0002", "testvalue", "/tmp");
     key_write(&k);
     key_del(&k);
     key_send(s, &k);
   } else if (((connection*)conn)->type == 2) {
-    table_send(s, &t);
+    dbdata d;
+    dbindex di;
+    set_table2(&d, "stuff", "stuff * 2", 66699);
+    sleep(1); // TODO: wtf no sleep til brooklyn
+    table_send2(((connection*)conn)->socket, &d);
+    set_table3(&di, 1234, "stuff", 1111, "/tmp/dbdata.d1");
+    table_send3(((connection*)conn)->socket, &di);
   }
   client_end(*(connection*)conn);
   pthread_exit(NULL);
@@ -158,7 +168,7 @@ int usage(char *arg, int count, char *clisrv) {
   }
   int type = 0;
   if (strcmp(arg, "keys")==0) {type = 1;}
-  else if (strcmp(arg, "talbe")==0) {type = 2;}
+  else if (strcmp(arg, "table")==0) {type = 2;}
   else {printf("wrong %s type\n", clisrv); exit(0);}
   return type;
 }
@@ -268,24 +278,24 @@ int server_listen(connection c) {
   int tmpsock = c.socket;
   while (cl >= 1) {
     cl = accept(tmpsock, (sock*)&cli, (socklen_t*)&len);
-    pthread_t thrd;
+    pthread_t thrd, thrd_ssl;
     c.socket = cl;
-    if (pthread_create(&thrd, NULL, handler_server, (void*)&c) < 0) return -1;
+    if (pthread_create(&thrd, NULL, handler_server, (void*)&c) < 0) {printf("ERR1\n");return -1;}
     pthread_join(thrd, NULL);
     // TODO: Only if handshake OK, we create SSL thread
-    if (pthread_create(&thrd, NULL, handler_ssl_server, (void*)&c) < 0) return -1;
-    pthread_join(thrd, NULL);
+    if (pthread_create(&thrd_ssl, NULL, handler_ssl_server, (void*)&c) < 0) {printf("ERR2\n");return -1;}
+    pthread_join(thrd_ssl, NULL);
   }
   return cl;
 }
 
 int client_connect(connection c) {
-  pthread_t thrd;
-  if (pthread_create(&thrd, NULL, handler_client, (void*)&c) < 0) return -1;
+  pthread_t thrd, thrd_ssl;
+  if (pthread_create(&thrd, NULL, handler_client, (void*)&c) < 0) {printf("ERR3\n");return -1;}
   pthread_join(thrd, NULL);
   // TODO: Only if handshake OK, we create SSL thread
-  if (pthread_create(&thrd, NULL, handler_client_ssl, (void*)&c) < 0) return -1;
-  pthread_join(thrd, NULL);
+  if (pthread_create(&thrd_ssl, NULL, handler_client_ssl, (void*)&c) < 0) {printf("ERR4\n");return -1;}
+  pthread_join(thrd_ssl, NULL);
   return 0;
 }
 
