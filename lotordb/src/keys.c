@@ -42,13 +42,14 @@ void key_write(kvsh *k) {
 }
 
 void key_send(const int s, kvsh *k) {
-  send(s, k, sizeof(struct kvsh), 0);
-  printf("sent: %s %s %s %s\n", (*k).key, (*k).value, (*k).store, (*k).hash);
+  int x = send(s, k, sizeof(struct kvsh), 0);
+  printf("sent: %s %s %s %s %d\n", (*k).key, (*k).value, (*k).store, (*k).hash, x);
 }
 
 void key_recv(const int s, kvsh *k) {
   char tmphash[131];
   printf("key recv %d\n", recv(s, k, sizeof(struct kvsh), 0));
+  printf("key %s %d\n", (*k).key, sizeof(struct kvsh));
   (*k).hash[130] = '\0';
   hash_new(tmphash, (uint8_t *)(*k).value);
   printf("tmp %s\n", tmphash);

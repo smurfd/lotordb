@@ -240,28 +240,105 @@ static sock_in communication_init(const char *host, const char *port) {
 }
 
 ///////////////////////////////////////////////////////////////////////////vvvvv
-//void *server_connection_handler(void *socket_desc) {
-void *server_connection_handler(void *conn) {//void *socket_desc) {
+
+//void *client_connection_handler(void *socket_desc) {
+static void *client_connection_handler(void *conn) {
+  
+  printf("cli handlrrr\n");
+  u64 dat[BLOCK], cd[BLOCK];
+  cryptokey k1, k2;
+  head h;
+  receive_cryptokey(*(connection*)conn, &h, &k1);
+  k2 = generate_cryptokeys(&h);
+  send_cryptokey(*(connection*)conn, &h, &k2);
+  generate_shared_cryptokey_client(&k1, &k2, &h);
+  printf("share : 0x%.16llx\n", k1.shar);
+  for (u64 i = 0; i < 12; i++) {
+    dat[i] = (u64)i;
+    handler_cryptography(dat[i], k1, &cd[i]);
+  }
+
+  send_cryptodata(*(connection*)conn, cd, &h, 11);
+  printf("CLI CRYPTO DONE\n");
+  
+  //int sock = *(int*)((connection*)conn)->clisocket;
+  int sock = *((connection*)conn)->clisocket;
   //int sock = *(int*)socket_desc;
+  printf("cli type: %d %d\n", ((connection*)conn)->type, sock);
+  if (((connection*)conn)->type == 1) {
+    kvsh *k = (kvsh*)malloc(sizeof(struct kvsh));
+    set_key_value_store(k, "0002", "testvalue", "/tmp");
+    key_write(k);
+    key_del(k);
+    key_send(sock, k);
+    free(k);
+/*
+    set_key_value_store(&k, "0002", "testvalue", "/tmp");
+    key_write(&k);
+    key_del(&k);
+    key_send(sock, &k);
+*/
+  } else if (((connection*)conn)->type == 2) {
+    for (int i=0;i<20;i++) {
+      tbls *t = (tbls*)malloc(sizeof(struct tbls));
+      set_table2(&t->d, "stuff", "stuff * 2", 66699);
+      set_table3(&t->i, 1234, "stuff", 1111, "/tmp/dbdata.d1");
+      table_send4(sock, t);
+      free(t);
+    }
+  }
+  //free(socket_desc);
+  //free(((connection*)conn)->clisocket);
+  return 0;
+}
+
+//void *server_connection_handler(void *socket_desc) {
+static void *server_connection_handler(void *conn) {//void *socket_desc) {
+  //int sock = *(int*)socket_desc;
+  
+  u64 dat[BLOCK], cd[BLOCK];
+  u64 g1 = u64rnd(), p1 = u64rnd();
+  if (((connection*)conn)->socket == -1) return (void*) - 1;
+  head h = *set_header(&h, g1, p1);
+  cryptokey k1 = generate_cryptokeys(&h), k2 = *clear_cryptokey(&k2);
+  // Send and receive stuff
+  if (h.len > BLOCK) return (void*) - 1;
+  send_cryptokey(*(connection*)conn, &h, &k1);
+  receive_cryptokey(*(connection*)conn, &h, &k2);
+  generate_shared_cryptokey_server(&k1, &k2, &h);
+  printf("share : 0x%.16llx\n", k2.shar);
+  receive_cryptodata(*(connection*)conn, cd, &h, 11);
+  printf("SRV CRYPTO DONE\n");
+
   int sock = *((connection*)conn)->clisocket;
   int read_size;
-  tbls *t = (tbls*)malloc(sizeof(struct tbls));
+  //tbls *t = (tbls*)malloc(sizeof(struct tbls));
   printf("srv type: %d\n", ((connection*)conn)->type);
 
-  printf("srv clisock %d\n", sock);
-  read_size = recv(sock, t, sizeof(struct tbls), 0);
-  printf("srv recv %llu %llu : %s\n", t->i.index, t->d.xxx, t->i.unique_id);
-  //while ((read_size = recv(sock, t, sizeof(struct tbls), 0)) > 0) {
-  //  printf("srv recv %llu %llu : %s\n", t->i.index, t->d.xxx, t->i.unique_id);
-  //}
-  if (read_size == 0) {
-    puts("Client disconnected");
-    fflush(stdout);
-  } else if (read_size == -1) {
-    perror("recv failed");
+
+  if (((connection*)conn)->type == 1) {
+  kvsh k;// = (kvsh*)malloc(sizeof(struct kvsh));
+    printf("recv sock %d\n", ((connection*)conn)->socket);
+    key_recv(sock, &k);
+    //free(k);
+    //key_recv(((connection*)conn)->socket, k);
+  } else if (((connection*)conn)->type == 2) {
+  tbls *t = (tbls*)malloc(sizeof(struct tbls));
+    printf("srv clisock %d\n", sock);
+    //read_size = recv(sock, t, sizeof(struct tbls), 0);
+    //printf("srv recv %llu %llu : %s\n", t->i.index, t->d.xxx, t->i.unique_id);
+    while ((read_size = recv(sock, t, sizeof(struct tbls), 0)) > 0) {
+      printf("srv recv %llu %llu : %s\n", t->i.index, t->d.xxx, t->i.unique_id);
+    }
+    if (read_size == 0) {
+      puts("Client disconnected");
+      fflush(stdout);
+    } else if (read_size == -1) {
+      perror("recv failed");
+    }
+    free(t);
   }
-  free(t);
-  free(((connection*)conn)->clisocket);
+  //free(((connection*)conn)->clisocket);
   //free(socket_desc);
   return 0;
 }
@@ -308,29 +385,6 @@ int server_handle(connection conn) {//int socket_desc) {
     return 1;
   }
   return client_sock;
-}
-
-//void *client_connection_handler(void *socket_desc) {
-void *client_connection_handler(void *conn) {
-  printf("cli handlrrr\n");
-  //int sock = *(int*)((connection*)conn)->clisocket;
-  int sock = *((connection*)conn)->clisocket;
-  //int sock = *(int*)socket_desc;
-  printf("cli type: %d %d\n", ((connection*)conn)->type, sock);
-  if (((connection*)conn)->type == 1) {
-
-  } else if (((connection*)conn)->type == 2) {
-    for (int i=0;i<20;i++) {
-      tbls *t = (tbls*)malloc(sizeof(struct tbls));
-      set_table2(&t->d, "stuff", "stuff * 2", 66699);
-      set_table3(&t->i, 1234, "stuff", 1111, "/tmp/dbdata.d1");
-      table_send4(sock, t);
-      free(t);
-    }
-  }
-  //free(socket_desc);
-  //free(((connection*)conn)->clisocket);
-  return 0;
 }
 
 int client_connection() {
@@ -496,30 +550,40 @@ connection client_init(const char *host, const char *port, int type) {
 //
 // Send data to client/server
 void send_cryptodata(connection c, void* data, head *h, u64 len) {
-  send(c.socket, h, sizeof(head), 0);
-  send(c.socket, data, sizeof(u64)*len, 0);
+  int sock = *((connection*)&c)->clisocket;
+  send(sock, h, sizeof(head), 0);
+  //send(c.socket, h, sizeof(head), 0);
+  //send(c.socket, data, sizeof(u64)*len, 0);
+  send(sock, data, sizeof(u64)*len, 0);
 }
 
 //
 // Receive data from client/server
 void receive_cryptodata(connection c, void* data, head *h, u64 len) {
-  recv(c.socket, h, sizeof(head), 0);
-  recv(c.socket, data, sizeof(u64) * len, 0);
+  int sock = *((connection*)&c)->clisocket;
+  recv(sock, h, sizeof(head), 0);
+  //recv(c.socket, h, sizeof(head), 0);
+  //recv(c.socket, data, sizeof(u64) * len, 0);
+  recv(sock, data, sizeof(u64) * len, 0);
 }
 
 //
 // Send key to client/server
 void send_cryptokey(connection c, head *h, cryptokey *k) {
-  snd_cryptokey(c.socket, h, k);
+  int sock = *((connection*)&c)->clisocket;
+  //snd_cryptokey(c.socket, h, k);
+  snd_cryptokey(sock, h, k);
 }
 
 //
 // Receive key from client/server
 void receive_cryptokey(connection c, head *h, cryptokey *k) {
+  int sock = *((connection*)&c)->clisocket;
   cryptokey tmp;
 
   // This to ensure if we receive a private key we clear it
-  recv_cryptokey(c.socket, h, &tmp);
+  //recv_cryptokey(c.socket, h, &tmp);
+  recv_cryptokey(sock, h, &tmp);
   (*k).publ = tmp.publ; (*k).shar = tmp.shar; (*k).priv = 0;
 }
 
