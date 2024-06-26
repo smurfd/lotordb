@@ -31,6 +31,10 @@ void table_send3(const int s, dbindex *d) {
   send(s, d, sizeof(struct dbindex), 0);  
 }
 
+void table_send4(const int s, tbls *d) {
+  send(s, d, sizeof(struct tbls), 0);  
+}
+
 void set_table2(dbdata *k, char unique_id[256], char data[4096], u64 xxx) {
   strncpy((*k).unique_id, unique_id, strlen(unique_id)+1);
   strncpy((*k).data, data, strlen(data)+1);
@@ -53,4 +57,9 @@ void table_recv2(const int s, dbdata *k) {
 void table_recv3(const int s, dbindex *k) {
   recv(s, k, sizeof(struct dbindex), 0);
   printf("hsh %s %llu \n", (*k).unique_id, (*k).index);
+}
+
+void table_recv4(const int s, tbls *k) {
+  recv(s, k, sizeof(struct tbls), 0);
+  printf("hsh %s %llu \n", (*k).d.unique_id, (*k).i.index);
 }

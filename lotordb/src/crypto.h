@@ -26,6 +26,7 @@ struct cryptokeys {
 };
 struct connection {
   int socket; // socket used for connection
+  int *clisocket;// clientsocket
   int type;   // what type of client/server: 1 = keyvaluestore, 2 = tables db
   int err;    // error
 };
@@ -63,6 +64,18 @@ int base64dec(uint8_t dd[], const char *data, int inl);
 void bit_pack(u64 big[], const uint8_t byte[]);
 void bit_unpack(uint8_t byte[], const u64 big[]);
 void bit_hex_str(char hs[], const uint8_t *d, const int len);
+
+
+
+
+connection client_init2(const char *host, const char *port, int type);
+connection server_init2(const char *host, const char *port, int type);
+
+
+int server_listener();
+int server_handle(connection conn);//int socket_desc);
+int client_handle(connection conn);//int sock);
+int client_connection();
 #endif
 
 // Very simple handshake

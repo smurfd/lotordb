@@ -71,6 +71,8 @@ void table_recv3(const int s, dbindex *k);
 void table_recv2(const int s, dbdata *k);
 void set_table2(dbdata *k, char unique_id[256], char data[4096], u64 xxx);
 void table_send2(const int s, dbdata *d);//tbls *t);
+void table_send4(const int s, tbls *d);
+void table_recv4(const int s, tbls *k);
 //void set_key_value_store1(kvsh *k, char key[256], char value[256], char store[256]);
 //void key_write1(kvsh *k);
 //void key_del1(kvsh *k);

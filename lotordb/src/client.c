@@ -9,11 +9,26 @@
 
 int main(int argc, char** argv) {
   int type = usage(argv[1], argc, "client");
+/*
   connection c = client_init("127.0.0.1", "9998", type);
   if (client_connect(c) < 0) {
     printf("Cant connect to server\n");
     exit(0);
   }
   client_end(c);
+*/
+  /*
+  int sock = client_connection();
+  puts("Connected\n");
+  sock = client_handle(sock);
+  puts("Handler assigned");
+  close(sock);
+  */
+  connection c = client_init2("127.0.0.1", "9998", type);
+  if (client_handle(c) < 0) {
+    printf("Cant connect to server\n");
+    exit(0);
+  }
+  close(c.socket);
   printf("OK\n");
 }
