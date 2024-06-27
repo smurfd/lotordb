@@ -18,7 +18,6 @@ typedef struct dbindex {
 typedef struct dbdata {
   char unique_id[256];
   char data[4096];
-  //u64 xxx;
 } dbdata;
 
 typedef struct tbls {

@@ -6,46 +6,38 @@
 #include <netinet/in.h>
 #include "defs.h"
 
-typedef struct asn asn;
-typedef struct header head;
-typedef struct sockaddr sock;
-typedef struct sockaddr_in sock_in;
-typedef struct connection connection;
-typedef struct cryptokeys cryptokey;
-typedef struct sockets sockets;
+typedef struct header {
+  u64 len;                   // length
+  u64 ver;                   // version
+  u64 g;                     // global
+  u64 p;                     // private
+} head;
 
-struct header {
-  u64 len;        // length
-  u64 ver;        // version
-  u64 g;          // global
-  u64 p;          // private
-};
+typedef struct cryptokeys {
+  u64 publ;                  // public key
+  u64 priv;                  // private key
+  u64 shar;                  // shared key
+} cryptokey;
 
-struct cryptokeys {
-  u64 publ;       // public key
-  u64 priv;       // private key
-  u64 shar;       // shared key
-};
+typedef struct connection {
+  int socket;                // socket used for connection
+  int *clisocket;            // clientsocket
+  int type;                  // what type of client/server: 1 = keyvaluestore, 2 = tablesdb
+  int err;                   // error
+} connection;
 
-struct connection {
-  int socket;     // socket used for connection
-  int *clisocket; // clientsocket
-  int type;       // what type of client/server: 1 = keyvaluestore, 2 = tablesdb
-  int err;        // error
-};
-
-struct sockets {
-  int descriptor;
-  struct sockaddr_in addr;
-};
+typedef struct sockets {
+  int descriptor;            // socket descriptor
+  struct sockaddr_in addr;   // socket addr
+} sockets;
 
 // Client/Server
 connection client_init(const char *host, const char *port, int type);
 connection server_init(const char *host, const char *port, int type);
 int server_handle(connection conn);
 int client_handle(connection conn);
-int server_listener(const char *host, const char *port);
-int client_connection(const char *host, const char *port);
+void client_end(connection c);
+void server_end(connection c);
 
 // Send/Receive
 int send_cryptodata(connection c, void* data, head *h, u64 len);
@@ -57,7 +49,6 @@ void receive_cryptokey(connection c, head *h, cryptokey *k);
 void generate_shared_cryptokey_client(cryptokey *k1, cryptokey *k2, head *h);
 void generate_shared_cryptokey_server(cryptokey *k1, cryptokey *k2, head *h);
 cryptokey generate_cryptokeys(head *h);
-
 void handler_cryptography(u64 data, cryptokey k, u64 *enc);
 
 // Tooling
@@ -74,8 +65,6 @@ void bit_hex_str(char hs[], const uint8_t *d, const int len);
 #endif
 
 // Very simple handshake
-// asn1 - stolen / inspired from https://gitlab.com/mtausig/tiny-asn1
-
 /*
 ```
     |                                                     |                    .

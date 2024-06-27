@@ -23,10 +23,6 @@ void table_write_data(dbdata *t, dbindex *i) {
   fclose(f);
 }
 
-void table_send(const int s, tbls *d) {
-  send(s, d, sizeof(struct tbls), 0);  
-}
-
 void set_table_data(dbdata *k, char unique_id[256], char data[4096]) {
   strncpy((*k).unique_id, unique_id, strlen(unique_id)+1);
   strncpy((*k).data, data, strlen(data)+1);
@@ -37,6 +33,10 @@ void set_table_index(dbindex *k, u64 index, char unique_id[256], u64 length, cha
   strncpy((*k).path, path, strlen(path)+1);
   (*k).index = index;
   (*k).length = length;
+}
+
+void table_send(const int s, tbls *d) {
+  send(s, d, sizeof(struct tbls), 0);
 }
 
 void table_recv(const int s, tbls *k) {

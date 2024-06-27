@@ -155,8 +155,7 @@ static void *server_connection_handler(void *conn) {
   return 0;
 }
 
-// Public functions
-int server_listener(const char *host, const char *port) {
+static int server_run(const char *host, const char *port) {
   sockets sock = communication_init(host, port);
   if (bind(sock.descriptor, (struct sockaddr*)&(sock.addr), sizeof(sock.addr)) < 0) {
     perror("Bind error");
@@ -165,6 +164,26 @@ int server_listener(const char *host, const char *port) {
   listen(sock.descriptor, 3);
   return sock.descriptor;
 }
+
+static int client_run(const char *host, const char *port) {
+  sockets sock = communication_init(host, port);
+  if (connect(sock.descriptor , (struct sockaddr*)&(sock.addr) , sizeof(sock.addr)) < 0) {
+    perror("Connection error");
+    return 1;
+  }
+  return sock.descriptor;
+}
+
+static connection connection_init(int descriptor, int type) {
+  connection c;
+  c.socket = descriptor;
+  c.type = type;
+  if (descriptor >= 0) c.err = 0;
+  else c.err = -1;
+  return c;
+}
+
+// Public functions
 
 int server_handle(connection conn) {
   int client_sock, c = sizeof(struct sockaddr_in);
@@ -186,15 +205,6 @@ int server_handle(connection conn) {
   return client_sock;
 }
 
-int client_connection(const char *host, const char *port) {
-  sockets sock = communication_init(host, port);
-  if (connect(sock.descriptor , (struct sockaddr*)&(sock.addr) , sizeof(sock.addr)) < 0) {
-    perror("Connection error");
-    return 1;
-  }
-  return sock.descriptor;
-}
-
 int client_handle(connection conn) {
   pthread_t thread;
   conn.clisocket = &(conn.socket);
@@ -209,27 +219,17 @@ int client_handle(connection conn) {
 //
 // Initialize server
 connection server_init(const char *host, const char *port, int type) {
-  int socket_desc = server_listener(host, port);
+  int socket_desc = server_run(host, port);
   printf("\"[o.o]\" eating food...\n");
-  connection c;
-  c.socket = socket_desc;
-  c.type = type;
-  if (socket_desc >= 0) c.err = 0;
-  else c.err = -1;
-  return c;
+  return connection_init(socket_desc, type);
 }
 
 //
 // Initialize client
 connection client_init(const char *host, const char *port, int type) {
   printf("\"[o.o]\" finding food...\n");
-  int sck = client_connection(host, port);
-  connection c;
-  c.socket = sck;
-  c.type = type;
-  if (sck >= 0) c.err = 0;
-  else c.err = -1;
-  return c;
+  int socket_desc = client_run(host, port);
+  return connection_init(socket_desc, type);
 }
 
 //
@@ -483,4 +483,3 @@ void bit_hex_str(char hs[], const uint8_t *d, const int len) {
 
 // What im looking for:
 // https://github.com/gh2o/tls_mini
-// asn1 stolen / inspired from https://gitlab.com/mtausig/tiny-asn1

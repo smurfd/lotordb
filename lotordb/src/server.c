@@ -9,6 +9,6 @@ int main(int argc, char** argv) {
   int type = usage(argv[1], argc, "server");
   connection c = server_init("127.0.0.1", "9998", type);
   server_handle(c);
-  close(c.socket);
+  server_end(c);
   printf("OK\n");
 }

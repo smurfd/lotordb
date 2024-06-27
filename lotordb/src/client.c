@@ -14,6 +14,6 @@ int main(int argc, char** argv) {
     printf("Cant connect to server\n");
     exit(0);
   }
-  close(c.socket);
+  client_end(c);
   printf("OK\n");
 }
