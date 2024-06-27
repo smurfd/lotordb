@@ -90,6 +90,22 @@ static void *client_connection_handler_ssl(void *conn) {
   return 0;
 }
 
+static void *server_connection_handler_ssl(void *conn) {
+  int sock = *((connection*)conn)->clisocket;
+  if (((connection*)conn)->type == 1) {
+    kvsh k;
+    key_recv(sock, &k);
+  } else if (((connection*)conn)->type == 2) {
+    tbls *t = (tbls*)malloc(sizeof(struct tbls));
+    table_recv(sock, t);
+    table_write_index(&t->i, "/tmp/dbindex1.db1");
+    table_write_data(&t->d, &t->i);
+    free(t);
+  }
+  //free(((connection*)conn)->clisocket);
+  return 0;
+}
+
 static void *client_connection_handler(void *conn) {
   u64 dat[BLOCK], cd[BLOCK];
   cryptokey k1, k2;
@@ -111,22 +127,6 @@ static void *client_connection_handler(void *conn) {
       perror("could not create thread");
     }
     pthread_join(ssl_thread, NULL);
-  }
-  //free(((connection*)conn)->clisocket);
-  return 0;
-}
-
-static void *server_connection_handler_ssl(void *conn) {
-  int sock = *((connection*)conn)->clisocket;
-  if (((connection*)conn)->type == 1) {
-    kvsh k;
-    key_recv(sock, &k);
-  } else if (((connection*)conn)->type == 2) {
-    tbls *t = (tbls*)malloc(sizeof(struct tbls));
-    table_recv(sock, t);
-    table_write_index(&t->i, "/tmp/dbindex1.db1");
-    table_write_data(&t->d, &t->i);
-    free(t);
   }
   //free(((connection*)conn)->clisocket);
   return 0;
