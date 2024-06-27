@@ -28,7 +28,6 @@ void key_del(kvsh *k) {
 void key_write(kvsh *k) {
   struct stat st = {0};
   FILE *f;
-
   if (stat((*k).store, &st) == -1) {
     mkdir((*k).store, 0700);
   }
@@ -42,14 +41,13 @@ void key_write(kvsh *k) {
 }
 
 void key_send(const int s, kvsh *k) {
-  int x = send(s, k, sizeof(struct kvsh), 0);
-  printf("sent: %s %s %s %s %d\n", (*k).key, (*k).value, (*k).store, (*k).hash, x);
+  send(s, k, sizeof(struct kvsh), 0);
+  printf("sent: %s %s %s %s\n", (*k).key, (*k).value, (*k).store, (*k).hash);
 }
 
 void key_recv(const int s, kvsh *k) {
   char tmphash[131];
-  printf("key recv %d\n", recv(s, k, sizeof(struct kvsh), 0));
-  printf("key %s %d\n", (*k).key, sizeof(struct kvsh));
+  recv(s, k, sizeof(struct kvsh), 0);
   (*k).hash[130] = '\0';
   hash_new(tmphash, (uint8_t *)(*k).value);
   printf("tmp %s\n", tmphash);

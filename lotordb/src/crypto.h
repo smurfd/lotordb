@@ -14,32 +14,32 @@ typedef struct connection connection;
 typedef struct cryptokeys cryptokey;
 
 struct header {
-  u64 len;    // length
-  u64 ver;    // version
-  u64 g;      // global
-  u64 p;      // private
-};
-struct cryptokeys {
-  u64 publ;   // public key
-  u64 priv;   // private key
-  u64 shar;   // shared key
-};
-struct connection {
-  int socket; // socket used for connection
-  int *clisocket;// clientsocket
-  int type;   // what type of client/server: 1 = keyvaluestore, 2 = tables db
-  int err;    // error
+  u64 len;        // length
+  u64 ver;        // version
+  u64 g;          // global
+  u64 p;          // private
 };
 
-u64 u64rnd(void);
+struct cryptokeys {
+  u64 publ;       // public key
+  u64 priv;       // private key
+  u64 shar;       // shared key
+};
+
+struct connection {
+  int socket;     // socket used for connection
+  int *clisocket; // clientsocket
+  int type;       // what type of client/server: 1 = keyvaluestore, 2 = tablesdb
+  int err;        // error
+};
+
 // Client/Server
-int usage(char *arg, int count, char *clisrv);
 connection client_init(const char *host, const char *port, int type);
 connection server_init(const char *host, const char *port, int type);
-int client_connect(connection c);
-int server_listen(connection c);
-void client_end(connection c);
-void server_end(connection c);
+int server_listener(void);
+int server_handle(connection conn);
+int client_handle(connection conn);
+int client_connection(void);
 
 // Send/Receive
 void send_cryptodata(connection c, void* data, head *h, u64 len);
@@ -55,6 +55,8 @@ cryptokey generate_cryptokeys(head *h);
 void handler_cryptography(u64 data, cryptokey k, u64 *enc);
 
 // Tooling
+u64 u64rnd(void);
+int usage(char *arg, int count, char *clisrv);
 uint32_t utf8enc(uint32_t c);
 uint32_t utf8dec(uint32_t c);
 int err(char *s);
@@ -64,18 +66,6 @@ int base64dec(uint8_t dd[], const char *data, int inl);
 void bit_pack(u64 big[], const uint8_t byte[]);
 void bit_unpack(uint8_t byte[], const u64 big[]);
 void bit_hex_str(char hs[], const uint8_t *d, const int len);
-
-
-
-
-connection client_init2(const char *host, const char *port, int type);
-connection server_init2(const char *host, const char *port, int type);
-
-
-int server_listener();
-int server_handle(connection conn);//int socket_desc);
-int client_handle(connection conn);//int sock);
-int client_connection();
 #endif
 
 // Very simple handshake

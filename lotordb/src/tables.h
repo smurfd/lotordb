@@ -4,33 +4,10 @@
 #include <stdbool.h>
 #include <inttypes.h>
 #include <netinet/in.h>
-#include "keys.h"
-
 #include <sys/socket.h>
-#include <stdbool.h>
+#include "keys.h"
 #include "defs.h"
-/*
-typedef struct dbindex {
-  u64 index;
-  u64 dbindex;
-  u64 database;
-  u64 table;
-  u64 row;
-  u64 col;
-  u64 segments;
-  u64 seek;
-} dbindex;
 
-typedef struct dbdata {
-  u64 index;
-  u64 database;
-  u64 table;
-  u64 relative;
-  u64 row;
-  u64 col;
-  char data[4048];
-} dbdata;
-*/
 typedef struct dbindex {
   u64 index;
   char unique_id[256];
@@ -41,7 +18,7 @@ typedef struct dbindex {
 typedef struct dbdata {
   char unique_id[256];
   char data[4096];
-  u64 xxx;
+  //u64 xxx;
 } dbdata;
 
 typedef struct tbls {
@@ -49,37 +26,12 @@ typedef struct tbls {
   dbdata d;
 } tbls;
 
-//void table_send(const int s, dbindex *d);//tbls *t);
-//void table_recv(const int s, dbindex *d);//tbls *t);
-//void table_set_index(tbls *t, u64 index, char unique_id[256], u64 length, char path[256]);
 void table_write_index(dbindex *t, char path[256]);
-//void table_write_index(tbls *t, char path[256]);
-//void table_set_data(tbls *t, char unique_id[256], char data[4096]);
-//void table_write_data(tbls *t);//, char unique_id[256], char data[4096]);
 void table_write_data(dbdata *t, dbindex *i);
-
-/*
-#include <stdio.h>
-#include <stdbool.h>
-#include <inttypes.h>
-#include <netinet/in.h>
-*/
-void set_table3(dbindex *k, u64 index, char unique_id[256], u64 length, char path[256]);
-void table_send3(const int s, dbindex *d);//tbls *t);
-void table_recv3(const int s, dbindex *k);
-
-void table_recv2(const int s, dbdata *k);
-void set_table2(dbdata *k, char unique_id[256], char data[4096], u64 xxx);
-void table_send2(const int s, dbdata *d);//tbls *t);
-void table_send4(const int s, tbls *d);
-void table_recv4(const int s, tbls *k);
-//void set_key_value_store1(kvsh *k, char key[256], char value[256], char store[256]);
-//void key_write1(kvsh *k);
-//void key_del1(kvsh *k);
-//void key_send1(const int s, kvsh *k);
-//void key_recv1(const int s, kvsh *k);
-
-
+void set_table_index(dbindex *k, u64 index, char unique_id[256], u64 length, char path[256]);
+void set_table_data(dbdata *k, char unique_id[256], char data[4096]);
+void table_send(const int s, tbls *d);
+void table_recv(const int s, tbls *k);
 #endif
 
 /*

@@ -23,43 +23,23 @@ void table_write_data(dbdata *t, dbindex *i) {
   fclose(f);
 }
 
-void table_send2(const int s, dbdata *d) {
-  send(s, d, sizeof(struct dbdata), 0);  
-}
-
-void table_send3(const int s, dbindex *d) {
-  send(s, d, sizeof(struct dbindex), 0);  
-}
-
-void table_send4(const int s, tbls *d) {
+void table_send(const int s, tbls *d) {
   send(s, d, sizeof(struct tbls), 0);  
 }
 
-void set_table2(dbdata *k, char unique_id[256], char data[4096], u64 xxx) {
+void set_table_data(dbdata *k, char unique_id[256], char data[4096]) {
   strncpy((*k).unique_id, unique_id, strlen(unique_id)+1);
   strncpy((*k).data, data, strlen(data)+1);
-  (*k).xxx = xxx;
 }
 
-void set_table3(dbindex *k, u64 index, char unique_id[256], u64 length, char path[256]) {
+void set_table_index(dbindex *k, u64 index, char unique_id[256], u64 length, char path[256]) {
   strncpy((*k).unique_id, unique_id, strlen(unique_id)+1);
   strncpy((*k).path, path, strlen(path)+1);
   (*k).index = index;
   (*k).length = length;
 }
 
-
-void table_recv2(const int s, dbdata *k) {
-  printf("key recv %d\n", recv(s, k, sizeof(struct dbdata), 0));
-  printf("hsh %s %llu \n", (*k).unique_id, (*k).xxx);
-}
-
-void table_recv3(const int s, dbindex *k) {
-  recv(s, k, sizeof(struct dbindex), 0);
-  printf("hsh %s %llu \n", (*k).unique_id, (*k).index);
-}
-
-void table_recv4(const int s, tbls *k) {
+void table_recv(const int s, tbls *k) {
   recv(s, k, sizeof(struct tbls), 0);
   printf("hsh %s %llu \n", (*k).d.unique_id, (*k).i.index);
 }
