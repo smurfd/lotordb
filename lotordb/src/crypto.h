@@ -36,15 +36,15 @@ struct connection {
 // Client/Server
 connection client_init(const char *host, const char *port, int type);
 connection server_init(const char *host, const char *port, int type);
-int server_listener(void);
 int server_handle(connection conn);
 int client_handle(connection conn);
-int client_connection(void);
+int server_listener(const char *host, const char *port);
+int client_connection(const char *host, const char *port);
 
 // Send/Receive
-void send_cryptodata(connection c, void* data, head *h, u64 len);
+int send_cryptodata(connection c, void* data, head *h, u64 len);
 void send_cryptokey(connection c, head *h, cryptokey *k);
-void receive_cryptodata(connection c, void* data, head *h, u64 len);
+int receive_cryptodata(connection c, void* data, head *h, u64 len);
 void receive_cryptokey(connection c, head *h, cryptokey *k);
 
 // Generators
