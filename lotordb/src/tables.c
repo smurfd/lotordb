@@ -41,5 +41,4 @@ void set_table_index(dbindex *k, u64 index, char unique_id[256], u64 length, cha
 
 void table_recv(const int s, tbls *k) {
   recv(s, k, sizeof(struct tbls), 0);
-  printf("hsh %s %llu \n", (*k).d.unique_id, (*k).i.index);
 }

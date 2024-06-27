@@ -32,7 +32,7 @@ make -Clotordb/src
 ./lotordb/src/server keys (in one terminal, keyvalue store server)
 ./lotordb/src/client keys (in one terminal, keyvalue store client)
 
-./lotordb/src/server table (in one terminal, table server)
-./lotordb/src/client table (in one terminal, table client)
+./lotordb/src/server tables (in one terminal, table server)
+./lotordb/src/client tables (in one terminal, table client)
 ```
 "[o.o]"

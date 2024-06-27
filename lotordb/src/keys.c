@@ -50,8 +50,6 @@ void key_recv(const int s, kvsh *k) {
   recv(s, k, sizeof(struct kvsh), 0);
   (*k).hash[130] = '\0';
   hash_new(tmphash, (uint8_t *)(*k).value);
-  printf("tmp %s\n", tmphash);
-  printf("hsh %s\n", (*k).hash);
   assert(strcmp(tmphash, (*k).hash) == 0);  // assert received hash and generated hash is the same
   printf("recv: %s %s %s %s\n", (*k).key, (*k).value, (*k).store, (*k).hash);
 }

@@ -56,13 +56,17 @@ static head *set_header(head *h, u64 a, u64 b) {
 
 //
 // Communication init
-static sock_in communication_init(const char *host, const char *port) {
-  sock_in adr;
-  memset(&adr, '\0', sizeof(adr));
-  adr.sin_family = AF_INET;
-  adr.sin_port = atoi(port);
-  adr.sin_addr.s_addr = inet_addr(host);
-  return adr;
+static sockets communication_init(const char *host, const char *port) {
+  sockets sock;
+  sock.descriptor = socket(AF_INET , SOCK_STREAM , 0);
+  if (sock.descriptor == -1) {
+    printf("Could not create socket\n");
+  }
+  memset(&(sock.addr), '\0', sizeof(sock.addr));
+  sock.addr.sin_family = AF_INET;
+  sock.addr.sin_port = atoi(port);
+  sock.addr.sin_addr.s_addr = inet_addr(host);
+  return sock;
 }
 
 static void *client_connection_handler_ssl(void *conn) {
@@ -90,16 +94,17 @@ static void *client_connection_handler(void *conn) {
   u64 dat[BLOCK], cd[BLOCK];
   cryptokey k1, k2;
   head h;
-  receive_cryptokey(*(connection*)conn, &h, &k1);
-  k2 = generate_cryptokeys(&h);
-  send_cryptokey(*(connection*)conn, &h, &k2);
-  generate_shared_cryptokey_client(&k1, &k2, &h);
-  printf("share : 0x%.16llx\n", k1.shar);
-  for (u64 i = 0; i < 12; i++) {
-    dat[i] = (u64)i;
-    handler_cryptography(dat[i], k1, &cd[i]);
-  }
-  if (send_cryptodata(*(connection*)conn, cd, &h, 11) > 0) { // TODO: send less data
+  receive_cryptokey(*(connection*)conn, &h, &k1);                               // Handshake vvv
+  k2 = generate_cryptokeys(&h);                                                 //
+  send_cryptokey(*(connection*)conn, &h, &k2);                                  //
+  generate_shared_cryptokey_client(&k1, &k2, &h);                               //
+  printf("share : 0x%.16llx\n", k1.shar);                                       //
+  for (u64 i = 0; i < 12; i++) {                                                //
+    dat[i] = (u64)i;                                                            //
+    handler_cryptography(dat[i], k1, &cd[i]);                                   //
+  }                                                                             //
+  if (send_cryptodata(*(connection*)conn, cd, &h, 11) > 0) {                    // Handshake ^^^
+    // TODO: send less data
     // TODO: If we are not communicating using SSL, Abort!
     pthread_t ssl_thread;
     if (pthread_create(&ssl_thread, NULL, client_connection_handler_ssl, (void*)conn) < 0) {
@@ -128,17 +133,17 @@ static void *server_connection_handler_ssl(void *conn) {
 }
 
 static void *server_connection_handler(void *conn) {
-  u64 cd[BLOCK], g1 = u64rnd(), p1 = u64rnd();
-  if (((connection*)conn)->socket == -1) return (void*) - 1;
-  head h = *set_header(&h, g1, p1);
-  cryptokey k1 = generate_cryptokeys(&h), k2 = *clear_cryptokey(&k2);
-  // Send and receive stuff
-  if (h.len > BLOCK) return (void*) - 1;
-  send_cryptokey(*(connection*)conn, &h, &k1);
-  receive_cryptokey(*(connection*)conn, &h, &k2);
-  generate_shared_cryptokey_server(&k1, &k2, &h);
-  printf("share : 0x%.16llx\n", k2.shar);
-  if (receive_cryptodata(*(connection*)conn, cd, &h, 11) > 0) { // TODO: receive less data
+  u64 cd[BLOCK];                                                                // Handshake vvv
+  if (((connection*)conn)->socket == -1) return (void*) - 1;                    //
+  head h = *set_header(&h, u64rnd(), u64rnd());                                 //
+  cryptokey k1 = generate_cryptokeys(&h), k2 = *clear_cryptokey(&k2);           //
+  if (h.len > BLOCK) return (void*) - 1;                                        //
+  send_cryptokey(*(connection*)conn, &h, &k1);                                  //
+  receive_cryptokey(*(connection*)conn, &h, &k2);                               //
+  generate_shared_cryptokey_server(&k1, &k2, &h);                               //
+  printf("share : 0x%.16llx\n", k2.shar);                                       //
+  if (receive_cryptodata(*(connection*)conn, cd, &h, 11) > 0) {                 // Handshake ^^^
+    // TODO: receive less data
     // TODO: If we are not communicating using SSL, Abort!
     pthread_t ssl_thread;
     if (pthread_create(&ssl_thread, NULL, server_connection_handler_ssl, (void*)conn) < 0) {
@@ -152,19 +157,13 @@ static void *server_connection_handler(void *conn) {
 
 // Public functions
 int server_listener(const char *host, const char *port) {
-  int socket_desc;
-  struct sockaddr_in server;
-  socket_desc = socket(AF_INET, SOCK_STREAM, 0);
-  if (socket_desc == -1) {
-    printf("Could not create socket\n");
-  }
-  server = communication_init(host, port);
-  if (bind(socket_desc, (struct sockaddr*)&server, sizeof(server)) < 0) {
+  sockets sock = communication_init(host, port);
+  if (bind(sock.descriptor, (struct sockaddr*)&(sock.addr), sizeof(sock.addr)) < 0) {
     perror("Bind error");
     return 1;
   }
-  listen(socket_desc, 3);
-  return socket_desc;
+  listen(sock.descriptor, 3);
+  return sock.descriptor;
 }
 
 int server_handle(connection conn) {
@@ -188,17 +187,12 @@ int server_handle(connection conn) {
 }
 
 int client_connection(const char *host, const char *port) {
-  struct sockaddr_in server;
-  int sock = socket(AF_INET , SOCK_STREAM , 0);
-  if (sock == -1) {
-    printf("Could not create socket\n");
-  }
-  server = communication_init(host, port);
-  if (connect(sock , (struct sockaddr *)&server , sizeof(server)) < 0) {
+  sockets sock = communication_init(host, port);
+  if (connect(sock.descriptor , (struct sockaddr*)&(sock.addr) , sizeof(sock.addr)) < 0) {
     perror("Connection error");
     return 1;
   }
-  return sock;
+  return sock.descriptor;
 }
 
 int client_handle(connection conn) {

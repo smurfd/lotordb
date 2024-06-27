@@ -12,6 +12,7 @@ typedef struct sockaddr sock;
 typedef struct sockaddr_in sock_in;
 typedef struct connection connection;
 typedef struct cryptokeys cryptokey;
+typedef struct sockets sockets;
 
 struct header {
   u64 len;        // length
@@ -31,6 +32,11 @@ struct connection {
   int *clisocket; // clientsocket
   int type;       // what type of client/server: 1 = keyvaluestore, 2 = tablesdb
   int err;        // error
+};
+
+struct sockets {
+  int descriptor;
+  struct sockaddr_in addr;
 };
 
 // Client/Server
@@ -60,7 +66,6 @@ int usage(char *arg, int count, char *clisrv);
 uint32_t utf8enc(uint32_t c);
 uint32_t utf8dec(uint32_t c);
 int err(char *s);
-//int lrand(uint8_t h[], u64 k[]);
 int base64enc(char ed[], const uint8_t *data, int inl);
 int base64dec(uint8_t dd[], const char *data, int inl);
 void bit_pack(u64 big[], const uint8_t byte[]);
