@@ -79,13 +79,11 @@ static void *client_connection_handler_ssl(void *conn) {
     key_send(sock, k);
     free(k);
   } else if (((connection*)conn)->type == 2) {
-    for (int i=0;i<20;i++) {
-      tbls *t = (tbls*)malloc(sizeof(struct tbls));
-      set_table_data(&t->d, "stuff", "stuff * 2");
-      set_table_index(&t->i, 1234, "stuff", 1111, "/tmp/dbdata.d1");
-      table_send(sock, t);
-      free(t);
-    }
+    tbls *t = (tbls*)malloc(sizeof(struct tbls));
+    set_table_index(t, 1235, "smurfd2", 222, "/tmp/dbdata.d2");
+    set_table_data(t, "smurfd2", "stuff alot");
+    table_send(sock, t);
+    free(t);
   }
   return 0;
 }
@@ -98,11 +96,19 @@ static void *server_connection_handler_ssl(void *conn) {
   } else if (((connection*)conn)->type == 2) {
     tbls *t = (tbls*)malloc(sizeof(struct tbls));
     table_recv(sock, t);
-    table_write_index(&t->i, "/tmp/dbindex1.db1");
-    table_write_data(&t->d, &t->i);
+    if (table_write_index(t, "/tmp/dbindex1.db1") >= 0) { // Only write data if we can write to index
+      table_write_data(t);
+    }
+    printf("hmm %s\n", t->i.unique_id);
+    table_read_index(t, "/tmp/dbindex1.db1", t->i.unique_id);
+    printf("here2\n");
+    if (table_read_data(t) >= 0) {
+      printf("either ok or no file\n");
+    }
     free(t);
   }
-  //free(((connection*)conn)->clisocket);
+  if (((connection*)conn)->clisocket)
+    free(((connection*)conn)->clisocket);
   return 0;
 }
 
@@ -128,7 +134,6 @@ static void *client_connection_handler(void *conn) {
     }
     pthread_join(ssl_thread, NULL);
   }
-  //free(((connection*)conn)->clisocket);
   return 0;
 }
 
@@ -151,7 +156,8 @@ static void *server_connection_handler(void *conn) {
     }
     pthread_join(ssl_thread, NULL);
   }
-  free(((connection*)conn)->clisocket);
+  //if (((connection*)conn)->clisocket)
+  //  free(((connection*)conn)->clisocket);
   return 0;
 }
 
