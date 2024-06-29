@@ -1,9 +1,5 @@
 #ifndef KEYS_H
 #define KEYS_H 1
-#include <stdio.h>
-#include <stdbool.h>
-#include <inttypes.h>
-#include <netinet/in.h>
 #include "defs.h"
 
 typedef struct kvsh {

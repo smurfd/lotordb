@@ -1,23 +1,15 @@
 // Auth: smurfd, 2023 More reading & Borrow/Stolen parts read at the bottom of the file; 2 spacs indent; 120 width    //
 #include <math.h>
-#include <stdio.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
-#include <stdint.h>
 #include <unistd.h>
-#include <pthread.h>
-#include <stdbool.h>
-#include <inttypes.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include "crypto.h"
 #include "tables.h"
 #include "keys.h"
 #include "defs.h"
-
 // Static functions
 
 //
@@ -41,22 +33,12 @@ static void snd_cryptokey(int s, head *h, cryptokey *k) {
   send(s, &kk, sizeof(cryptokey), 0);
 }
 
-static cryptokey *clear_cryptokey(cryptokey *k) {
-  (*k).publ = 0;
-  (*k).priv = 0;
-  (*k).shar = 0;
-  return k;
-}
 
-static head *set_header(head *h, u64 a, u64 b) {
-  (*h).g = a;
-  (*h).p = b;
-  return h;
-}
+// Public functions
 
 //
 // Communication init
-static sockets communication_init(const char *host, const char *port) {
+sockets communication_init(const char *host, const char *port) {
   sockets sock;
   sock.descriptor = socket(AF_INET , SOCK_STREAM , 0);
   if (sock.descriptor == -1) {
@@ -69,173 +51,13 @@ static sockets communication_init(const char *host, const char *port) {
   return sock;
 }
 
-static void *client_connection_handler_ssl(void *conn) {
-  int sock = *((connection*)conn)->clisocket;
-  if (((connection*)conn)->type == 1) {
-    kvsh *k = (kvsh*)malloc(sizeof(struct kvsh));
-    set_key_value_store(k, "0002", "testvalue", "/tmp");
-    key_write(k);
-    key_del(k);
-    key_send(sock, k);
-    free(k);
-  } else if (((connection*)conn)->type == 2) {
-    tbls *t = (tbls*)malloc(sizeof(struct tbls));
-    set_table_index(t, 1235, "smurfd2", 222, "/tmp/dbdata.d2");
-    set_table_data(t, "smurfd2", "stuff alot");
-    table_send(sock, t);
-    free(t);
-  }
-  return 0;
-}
-
-static void *server_connection_handler_ssl(void *conn) {
-  int sock = *((connection*)conn)->clisocket;
-  if (((connection*)conn)->type == 1) {
-    kvsh k;
-    key_recv(sock, &k);
-  } else if (((connection*)conn)->type == 2) {
-    tbls *t = (tbls*)malloc(sizeof(struct tbls));
-    table_recv(sock, t);
-    if (table_write_index(t, "/tmp/dbindex1.db1") >= 0) { // Only write data if we can write to index
-      table_write_data(t);
-    }
-    printf("hmm %s\n", t->i.unique_id);
-    table_read_index(t, "/tmp/dbindex1.db1", t->i.unique_id);
-    printf("here2\n");
-    if (table_read_data(t) >= 0) {
-      printf("either ok or no file\n");
-    }
-    free(t);
-  }
-  if (((connection*)conn)->clisocket)
-    free(((connection*)conn)->clisocket);
-  return 0;
-}
-
-static void *client_connection_handler(void *conn) {
-  u64 dat[BLOCK], cd[BLOCK];
-  cryptokey k1, k2;
-  head h;
-  receive_cryptokey(*(connection*)conn, &h, &k1);                               // Handshake vvv
-  k2 = generate_cryptokeys(&h);                                                 //
-  send_cryptokey(*(connection*)conn, &h, &k2);                                  //
-  generate_shared_cryptokey_client(&k1, &k2, &h);                               //
-  printf("share : 0x%.16llx\n", k1.shar);                                       //
-  for (u64 i = 0; i < 12; i++) {                                                //
-    dat[i] = (u64)i;                                                            //
-    handler_cryptography(dat[i], k1, &cd[i]);                                   //
-  }                                                                             //
-  if (send_cryptodata(*(connection*)conn, cd, &h, 11) > 0) {                    // Handshake ^^^
-    // TODO: send less data
-    // TODO: If we are not communicating using SSL, Abort!
-    pthread_t ssl_thread;
-    if (pthread_create(&ssl_thread, NULL, client_connection_handler_ssl, (void*)conn) < 0) {
-      perror("could not create thread");
-    }
-    pthread_join(ssl_thread, NULL);
-  }
-  return 0;
-}
-
-static void *server_connection_handler(void *conn) {
-  u64 cd[BLOCK];                                                                // Handshake vvv
-  if (((connection*)conn)->socket == -1) return (void*) - 1;                    //
-  head h = *set_header(&h, u64rnd(), u64rnd());                                 //
-  cryptokey k1 = generate_cryptokeys(&h), k2 = *clear_cryptokey(&k2);           //
-  if (h.len > BLOCK) return (void*) - 1;                                        //
-  send_cryptokey(*(connection*)conn, &h, &k1);                                  //
-  receive_cryptokey(*(connection*)conn, &h, &k2);                               //
-  generate_shared_cryptokey_server(&k1, &k2, &h);                               //
-  printf("share : 0x%.16llx\n", k2.shar);                                       //
-  if (receive_cryptodata(*(connection*)conn, cd, &h, 11) > 0) {                 // Handshake ^^^
-    // TODO: receive less data
-    // TODO: If we are not communicating using SSL, Abort!
-    pthread_t ssl_thread;
-    if (pthread_create(&ssl_thread, NULL, server_connection_handler_ssl, (void*)conn) < 0) {
-      perror("Could not create thread");
-    }
-    pthread_join(ssl_thread, NULL);
-  }
-  //if (((connection*)conn)->clisocket)
-  //  free(((connection*)conn)->clisocket);
-  return 0;
-}
-
-static int server_run(const char *host, const char *port) {
-  sockets sock = communication_init(host, port);
-  if (bind(sock.descriptor, (struct sockaddr*)&(sock.addr), sizeof(sock.addr)) < 0) {
-    perror("Bind error");
-    return 1;
-  }
-  listen(sock.descriptor, 3);
-  return sock.descriptor;
-}
-
-static int client_run(const char *host, const char *port) {
-  sockets sock = communication_init(host, port);
-  if (connect(sock.descriptor , (struct sockaddr*)&(sock.addr) , sizeof(sock.addr)) < 0) {
-    perror("Connection error");
-    return 1;
-  }
-  return sock.descriptor;
-}
-
-static connection connection_init(int descriptor, int type) {
+connection connection_init(int descriptor, int type) {
   connection c;
   c.socket = descriptor;
   c.type = type;
   if (descriptor >= 0) c.err = 0;
   else c.err = -1;
   return c;
-}
-
-// Public functions
-
-int server_handle(connection conn) {
-  int client_sock, c = sizeof(struct sockaddr_in);
-  struct sockaddr_in client;
-  while ((client_sock = accept(conn.socket, (struct sockaddr *)&client, (socklen_t*)&c))) {
-    pthread_t thread;
-    conn.clisocket = malloc(1);
-    *conn.clisocket = client_sock;
-    if (pthread_create(&thread, NULL, server_connection_handler, (void*)&conn) < 0) {
-      perror("Could not create thread");
-      return 1;
-    }
-    pthread_join(thread, NULL);
-  }
-  if (client_sock < 0) {
-    perror("No clients connected");
-    return 1;
-  }
-  return client_sock;
-}
-
-int client_handle(connection conn) {
-  pthread_t thread;
-  conn.clisocket = &(conn.socket);
-  if (pthread_create(&thread, NULL, client_connection_handler, (void*)&conn) < 0) {
-    perror("Could not create thread");
-    return 1;
-  }
-  pthread_join(thread , NULL);
-  return conn.socket;
-}
-
-//
-// Initialize server
-connection server_init(const char *host, const char *port, int type) {
-  int socket_desc = server_run(host, port);
-  printf("\"[o.o]\" eating food...\n");
-  return connection_init(socket_desc, type);
-}
-
-//
-// Initialize client
-connection client_init(const char *host, const char *port, int type) {
-  printf("\"[o.o]\" finding food...\n");
-  int socket_desc = client_run(host, port);
-  return connection_init(socket_desc, type);
 }
 
 //

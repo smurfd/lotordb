@@ -1,10 +1,7 @@
 // Auth: smurfd, 2023 More reading & Borrow/Stolen parts read at the bottom of the file; 2 spacs indent; 120 width    //
 #include <math.h>
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
-#include <stdint.h>
 #include <stdbool.h>
 #include "crypto.h"
 #include "hash.h"

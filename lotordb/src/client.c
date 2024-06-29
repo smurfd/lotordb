@@ -1,9 +1,6 @@
-#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <assert.h>
+#include "crypto_client.h"
 #include "crypto.h"
 #include "keys.h"
 

@@ -2,7 +2,6 @@
 #ifndef LIGHTHASH_H
 #define LIGHTHASH_H 1
 #include <stdint.h>
-#include <stdbool.h>
 #include "defs.h"
 
 void hash_new(char s[], const uint8_t *n);

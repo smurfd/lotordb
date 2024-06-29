@@ -31,13 +31,8 @@ typedef struct sockets {
   struct sockaddr_in addr;   // socket addr
 } sockets;
 
-// Client/Server
-connection client_init(const char *host, const char *port, int type);
-connection server_init(const char *host, const char *port, int type);
-int server_handle(connection conn);
-int client_handle(connection conn);
-void client_end(connection c);
-void server_end(connection c);
+connection connection_init(int descriptor, int type);
+sockets communication_init(const char *host, const char *port);
 
 // Send/Receive
 int send_cryptodata(connection c, void* data, head *h, u64 len);
