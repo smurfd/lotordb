@@ -33,7 +33,6 @@ static void snd_cryptokey(int s, head *h, cryptokey *k) {
   send(s, &kk, sizeof(cryptokey), 0);
 }
 
-
 // Public functions
 
 //
@@ -80,16 +79,6 @@ int usage(char *arg, int count, char *clisrv) {
 }
 
 //
-// urandom generate u64
-u64 u64rnd(void) {
-  u64 f7 = 0x7fffffffffffffff;
-  int r[5], f = open("/dev/urandom", O_RDONLY);
-  read(f, &r, sizeof r);
-  close(f);
-  return (r[0] & f7) << 48 ^ (r[1] & f7) << 35 ^ (r[2] & f7) << 22 ^ (r[3] & f7) << 9 ^ (r[4] & f7) >> 4;
-}
-
-//
 // Encrypt and decrypt data with shared key
 void handler_cryptography(u64 data, cryptokey k, u64 *enc) {
   (*enc) = data ^ k.shar;
@@ -130,18 +119,6 @@ void receive_cryptokey(connection c, head *h, cryptokey *k) {
 }
 
 //
-// End connection
-void client_end(connection c) {
-  close(c.socket);
-}
-
-//
-// End connection
-void server_end(connection c) {
-  close(c.socket);
-}
-
-//
 // Generate the server shared key
 void generate_shared_cryptokey_server(cryptokey *k1, cryptokey *k2, head *h) {
   (*k2).shar = (*h).p % (int64_t)pow((*k2).publ, (*k1).priv);
@@ -171,6 +148,16 @@ static uint32_t oct(int i, int inl, const uint8_t d[]) {
 static uint32_t sex(const char d[], char c[], int i) {
   if (d[i] == '=') return (0 & i++);
   return c[(int)d[i]];
+}
+
+//
+// urandom generate u64
+u64 u64rnd(void) {
+  u64 f7 = 0x7fffffffffffffff;
+  int r[5], f = open("/dev/urandom", O_RDONLY);
+  read(f, &r, sizeof r);
+  close(f);
+  return (r[0] & f7) << 48 ^ (r[1] & f7) << 35 ^ (r[2] & f7) << 22 ^ (r[3] & f7) << 9 ^ (r[4] & f7) >> 4;
 }
 
 //

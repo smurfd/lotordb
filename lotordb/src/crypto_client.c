@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 #include "tables.h"
 #include "crypto.h"
@@ -77,3 +78,8 @@ connection client_init(const char *host, const char *port, int type) {
   return connection_init(socket_desc, type);
 }
 
+//
+// End connection
+void client_end(connection c) {
+  close(c.socket);
+}

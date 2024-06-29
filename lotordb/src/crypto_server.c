@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 #include "tables.h"
 #include "crypto.h"
@@ -102,4 +103,10 @@ connection server_init(const char *host, const char *port, int type) {
   int socket_desc = server_run(host, port);
   printf("\"[o.o]\" eating food...\n");
   return connection_init(socket_desc, type);
+}
+
+//
+// End connection
+void server_end(connection c) {
+  close(c.socket);
 }
