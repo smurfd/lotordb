@@ -49,14 +49,6 @@ void handler_cryptography(u64 data, cryptokey k, u64 *enc);
 // Tooling
 u64 u64rnd(void);
 int usage(char *arg, int count, char *clisrv);
-uint32_t utf8enc(uint32_t c);
-uint32_t utf8dec(uint32_t c);
-int err(char *s);
-int base64enc(char ed[], const uint8_t *data, int inl);
-int base64dec(uint8_t dd[], const char *data, int inl);
-void bit_pack(u64 big[], const uint8_t byte[]);
-void bit_unpack(uint8_t byte[], const u64 big[]);
-void bit_hex_str(char hs[], const uint8_t *d, const int len);
 #endif
 
 // Very simple handshake

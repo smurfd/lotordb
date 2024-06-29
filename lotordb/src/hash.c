@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "crypto.h"
+#include "hash_tooling.h"
 #include "hash.h"
 #include "defs.h"
 

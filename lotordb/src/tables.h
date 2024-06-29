@@ -1,10 +1,5 @@
 #ifndef TABLES_H
 #define TABLES_H 1
-//#include <stdio.h>
-//#include <stdbool.h>
-//#include <inttypes.h>
-//#include <netinet/in.h>
-//#include <sys/socket.h>
 #include "keys.h"
 #include "defs.h"
 
