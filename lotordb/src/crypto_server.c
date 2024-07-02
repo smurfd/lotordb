@@ -30,9 +30,7 @@ static void *server_connection_handler_ssl(void *conn) {
     if (table_write_index(t, "/tmp/dbindex1.db1") >= 0) { // Only write data if we can write to index
       table_write_data(t);
     }
-    printf("hmm %s\n", t->i.unique_id);
     table_read_index(t, "/tmp/dbindex1.db1", t->i.unique_id);
-    printf("here2\n");
     if (table_read_data(t) >= 0) {
       printf("either ok or no file\n");
     }

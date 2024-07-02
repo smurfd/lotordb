@@ -18,7 +18,7 @@ int static table_check_unique_index(char path[256], char unique_id[256]) {
   char *line = NULL;
   ssize_t read;
   if (f == NULL) {printf("ROHRO\n");return 1;}
-  while((read = getline(&line, &len, f)) >= 0)  {
+  while((read = getline(&line, &len, f)) >= 0) {
     char **ap, *argv[4];
     for (ap = argv; (*ap = strsep(&line, "|")) != NULL;) {
       if (++ap >= &argv[4]) break;
@@ -38,17 +38,16 @@ void table_read_index(tbls *t, char path[256], char unique_id[256]) {
   size_t len = 512;
   char *line = NULL;
   ssize_t read;
-  while((read = getline(&line, &len, f)) != -1)  {
+  while((read = getline(&line, &len, f)) != -1) {
     char **ap, *argv[4];
-    for (ap = argv; (*ap = strsep(&line, "|")) != NULL;)
+    for (ap = argv; (*ap = strsep(&line, "|")) != NULL;) {
       if (++ap >= &argv[4]) break;
+    }
     if (strcmp(argv[1], unique_id) == 0) {
       printf("Not unique\n");
-      break;
     } else {
       set_table_index(t, (u64)atoi(argv[0]), argv[1], (u64)atoi(argv[2]), argv[3]);
       printf("SEP index %s %s %s %s", argv[0], argv[1], argv[2], argv[3]);
-      break;
     }
   }
   fclose(f);
@@ -60,11 +59,13 @@ int table_read_data(tbls *t) {
   char *line = NULL;
   ssize_t read;
   if (f == NULL) {printf("No data file\n"); return 1;}
-  while((read = getline(&line, &len, f)) != -1)  {
-    if (strstr(line, "smurfd1") != NULL) {
+  while((read = getline(&line, &len, f)) != -1) {
+    printf("Line: %s\n", line);
+    if (strstr(line, (*t).i.unique_id) != NULL) {
       char **ap, *argv[2];
-      for (ap = argv; (*ap = strsep(&line, "|")) != NULL;)
+      for (ap = argv; (*ap = strsep(&line, "|")) != NULL;) {
         if (++ap >= &argv[2]) break;
+      }
       printf("SEP data %s %s", argv[0], argv[1]);
     }
   }
