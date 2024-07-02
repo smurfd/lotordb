@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <assert.h>
 #include <pthread.h>
 #include "tables.h"
 #include "crypto.h"
@@ -36,13 +37,11 @@ static void *server_connection_handler_ssl(void *conn) {
     }
     free(t);
   }
-  if (((connection*)conn)->clisocket)
-    free(((connection*)conn)->clisocket);
   return 0;
 }
 
 static void *server_connection_handler(void *conn) {
-  u64 cd[BLOCK];                                                                // Handshake vvv
+  u64 cd[BLOCK], dat[BLOCK];                                                    // Handshake vvv
   if (((connection*)conn)->socket == -1) return (void*) - 1;                    //
   head h = *set_header(&h, u64rnd(), u64rnd());                                 //
   cryptokey k1 = generate_cryptokeys(&h), k2 = *clear_cryptokey(&k2);           //
@@ -51,17 +50,20 @@ static void *server_connection_handler(void *conn) {
   receive_cryptokey(*(connection*)conn, &h, &k2);                               //
   generate_shared_cryptokey_server(&k1, &k2, &h);                               //
   printf("share : 0x%.16llx\n", k2.shar);                                       //
-  if (receive_cryptodata(*(connection*)conn, cd, &h, 11) > 0) {                 // Handshake ^^^
+  if (receive_cryptodata(*(connection*)conn, cd, &h, 12) > 0) {                 // Handshake ^^^
     // TODO: receive less data
     // TODO: If we are not communicating using SSL, Abort!
     pthread_t ssl_thread;
+    printf("cd: %llu %llu %llu %llu\n", cd[0], cd[1], cd[2], cd[3]);
+    for (u64 i = 0; i < 12; i++) {
+      handler_cryptography(cd[i], k2, &dat[i]);
+      assert((u64)dat[i] == (u64)i);
+    }
     if (pthread_create(&ssl_thread, NULL, server_connection_handler_ssl, (void*)conn) < 0) {
       perror("Could not create thread");
     }
     pthread_join(ssl_thread, NULL);
   }
-  //if (((connection*)conn)->clisocket)
-  //  free(((connection*)conn)->clisocket);
   return 0;
 }
 
@@ -80,8 +82,7 @@ int server_handle(connection conn) {
   struct sockaddr_in client;
   while ((client_sock = accept(conn.socket, (struct sockaddr *)&client, (socklen_t*)&c))) {
     pthread_t thread;
-    conn.clisocket = malloc(1);
-    *conn.clisocket = client_sock;
+    conn.clisocket = &client_sock;
     if (pthread_create(&thread, NULL, server_connection_handler, (void*)&conn) < 0) {
       perror("Could not create thread");
       return 1;

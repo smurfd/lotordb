@@ -38,7 +38,7 @@ static void *client_connection_handler(void *conn) {
     dat[i] = (u64)i;                                                            //
     handler_cryptography(dat[i], k1, &cd[i]);                                   //
   }                                                                             //
-  if (send_cryptodata(*(connection*)conn, cd, &h, 11) > 0) {                    // Handshake ^^^
+  if (send_cryptodata(*(connection*)conn, cd, &h, 12) > 0) {                    // Handshake ^^^
     // TODO: send less data
     // TODO: If we are not communicating using SSL, Abort!
     pthread_t ssl_thread;
