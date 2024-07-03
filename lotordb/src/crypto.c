@@ -27,7 +27,7 @@ static void snd_cryptokey(int s, head *h, cryptokey *k) {
   cryptokey kk;
 
   kk.publ = (*k).publ;
-  kk.shar = (*k).shar;
+  kk.shar = (*k).shar; // TODO: We cant send share keys either!!!
   kk.priv = 0;
   send(s, h, sizeof(head), 0);
   send(s, &kk, sizeof(cryptokey), 0);

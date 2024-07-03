@@ -5,7 +5,7 @@ from hashlib import pbkdf2_hmac
 from lotordb.vars import Vars
 import threading, secrets
 
-
+# TODO: we cant send shared keys!!!
 # TODO: fix type: ignore
 # From https://raw.githubusercontent.com/smurfd/lightssl/master/src/lightciphers.c
 class Cipher(threading.Thread):
