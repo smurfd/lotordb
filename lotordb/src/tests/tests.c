@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
+#include "../crypto_server.h"
+#include "../crypto_client.h"
 #include "../crypto.h"
 #include "../tables.h"
 #include "../keys.h"

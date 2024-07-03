@@ -1,7 +1,9 @@
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
+#include "crypto_client.h"
 #include "tables.h"
 #include "crypto.h"
 #include "defs.h"
@@ -82,4 +84,10 @@ connection client_init(const char *host, const char *port, int type) {
 // End connection
 void client_end(connection c) {
   close(c.socket);
+}
+
+//
+// Generate the client shared key
+void generate_shared_cryptokey_client(cryptokey *k1, cryptokey *k2, head *h) {
+  (*k1).shar = (*h).p % (int64_t)pow((*k1).publ, (*k2).priv);
 }

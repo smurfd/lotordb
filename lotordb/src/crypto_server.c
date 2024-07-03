@@ -1,8 +1,10 @@
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <assert.h>
 #include <pthread.h>
+#include "crypto_server.h"
 #include "tables.h"
 #include "crypto.h"
 #include "defs.h"
@@ -108,4 +110,10 @@ connection server_init(const char *host, const char *port, int type) {
 // End connection
 void server_end(connection c) {
   close(c.socket);
+}
+
+//
+// Generate the server shared key
+void generate_shared_cryptokey_server(cryptokey *k1, cryptokey *k2, head *h) {
+  (*k2).shar = (*h).p % (int64_t)pow((*k2).publ, (*k1).priv);
 }

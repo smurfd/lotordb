@@ -41,8 +41,6 @@ int receive_cryptodata(connection c, void* data, head *h, u64 len);
 void receive_cryptokey(connection c, head *h, cryptokey *k);
 
 // Generators
-void generate_shared_cryptokey_client(cryptokey *k1, cryptokey *k2, head *h);
-void generate_shared_cryptokey_server(cryptokey *k1, cryptokey *k2, head *h);
 cryptokey generate_cryptokeys(head *h);
 void handler_cryptography(u64 data, cryptokey k, u64 *enc);
 

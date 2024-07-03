@@ -119,18 +119,6 @@ void receive_cryptokey(connection c, head *h, cryptokey *k) {
 }
 
 //
-// Generate the server shared key
-void generate_shared_cryptokey_server(cryptokey *k1, cryptokey *k2, head *h) {
-  (*k2).shar = (*h).p % (int64_t)pow((*k2).publ, (*k1).priv);
-}
-
-//
-// Generate the client shared key
-void generate_shared_cryptokey_client(cryptokey *k1, cryptokey *k2, head *h) {
-  (*k1).shar = (*h).p % (int64_t)pow((*k1).publ, (*k2).priv);
-}
-
-//
 // Generate a public and private keypair
 cryptokey generate_cryptokeys(head *h) {
   cryptokey k;
