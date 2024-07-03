@@ -10,28 +10,6 @@
 #include "tables.h"
 #include "keys.h"
 #include "defs.h"
-// Static functions
-
-//
-// Receive key (clears private key if we receive it for some reason)
-static void recv_cryptokey(int s, head *h, cryptokey *k) {
-  recv(s, h, sizeof(head), 0);
-  recv(s, k, sizeof(cryptokey), 0);
-  (*k).priv = 0;
-}
-
-//
-// Send key
-static void snd_cryptokey(int s, head *h, cryptokey *k) {
-  // This to ensure not to send the private key
-  cryptokey kk;
-
-  kk.publ = (*k).publ;
-  kk.shar = (*k).shar; // TODO: We cant send share keys either!!!
-  kk.priv = 0;
-  send(s, h, sizeof(head), 0);
-  send(s, &kk, sizeof(cryptokey), 0);
-}
 
 // Public functions
 
@@ -104,18 +82,19 @@ int receive_cryptodata(connection c, void* data, head *h, u64 len) {
 // Send key to client/server
 void send_cryptokey(connection c, head *h, cryptokey *k) {
   int sock = *((connection*)&c)->clisocket;
-  snd_cryptokey(sock, h, k);
+  // Just send the public key
+  send(sock, h, sizeof(head), 0);
+  send(sock, &k->publ, sizeof(u64), 0);
 }
 
 //
 // Receive key from client/server
 void receive_cryptokey(connection c, head *h, cryptokey *k) {
   int sock = *((connection*)&c)->clisocket;
-  cryptokey tmp;
 
-  // This to ensure if we receive a private key we clear it
-  recv_cryptokey(sock, h, &tmp);
-  (*k).publ = tmp.publ; (*k).shar = tmp.shar; (*k).priv = 0;
+  // Just receive the public key
+  recv(sock, h, sizeof(head), 0);
+  recv(sock, &k->publ, sizeof(u64), 0);
 }
 
 //
