@@ -50,7 +50,7 @@ sockets communication_init(const char *host, const char *port) {
   return sock;
 }
 
-connection connection_init(int descriptor, int type) {
+connection connection_init(int8_t descriptor, int type) {
   connection c;
   c.socket = descriptor;
   c.type = type;

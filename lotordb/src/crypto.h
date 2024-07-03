@@ -22,16 +22,18 @@ typedef struct cryptokeys {
 typedef struct connection {
   int socket;                // socket used for connection
   int *clisocket;            // clientsocket
-  int type;                  // what type of client/server: 1 = keyvaluestore, 2 = tablesdb
-  int err;                   // error
+  uint8_t type;                  // what type of client/server: 1 = keyvaluestore, 2 = tablesdb
+  uint8_t err;                   // error
 } connection;
 
 typedef struct sockets {
-  int descriptor;            // socket descriptor
+  int8_t descriptor;            // socket descriptor
   struct sockaddr_in addr;   // socket addr
 } sockets;
 
-connection connection_init(int descriptor, int type);
+#define BLOCK 1024
+
+connection connection_init(int8_t descriptor, int type);
 sockets communication_init(const char *host, const char *port);
 
 // Send/Receive
