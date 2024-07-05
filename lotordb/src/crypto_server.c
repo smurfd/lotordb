@@ -7,7 +7,6 @@
 #include "crypto_server.h"
 #include "tables.h"
 #include "crypto.h"
-#include "defs.h"
 
 static cryptokey *clear_cryptokey(cryptokey *k) {
   (*k).publ = 0;

@@ -1,13 +1,8 @@
 #include <sys/socket.h>
-//#include <sys/types.h>
-//#include <sys/stat.h>
 #include <string.h>
 #include <stdlib.h>
-//#include <time.h>
-//#include <unistd.h>
 #include <stdio.h>
 #include "tables.h"
-#include "defs.h"
 
 // TODO: add check that f is not NULL == couldnt open file
 // TODO: this feels stupid. read the index file several times.

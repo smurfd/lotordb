@@ -6,7 +6,6 @@
 #include "crypto_client.h"
 #include "tables.h"
 #include "crypto.h"
-#include "defs.h"
 
 static void *client_connection_handler_ssl(void *conn) {
   int sock = *((connection*)conn)->clisocket;

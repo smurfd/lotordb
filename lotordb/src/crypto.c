@@ -9,7 +9,6 @@
 #include "crypto.h"
 #include "tables.h"
 #include "keys.h"
-#include "defs.h"
 
 // Public functions
 

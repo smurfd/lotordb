@@ -1,7 +1,8 @@
 #ifndef TABLES_H
 #define TABLES_H 1
 #include "keys.h"
-#include "defs.h"
+
+#define u64 unsigned long long int // because linux uint64_t is not same as on mac
 
 typedef struct dbindex {
   u64 index;

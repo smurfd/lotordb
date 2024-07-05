@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include "keys.h"
 #include "hash.h"
-#include "defs.h"
 
 void set_key_value_store(kvsh *k, char key[256], char value[256], char store[256]) {
   strncpy((*k).key, key, strlen(key)+1);

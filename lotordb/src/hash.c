@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include "hash_tooling.h"
 #include "hash.h"
-#include "defs.h"
 
 //
 // Circular shift

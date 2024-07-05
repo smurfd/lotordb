@@ -1,6 +1,5 @@
 #ifndef KEYS_H
 #define KEYS_H 1
-#include "defs.h"
 
 typedef struct kvsh {
   char key[256];

@@ -2,9 +2,10 @@
 #ifndef CRYPTO_H
 #define CRYPTO_H 1
 #include <stdbool.h>
-#include <inttypes.h>
 #include <netinet/in.h>
-#include "defs.h"
+
+#define u64 unsigned long long int // because linux uint64_t is not same as on mac
+#define BLOCK 1024
 
 typedef struct header {
   u64 len;                   // length
@@ -22,16 +23,14 @@ typedef struct cryptokeys {
 typedef struct connection {
   int socket;                // socket used for connection
   int *clisocket;            // clientsocket
-  uint8_t type;                  // what type of client/server: 1 = keyvaluestore, 2 = tablesdb
-  uint8_t err;                   // error
+  uint8_t type;              // what type of client/server: 1 = keyvaluestore, 2 = tablesdb
+  uint8_t err;               // error
 } connection;
 
 typedef struct sockets {
-  int8_t descriptor;            // socket descriptor
+  int8_t descriptor;         // socket descriptor
   struct sockaddr_in addr;   // socket addr
 } sockets;
-
-#define BLOCK 1024
 
 connection connection_init(int8_t descriptor, int type);
 sockets communication_init(const char *host, const char *port);
