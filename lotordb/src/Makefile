@@ -2,7 +2,7 @@ CL:=clang -O3 -Wall -pedantic
 CC:=clang -O3 -Wall -pedantic
 BUILD:=.build
 
-all: mkbuilddir db_keystore hash db_tables crypto crypto_server crypto_client client server test
+all: mkbuilddir db_keystore hash db_tables ciphers keys crypto crypto_server crypto_client client server test
 
 mkbuilddir:
 	mkdir -p ${BUILD}
@@ -26,15 +26,24 @@ hash:
 db_tables:
 	${CL} -c db_tables.c -o ${BUILD}/db_tables.o
 
+ciphers:
+	${CL} -c ciphers.c -o ${BUILD}/ciphers.o
+
+keys:
+	${CL} -c keys.c -o ${BUILD}/keys.o
+
 client:
-	${CL} -o ${BUILD}/client client.c ${BUILD}/crypto.o ${BUILD}/crypto_client.o ${BUILD}/db_keystore.o ${BUILD}/db_tables.o ${BUILD}/hash_tooling.o ${BUILD}/hash.o -fuse-ld=lld -lpthread -lm
+	${CL} -o ${BUILD}/client client.c ${BUILD}/crypto.o ${BUILD}/ciphers.o ${BUILD}/keys.o ${BUILD}/crypto_client.o\
+	  ${BUILD}/db_keystore.o ${BUILD}/db_tables.o ${BUILD}/hash_tooling.o ${BUILD}/hash.o -fuse-ld=lld -lpthread -lm
 
 server:
-	${CL} -o ${BUILD}/server server.c ${BUILD}/crypto.o ${BUILD}/crypto_server.o ${BUILD}/db_keystore.o ${BUILD}/db_tables.o ${BUILD}/hash_tooling.o ${BUILD}/hash.o -fuse-ld=lld -lpthread -lm
+	${CL} -o ${BUILD}/server server.c ${BUILD}/crypto.o ${BUILD}/ciphers.o ${BUILD}/keys.o ${BUILD}/crypto_server.o\
+	  ${BUILD}/db_keystore.o ${BUILD}/db_tables.o ${BUILD}/hash_tooling.o ${BUILD}/hash.o -fuse-ld=lld -lpthread -lm
 
 test:
 	make -Ctests
 	${BUILD}/tests
 
 clean:
-	rm ${BUILD}/crypto.o ${BUILD}/crypto_client.o ${BUILD}/crypto_server.o ${BUILD}/db_keystore.o ${BUILD}/db_tables.o ${BUILD}/hash.o ${BUILD}/hash_tooling.o ${BUILD}/client ${BUILD}/server ${BUILD}/tests
+	rm ${BUILD}/crypto.o ${BUILD}/crypto_client.o ${BUILD}/crypto_server.o ${BUILD}/db_keystore.o ${BUILD}/db_tables.o\
+	  ${BUILD}/hash.o ${BUILD}/hash_tooling.o ${BUILD}/ciphers.o ${BUILD}/keys.o ${BUILD}/client ${BUILD}/server ${BUILD}/tests
