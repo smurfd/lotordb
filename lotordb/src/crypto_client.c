@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "crypto_client.h"
-#include "tables.h"
+#include "db_tables.h"
 #include "crypto.h"
 
 static void *client_connection_handler_ssl(void *conn) {

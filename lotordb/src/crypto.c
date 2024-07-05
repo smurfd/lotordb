@@ -6,9 +6,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include "db_keystore.h"
+#include "db_tables.h"
 #include "crypto.h"
-#include "tables.h"
-#include "keys.h"
 
 // Public functions
 

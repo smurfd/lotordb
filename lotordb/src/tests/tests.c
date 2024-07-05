@@ -3,8 +3,8 @@
 #include "../crypto_server.h"
 #include "../crypto_client.h"
 #include "../crypto.h"
-#include "../tables.h"
-#include "../keys.h"
+#include "../db_tables.h"
+#include "../db_keystore.h"
 
 //
 // Generate a keypair & shared key then print it (test / demo)

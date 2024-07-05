@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "tables.h"
+#include "db_tables.h"
 
 // TODO: add check that f is not NULL == couldnt open file
 // TODO: this feels stupid. read the index file several times.
@@ -28,6 +28,7 @@ int static table_check_unique_index(char path[256], char unique_id[256]) {
   return 0;
 }
 
+// TODO: write and read one line per entry that is encrypted with separators. Both index and data
 void table_read_index(tbls *t, char path[256], char unique_id[256]) {
   FILE *f = fopen(path, "r");
   size_t len = 512;

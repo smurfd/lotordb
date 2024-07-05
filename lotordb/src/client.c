@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "crypto_client.h"
 #include "crypto.h"
-#include "keys.h"
+#include "db_keystore.h"
 
 int main(int argc, char** argv) {
   int type = usage(argv[1], argc, "client");

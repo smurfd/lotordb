@@ -1,6 +1,6 @@
-#ifndef TABLES_H
-#define TABLES_H 1
-#include "keys.h"
+#ifndef DB_TABLES_H
+#define DB_TABLES_H 1
+#include "db_keystore.h"
 
 #define u64 unsigned long long int // because linux uint64_t is not same as on mac
 

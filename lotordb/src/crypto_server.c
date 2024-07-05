@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include "crypto_server.h"
-#include "tables.h"
+#include "db_tables.h"
 #include "crypto.h"
 
 static cryptokey *clear_cryptokey(cryptokey *k) {

@@ -5,7 +5,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
-#include "keys.h"
+#include "db_keystore.h"
 #include "hash.h"
 
 void set_key_value_store(kvsh *k, char key[256], char value[256], char store[256]) {
