@@ -34,7 +34,7 @@ static void *client_connection_handler(void *conn) {
   k2 = generate_cryptokeys(&h);                                                 //
   send_cryptokey(*(connection*)conn, &h, &k2);                                  //
   generate_shared_cryptokey_client(&k1, &k2, &h);                               //
-  printf("share : 0x%.16llx\n", k1.shar);                                       //
+  printf("share : 0x%.20llx\n", k1.shar);                                       //
   for (u64 i = 0; i < 12; i++) {                                                //
     dat[i] = (u64)i;                                                            //
     handler_cryptography(dat[i], k1, &cd[i]);                                   //

@@ -16,12 +16,12 @@ void test_genkeys(void) {
 
   generate_shared_cryptokey_client(&k1, &k2, &h1);
   generate_shared_cryptokey_server(&k1, &k2, &h1);
-  printf("Alice public & private key: 0x%.16llx 0x%.16llx\n", k1.publ, k1.priv);
-  printf("Bobs public & private key: 0x%.16llx 0x%.16llx\n", k2.publ, k2.priv);
-  printf("Alice & Bobs shared key: 0x%.16llx 0x%.16llx\n", k1.shar, k2.shar);
+  printf("Alice public & private key: 0x%.20llx 0x%.20llx\n", k1.publ, k1.priv);
+  printf("Bobs public & private key: 0x%.20llx 0x%.20llx\n", k2.publ, k2.priv);
+  printf("Alice & Bobs shared key: 0x%.20llx 0x%.20llx\n", k1.shar, k2.shar);
   handler_cryptography(c, k1, &d);
   handler_cryptography(d, k2, &e);
-  printf("Before:  0x%.16llx\nEncrypt: 0x%.16llx\nDecrypt: 0x%.16llx\n",c,d,e);
+  printf("Before:  0x%.20llx\nEncrypt: 0x%.20llx\nDecrypt: 0x%.20llx\n",c,d,e);
   assert(c == e);
 }
 

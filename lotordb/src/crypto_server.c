@@ -50,7 +50,7 @@ static void *server_connection_handler(void *conn) {
   send_cryptokey(*(connection*)conn, &h, &k1);                                  //
   receive_cryptokey(*(connection*)conn, &h, &k2);                               //
   generate_shared_cryptokey_server(&k1, &k2, &h);                               //
-  printf("share : 0x%.16llx\n", k2.shar);                                       //
+  printf("share : 0x%.20llx\n", k2.shar);                                       //
   if (receive_cryptodata(*(connection*)conn, cd, &h, 12) > 0) {                 // Handshake ^^^
     // TODO: receive less data
     // TODO: If we are not communicating using SSL, Abort!
