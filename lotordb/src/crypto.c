@@ -10,6 +10,9 @@
 #include "db_tables.h"
 #include "crypto.h"
 
+// TODO: Add AES for encryption/decryption (lightssl)
+// TODO: Add ECDSA for keyexchange (lightssl)
+
 // Public functions
 
 //
