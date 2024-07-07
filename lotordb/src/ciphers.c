@@ -364,52 +364,52 @@ static void decrypt_block(uint8_t out[], const uint8_t in[], const uint8_t *rk) 
 //
 // k = key, o = out
 // https://medium.com/asecuritysite-when-bob-met-alice/a-bluffers-guide-to-aes-modes-ecb-cbc-cfb-and-all-that-jazz-4180f1882e16
-void cipher_encrypt_cbc(uint8_t out[], const uint8_t in[], const uint8_t key[], const uint8_t *iv) {
+void cipher_encrypt_cbc(uint8_t out[], const uint8_t in[], const uint8_t key[], const uint8_t *iv, uint32_t len) {
   uint8_t block[NB * NR] = {0}, roundkeys[4 * NB * (NR + 1)] = {0};
 
   key_expansion(roundkeys, key);
   memcpy(block, iv, BBL);
   // CBC
-  for (uint32_t i = 0; i < BBL; i += BBL) {
+  for (uint32_t i = 0; i < len; i += BBL) {
     xor(block, block, (in + i), BBL);
     encrypt_block((out + i), block, roundkeys);
     memcpy(block, (out + i), BBL);
   }
 }
 
-void cipher_encrypt_cfb(uint8_t out[], const uint8_t in[], const uint8_t key[], const uint8_t *iv) {
+void cipher_encrypt_cfb(uint8_t out[], const uint8_t in[], const uint8_t key[], const uint8_t *iv, uint32_t len) {
   uint8_t block[NB * NR] = {0}, encryptedblock[NB * NR] = {0}, roundkeys[4 * NB * (NR + 1)] = {0};
 
   key_expansion(roundkeys, key);
   memcpy(block, iv, BBL);
   // CFB
-  for (uint32_t i = 0; i < BBL; i += BBL) {
+  for (uint32_t i = 0; i < len; i += BBL) {
     encrypt_block(encryptedblock, block, roundkeys);
     xor((out + i), (in + i), encryptedblock, BBL);
     memcpy(block, (out + i), BBL);
   }
 }
 
-void cipher_decrypt_cbc(uint8_t out[], const uint8_t in[], const uint8_t key[], const uint8_t *iv) {
+void cipher_decrypt_cbc(uint8_t out[], const uint8_t in[], const uint8_t key[], const uint8_t *iv, uint32_t len) {
   uint8_t block[NB * NR] = {0}, roundkeys[4 * NB * (NR + 1)] = {0};
 
   key_expansion(roundkeys, key);
   memcpy(block, iv, BBL);
   // CBC
-  for (uint32_t i = 0; i < BBL; i += BBL) {
+  for (uint32_t i = 0; i < len; i += BBL) {
     decrypt_block((out + i), (in + i), roundkeys);
     xor((out + i), block, (out + i), BBL);
     memcpy(block, in + i, BBL);
   }
 }
 
-void cipher_decrypt_cfb(uint8_t out[], const uint8_t in[], const uint8_t key[], const uint8_t *iv) {
+void cipher_decrypt_cfb(uint8_t out[], const uint8_t in[], const uint8_t key[], const uint8_t *iv, uint32_t len) {
   uint8_t block[NB * NR] = {0}, encryptedblock[NB * NR] = {0}, roundkeys[4 * NB * (NR + 1)] = {0};
 
   key_expansion(roundkeys, key);
   memcpy(block, iv, BBL);
   // CFB
-  for (uint32_t i = 0; i < BBL; i += BBL) {
+  for (uint32_t i = 0; i < len; i += BBL) {
     encrypt_block(encryptedblock, block, roundkeys);
     xor((out + i), (in + i), encryptedblock, BBL);
     memcpy(block, in + i, BBL);
