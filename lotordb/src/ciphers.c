@@ -187,11 +187,10 @@ static void invshift_rows(uint8_t state[4][NB]) { // See Sec. 5.3.1
 //
 //
 static void invsub_bytes(uint8_t state[4][NB]) { // See Sec. 5.3.2
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < NB; j++) {
-      uint8_t s = state[i][j];
-      state[i][j] = SBOXINV[s / 16][s % 16];
-    }
+  for (int8_t i = 0; i < 4 * NB; i++) { // for i<4, j<NB: for i 4*NB: i/4, i % 4
+    uint8_t s = state[i/4][i%NB];
+    state[i/4][i%NB] = SBOXINV[s / 16][s % 16];
+  }
 }
 
 //
@@ -200,12 +199,8 @@ static void invmix_columns(uint8_t state[4][NB]) { // See Sec. 5.3.3
   uint8_t temp_state[4][NB];
 
   memset(temp_state, 0, 16);
-  for (int i = 0; i < 4; ++i) {
-    for (int k = 0; k < 4; ++k) {
-      for (int j = 0; j < 4; ++j) {
-        temp_state[i][j] ^= GF[MIXINV[i][k]][state[k][j]];
-      }
-    }
+  for (int8_t i = 0; i < 4*4*4; i++) {
+    temp_state[(i/4)/4][(i/4)%4] ^= GF[MIXINV[(i/4)/4][i%4]][state[i%4][(i/4)%4]];
   }
   memcpy(state, temp_state, 16);
 }
@@ -216,10 +211,8 @@ static void add_roundkey(uint8_t state[4][NB], const uint8_t *w) { // See Sec. 5
   uint8_t tmp[4][NB];
 
   copy_state(tmp, state);
-  for (int j = 0; j < NB; ++j) {
-    for (int i = 0; i < 4; ++i) {
-      tmp[i][j] = state[i][j] ^ w[i + 4 * j];
-    }
+  for (int8_t i = 0; i < NB*4; i++) {
+    tmp[(i%4)][i/NB] = state[(i%4)][i/NB] ^ w[(i%4) + 4 * (i/NB)];
   }
   copy_state(state, tmp);
 }
@@ -227,11 +220,9 @@ static void add_roundkey(uint8_t state[4][NB], const uint8_t *w) { // See Sec. 5
 //
 // 5.1.x
 static void sub_bytes(uint8_t state[4][NB]) { // See Sec. 5.1.1
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < NB; j++) {
-      uint8_t s = state[i][j];
-      state[i][j] = SBOX[s / 16][s % 16];
-    }
+  for (int8_t i = 0; i < NB*4; i++) {
+    uint8_t s = state[i/4][i%NB];
+    state[i/4][i%NB] = SBOX[s / 16][s % 16];
   }
 }
 
@@ -249,13 +240,9 @@ static void mix_columns(uint8_t state[4][NB]) { // See Sec. 5.1.3
   uint8_t temp_state[4][NB];
 
   memset(temp_state, 0, 16);
-  for (int i = 0; i < 4; ++i) {
-    for (int k = 0; k < 4; ++k) {
-      for (int j = 0; j < 4; ++j) {
-        if (MIX[i][k] == 1) temp_state[i][j] ^= state[k][j];
-        else temp_state[i][j] ^= GF[MIX[i][k]][state[k][j]];
-      }
-    }
+  for (int8_t i = 0; i < 4*4*4; ++i) { // for i, j, k<4: for i<4*4*4, (i/4)/4, (i/4)%4, i%4 
+    if (MIX[(i/4)/4][(i/4)%4] == 1) temp_state[(i/4)/4][i%4] ^= state[(i/4)%4][i%4];
+    else temp_state[(i/4)/4][i%4] ^= GF[MIX[(i/4)/4][(i/4)%4]][state[(i/4)%4][i%4]];
   }
   memcpy(state, temp_state, 16);
 }
@@ -263,7 +250,7 @@ static void mix_columns(uint8_t state[4][NB]) { // See Sec. 5.1.3
 //
 //
 static void sub_word(uint8_t *wrd) {
-  for (int i = 0; i < 4; i++) {
+  for (int8_t i = 0; i < 4; i++) {
     wrd[i] = SBOX[wrd[i] / 16][wrd[i] % 16];
   }
 }
@@ -273,7 +260,7 @@ static void sub_word(uint8_t *wrd) {
 static void rot_word(uint8_t *wrd) {
   uint8_t tmp = wrd[0];
 
-  for (int i = 0; i < 4; i++) {
+  for (int8_t i = 0; i < 4; i++) {
     wrd[i] = wrd[i + 1];
     if (i == 3) wrd[3] = tmp;
   }
@@ -284,7 +271,7 @@ static void rot_word(uint8_t *wrd) {
 static void rcon(uint8_t *wrd, const uint8_t a) {
   uint8_t c = 1;
 
-  for (int i = 0; i < a - 1; i++) {
+  for (int8_t i = 0; i < a - 1; i++) {
     c = (c << 1) ^ (((c >> 7) & 1) * 0x1b);
   }
   wrd[0] = c;
@@ -297,19 +284,19 @@ static void key_expansion(uint8_t w[], const uint8_t key[]) {
   uint8_t tmp[4], rc[4];
 
   memcpy(w, key, NK4 * sizeof(uint8_t));
-  for (int i = NK4; i < 4 * NB * (NR + 1); i += 4) {
+  for (uint8_t i = NK4; i < 4 * NB * (NR + 1); i += 4) {
     memcpy(tmp, w, 4 * sizeof(uint8_t));
     if (i / 4 % NK == 0) {
       rot_word(tmp);
       sub_word(tmp);
       rcon(rc, i / (4 * NK));
-      for (int k = 0; k < 4; k++) {
+      for (int8_t k = 0; k < 4; k++) {
         tmp[k] = tmp[k] ^ rc[k];
       }
     } else if (NK > 6 && i / 4 % NK == 4) {
       sub_word(tmp);
     }
-    for (int j = 0; j < 4; ++j) {
+    for (int8_t j = 0; j < 4; ++j) {
       w[i + j] = w[i + j - 4 * NK] ^ tmp[j];
     }
   }

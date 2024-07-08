@@ -95,12 +95,11 @@ void test_ciphers_cfb_long_str(void) {
   assert(memcmp(plain, in, sizeof(plain) * sizeof(uint8_t)) == 0);
 }
 
-
 void test_keys_verify(void) {
   uint8_t sig[BYTES * 2],  pubkey[BYTES + 1],  sec[BYTES], privkey[BYTES], h[BYTES] = {0};
   u64 k[BYTES] = {0};
 
-  for (int i = 0; i < BYTES; i++) {
+  for (uint8_t i = 0; i < BYTES; i++) {
     h[i] = u64rnd();
     k[i] = u64rnd();
   }

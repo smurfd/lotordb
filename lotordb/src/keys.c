@@ -15,7 +15,7 @@ static void clear(u64 *a) {
 //
 // Count 64bit in a
 static u64 count(const u64 *a) {
-  for (int i = DIGITS - 1; i >= 0; --i) {
+  for (int8_t i = DIGITS - 1; i >= 0; --i) {
     if (a[i] != 0) return (i + 1);
   }
   return 0;
@@ -53,7 +53,7 @@ static uint32_t check_bits(const u64 *a) {
 //
 // Compare a and b
 static int compare(const u64 *a, const u64 *b) {
-  for (int i = DIGITS - 1; i >= 0; --i) {
+  for (int8_t i = DIGITS - 1; i >= 0; --i) {
     if (a[i] > b[i]) return 1;
     else if (a[i] < b[i]) return -1;
   }
@@ -65,7 +65,7 @@ static int compare(const u64 *a, const u64 *b) {
 static u64 lshift(u64 *a, const u64 *b, const u64 c) {
   u64 ovr = 0;
 
-  for (int i = 0; i < DIGITS; ++i) {
+  for (int8_t i = 0; i < DIGITS; ++i) {
     u64 t = b[i];
     a[i] = (t << c) | ovr;
     ovr = t >> (64 - c);
@@ -90,7 +90,7 @@ static void rshift1(u64 *a) {
 static u64 add(u64 *a, const u64 *b, const u64 *c) {
   u64 ovr = 0;
 
-  for (int i = 0; i < DIGITS; ++i) {
+  for (int8_t i = 0; i < DIGITS; ++i) {
     u64 s = b[i] + c[i] + ovr;
     if (s != b[i]) ovr = (s < b[i]);
     a[i] = s;
@@ -103,7 +103,7 @@ static u64 add(u64 *a, const u64 *b, const u64 *c) {
 static u64 sub(u64 *a, const u64 *b, const u64 *c) {
   u64 ovr = 0;
 
-  for (int i = 0; i < DIGITS; ++i) {
+  for (int8_t i = 0; i < DIGITS; ++i) {
     u64 d = b[i] - c[i] - ovr;
     if (d != b[i]) ovr = (d > b[i]);
     a[i] = d;
