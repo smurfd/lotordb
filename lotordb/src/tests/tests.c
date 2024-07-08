@@ -73,6 +73,29 @@ void test_ciphers_cfb_long(void) {
   assert(memcmp(plain, in, sizeof(plain) * sizeof(uint8_t)) == 0);
 }
 
+void test_ciphers_cbc_long_str(void) {
+  char plain[] = "this is a very very long string, that we should be able to encrypt and decrypt without a problem, dont you think? it should be perfectly fine, just gotta convert it to uint8_t. really really really long, yeah";
+  uint8_t iv[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, key[] = {
+  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13,
+  0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f}, out[sizeof(plain)] = {0}, in[sizeof(plain)];
+
+  cipher_encrypt_cbc(out, (uint8_t*)plain, key, iv, sizeof(plain));
+  cipher_decrypt_cbc(in, out, key, iv, sizeof(plain));
+  assert(memcmp(plain, in, sizeof(plain) * sizeof(uint8_t)) == 0);
+}
+
+void test_ciphers_cfb_long_str(void) {
+  char plain[] = "this is a very very long string, that we should be able to encrypt and decrypt without a problem, dont you think? it should be perfectly fine, just gotta convert it to uint8_t. really really really long, yeah";
+  uint8_t iv[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, key[] = {
+  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13,
+  0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f}, out[sizeof(plain)] = {0}, in[sizeof(plain)];
+
+  cipher_encrypt_cfb(out, (uint8_t*)plain, key, iv, sizeof(plain));
+  cipher_decrypt_cfb(in, out, key, iv, sizeof(plain));
+  assert(memcmp(plain, in, sizeof(plain) * sizeof(uint8_t)) == 0);
+}
+
+
 void test_keys_verify(void) {
   uint8_t sig[BYTES * 2],  pubkey[BYTES + 1],  sec[BYTES], privkey[BYTES], h[BYTES] = {0};
   u64 k[BYTES] = {0};
@@ -97,5 +120,7 @@ int main(void) {
   test_ciphers_cfb();
   test_ciphers_cbc_long();
   test_ciphers_cfb_long();
+  test_ciphers_cbc_long_str();
+  test_ciphers_cfb_long_str();
   printf("OK\n");
 }

@@ -66,7 +66,8 @@ static u64 lshift(u64 *a, const u64 *b, const u64 c) {
   u64 ovr = 0;
 
   for (int i = 0; i < DIGITS; ++i) {
-    u64 t = b[i]; a[i] = (t << c) | ovr;
+    u64 t = b[i];
+    a[i] = (t << c) | ovr;
     ovr = t >> (64 - c);
   }
   return ovr;
@@ -120,7 +121,8 @@ static void mul(u64 *a, const u64 *b, const u64 *c) {
     u64 min = (k < DIGITS ? 0 : (k + 1) - DIGITS);
     for (u64 j = min; j <= k && j < DIGITS; ++j) {
       unsigned __int128 p = (unsigned __int128)b[j] * c[k - j]; // product
-      r += p; r2 += (r < p);
+      r += p;
+      r2 += (r < p);
     }
     a[k] = (u64)(r);
     r = (r >> 64) | (((unsigned __int128)r2) << 64);
@@ -164,7 +166,8 @@ static void mod_mod(u64 *a, u64 *b) {
   while (!check_zero(b + DIGITS)) {
     u64 ovr = 0, t[DIGITS * 2];
 
-    clear(t); clear(t + DIGITS);
+    clear(t);
+    clear(t + DIGITS);
     omega_mul(t, b + DIGITS);
     clear(b + DIGITS);
     for (u64 i = 0; i < DIGITS + 3; ++i) {
@@ -182,7 +185,8 @@ static void mod_mod(u64 *a, u64 *b) {
 static void mod_mul(u64 *a, const u64 *b, const u64 *c) {
   u64 p[DIGITS * 2];
 
-  mul(p, b, c); mod_mod(a, p);
+  mul(p, b, c);
+  mod_mod(a, p);
 }
 
 //
@@ -190,7 +194,8 @@ static void mod_mul(u64 *a, const u64 *b, const u64 *c) {
 static void mod_sqr(u64 *a, const u64 *b) {
   u64 p[DIGITS* 2];
 
-  mul(p, b, b); mod_mod(a, p);
+  mul(p, b, b);
+  mod_mod(a, p);
 }
 
 //
@@ -216,15 +221,19 @@ static void mod_mod_mul(u64 *a, u64 *b, u64 *c, u64 *m) {
   if (pb) pb += DIGITS * 64;
   else pb = check_bits(p);
   if (pb < mb) {
-    set(a, p); return;
+    set(a, p);
+    return;
   }
 
-  clear(mm); clear(mm + DIGITS);
-  ds = (pb - mb) / 64; bs = MOD(pb - mb, 64);
+  clear(mm);
+  clear(mm + DIGITS);
+  ds = (pb - mb) / 64;
+  bs = MOD(pb - mb, 64);
   if (bs) mm[ds + DIGITS] = lshift(mm + ds, m, bs);
   else set(mm + ds, m);
 
-  clear(a); a[0] = 1;
+  clear(a);
+  a[0] = 1;
   while (pb > DIGITS * 64 || compare(mm, m) >= 0) {
     int cmp = compare(DIGITS + mm, DIGITS + p);
     if (cmp < 0 || (cmp == 0 && compare(mm, p) <= 0)) {
@@ -232,7 +241,8 @@ static void mod_mod_mul(u64 *a, u64 *b, u64 *c, u64 *m) {
       sub(DIGITS + p, DIGITS + p, DIGITS + mm);
     }
     u64 ovr = (mm[DIGITS] & 0x01) << 63;
-    rshift1(DIGITS + mm); rshift1(mm);
+    rshift1(DIGITS + mm);
+    rshift1(mm);
     mm[DIGITS - 1] |= ovr;
     --pb;
   }
@@ -241,7 +251,8 @@ static void mod_mod_mul(u64 *a, u64 *b, u64 *c, u64 *m) {
 
 static void rs_sub_au(u64 *a, u64 *b, u64 *u, u64 *v, u64 *m, u64 car, bool sb) {
   if (sb) {
-    sub(a, a, b); rshift1(a);
+    sub(a, a, b);
+    rshift1(a);
     if (compare(u, v) < 0) add(u, u, m);
     sub(u, u, v);
   } else rshift1(a);
@@ -256,9 +267,15 @@ static void mod_invers(u64 *r, u64 *p, u64 *m) {
   u64 a[DIGITS], b[DIGITS], u[DIGITS], v[DIGITS], tmp[DIGITS], car;
   int cmpResult;
 
-  if(check_zero(p)) {clear(r); return;}
-  set(a, p); set(b, m);
-  clear(u); u[0] = 1; clear(v);
+  if(check_zero(p)) {
+    clear(r);
+    return;
+  }
+  set(a, p);
+  set(b, m);
+  clear(u);
+  u[0] = 1;
+  clear(v);
   while ((cmpResult = compare(a, b)) != 0) {
     car = 0;
     if (EVEN(a)) rs_sub_au(a, tmp, u, tmp, m, car, false);
@@ -281,22 +298,34 @@ static void pt_double(u64 *a, u64 *b, u64 *c) {
   u64 t4[DIGITS], t5[DIGITS];
 
   if (check_zero(c)) return;
-  mod_sqr(t4, b); mod_mul(t5, a, t4); mod_sqr(t4, t4);
-  mod_mul(b, b, c); mod_sqr(c, c);
+  mod_sqr(t4, b);
+  mod_mul(t5, a, t4);
+  mod_sqr(t4, t4);
+  mod_mul(b, b, c);
+  mod_sqr(c, c);
 
-  mod_add(a, a, c, curve_p); mod_add(c, c, c, curve_p);
-  mod_sub(c, a, c, curve_p); mod_mul(a, a, c);
+  mod_add(a, a, c, curve_p);
+  mod_add(c, c, c, curve_p);
+  mod_sub(c, a, c, curve_p);
+  mod_mul(a, a, c);
 
-  mod_add(c, a, a, curve_p); mod_add(a, a, c, curve_p);
+  mod_add(c, a, a, curve_p);
+  mod_add(a, a, c, curve_p);
   if (check_set(a, 0)) {
     u64 ovr = add(a, a, curve_p);
 
     rshift1(a);
     a[DIGITS - 1] |= ovr << 63;
   } else rshift1(a);
-  mod_sqr(c, a); mod_sub(c, c, t5, curve_p); mod_sub(c, c, t5, curve_p);
-  mod_sub(t5, t5, c, curve_p); mod_mul(a, a, t5); mod_sub(t4, a, t4, curve_p);
-  set(a, c); set(c, b); set(b, t4);
+  mod_sqr(c, a);
+  mod_sub(c, c, t5, curve_p);
+  mod_sub(c, c, t5, curve_p);
+  mod_sub(t5, t5, c, curve_p);
+  mod_mul(a, a, t5);
+  mod_sub(t4, a, t4, curve_p);
+  set(a, c);
+  set(c, b);
+  set(b, t4);
 }
 
 //
@@ -305,9 +334,11 @@ static void pt_decompress(pt *a, const uint8_t b[]) {
   u64 tr[DIGITS] = {3};
 
   bit_pack(a->x, b + 1);
-  mod_sqr(a->y, a->x); mod_sub(a->y, a->y, tr, curve_p);
+  mod_sqr(a->y, a->x);
+  mod_sub(a->y, a->y, tr, curve_p);
   mod_mul(a->y, a->y, a->x);
-  mod_add(a->y, a->y, curve_b, curve_p); mod_sqrt(a->y);
+  mod_add(a->y, a->y, curve_b, curve_p);
+  mod_sqrt(a->y);
   if ((a->y[0] & 0x01) != (b[0] & 0x01)) sub(a->y, curve_p, a->y);
 }
 
@@ -317,7 +348,10 @@ static void pt_decompress(pt *a, const uint8_t b[]) {
 static void pt_apply_z(u64 *a, u64 *b, u64 *z) {
   u64 t[DIGITS];
 
-  mod_sqr(t, z); mod_mul(a, a, t); mod_mul(t, t, z); mod_mul(b, b, t);
+  mod_sqr(t, z);
+  mod_mul(a, a, t);
+  mod_mul(t, t, z);
+  mod_mul(b, b, t);
 }
 
 //
@@ -326,14 +360,20 @@ static void pt_apply_z(u64 *a, u64 *b, u64 *z) {
 static void pt_init_double(u64 *a, u64 *b, u64 *c, u64 *d, const u64 *p) {
   u64 z[DIGITS];
 
-  set(c, a); set(d, b);
-  clear(z); z[0] = 1;
+  set(c, a);
+  set(d, b);
+  clear(z);
+  z[0] = 1;
   if (p) set(z, p);
-  pt_apply_z(a, b, z); pt_double(a, b, z); pt_apply_z(c, d, z);
+  pt_apply_z(a, b, z);
+  pt_double(a, b, z);
+  pt_apply_z(c, d, z);
 }
 
 static void ssmm(u64 *t5, u64 *c, u64 *a, u64 *curve_p) {
-  mod_sub(t5, c, a, curve_p); mod_sqr(t5, t5); mod_mul(a, a, t5);
+  mod_sub(t5, c, a, curve_p);
+  mod_sqr(t5, t5);
+  mod_mul(a, a, t5);
   mod_mul(c, c, t5);
 }
 
@@ -342,10 +382,17 @@ static void ssmm(u64 *t5, u64 *c, u64 *a, u64 *curve_p) {
 static void pt_add(u64 *a, u64 *b, u64 *c, u64 *d) {
   u64 t5[DIGITS];
 
-  ssmm(t5, c, a, curve_p); mod_sub(d, d, b, curve_p); mod_sqr(t5, d);
-  mod_sub(t5, t5, a, curve_p); mod_sub(t5, t5, c, curve_p);
-  mod_sub(c, c, a, curve_p); mod_mul(b, b, c); mod_sub(c, a, t5, curve_p);
-  mod_mul(d, d, c); mod_sub(d, d, b, curve_p); set(c, t5);
+  ssmm(t5, c, a, curve_p);
+  mod_sub(d, d, b, curve_p);
+  mod_sqr(t5, d);
+  mod_sub(t5, t5, a, curve_p);
+  mod_sub(t5, t5, c, curve_p);
+  mod_sub(c, c, a, curve_p);
+  mod_mul(b, b, c);
+  mod_sub(c, a, t5, curve_p);
+  mod_mul(d, d, c);
+  mod_sub(d, d, b, curve_p);
+  set(c, t5);
 }
 
 //
@@ -354,14 +401,25 @@ static void pt_add(u64 *a, u64 *b, u64 *c, u64 *d) {
 static void pt_addc(u64 *a, u64 *b, u64 *c, u64 *d) {
   u64 t5[DIGITS], t6[DIGITS], t7[DIGITS];
 
-  ssmm(t5, c, a, curve_p); mod_add(t5, d, b, curve_p); mod_sub(d, d, b, curve_p);
-  mod_sub(t6, c, a, curve_p); mod_mul(b, b, t6); mod_add(t6, a, c, curve_p);
-  mod_sqr(c, d); mod_sub(c, c, t6, curve_p);
+  ssmm(t5, c, a, curve_p);
+  mod_add(t5, d, b, curve_p);
+  mod_sub(d, d, b, curve_p);
+  mod_sub(t6, c, a, curve_p);
+  mod_mul(b, b, t6);
+  mod_add(t6, a, c, curve_p);
+  mod_sqr(c, d);
+  mod_sub(c, c, t6, curve_p);
 
-  mod_sub(t7, a, c, curve_p); mod_mul(d, d, t7); mod_sub(d, d, b, curve_p);
+  mod_sub(t7, a, c, curve_p);
+  mod_mul(d, d, t7);
+  mod_sub(d, d, b, curve_p);
 
-  mod_sqr(t7, t5); mod_sub(t7, t7, t6, curve_p); mod_sub(t6, t7, a, curve_p);
-  mod_mul(t6, t6, t5); mod_sub(b, t6, b, curve_p); set(a, t7);
+  mod_sqr(t7, t5);
+  mod_sub(t7, t7, t6, curve_p);
+  mod_sub(t6, t7, a, curve_p);
+  mod_mul(t6, t6, t5);
+  mod_sub(b, t6, b, curve_p);
+  set(a, t7);
 }
 
 //
@@ -369,7 +427,8 @@ static void pt_addc(u64 *a, u64 *b, u64 *c, u64 *d) {
 static void pt_mul(pt *r, pt *p, u64 *q, u64 *s) {
   u64 Rx[2][DIGITS], Ry[2][DIGITS], z[DIGITS], nb;
 
-  set(Rx[1], p->x); set(Ry[1], p->y);
+  set(Rx[1], p->x);
+  set(Ry[1], p->y);
   pt_init_double(Rx[1], Ry[1], Rx[0], Ry[0], s);
   for (int i = check_bits(q) - 2; i > 0; --i) {
     nb = !check_set(q, i);
@@ -380,11 +439,16 @@ static void pt_mul(pt *r, pt *p, u64 *q, u64 *s) {
   pt_addc(Rx[1 - nb], Ry[1 - nb], Rx[nb], Ry[nb]);
   // Find final 1/Z value.
   mod_sub(z, Rx[1], Rx[0], curve_p);
-  mod_mul(z, z, Ry[1 - nb]); mod_mul(z, z, p->x);
-  mod_invers(z, z, curve_p); mod_mul(z, z, p->y); mod_mul(z, z, Rx[1 - nb]);
+  mod_mul(z, z, Ry[1 - nb]);
+  mod_mul(z, z, p->x);
+  mod_invers(z, z, curve_p);
+  mod_mul(z, z, p->y);
+  mod_mul(z, z, Rx[1 - nb]);
 
-  pt_add(Rx[nb], Ry[nb], Rx[1 - nb], Ry[1 - nb]); pt_apply_z(Rx[0], Ry[0], z);
-  set(r->x, Rx[0]); set(r->y, Ry[0]);
+  pt_add(Rx[nb], Ry[nb], Rx[1 - nb], Ry[1 - nb]);
+  pt_apply_z(Rx[0], Ry[0], z);
+  set(r->x, Rx[0]);
+  set(r->y, Ry[0]);
 }
 
 //
@@ -394,7 +458,11 @@ static u64 write_crt(FILE* ptr, uint8_t data[]) {
 
   fprintf(ptr, "-----BEGIN CERTIFICATE-----\n");
   fprintf(ptr, "MII");
-  while (i < 1779) {fputc('y', ptr); if (i % 64 == 0) fputc('\n', ptr); i++;}
+  while (i < 1779) {
+    fputc('y', ptr);
+    if (i % 64 == 0) fputc('\n', ptr);
+    i++;
+  }
   fprintf(ptr, "==\n");
   fprintf(ptr, "-----END CERTIFICATE-----\n");
   return 1;
@@ -453,7 +521,8 @@ int keys_make(uint8_t publ[], uint8_t priv[], u64 private[]) {
     pt_mul(&public, &curve_g, private, NULL);
     if (!pt_check_zero(&public)) break;
   }
-  bit_unpack(priv, private); bit_unpack(publ + 1, public.x);
+  bit_unpack(priv, private);
+  bit_unpack(publ + 1, public.x);
   publ[0] = 2 + (public.y[0] & 0x01);
   return 1;
 }
@@ -488,7 +557,8 @@ int keys_sign(const uint8_t priv[], const uint8_t hash[], uint8_t sign[], u64 k[
   mod_mod_mul(s, p.x, tmp, curve_n);
   bit_pack(tmp, hash);
   mod_add(s, tmp, s, curve_n);
-  mod_invers(k, k, curve_n); mod_mod_mul(s, s, k, curve_n);
+  mod_invers(k, k, curve_n);
+  mod_mod_mul(s, s, k, curve_n);
   bit_unpack(sign + BYTES, s);
   return 1;
 }
@@ -501,34 +571,46 @@ int keys_vrfy(const uint8_t publ[], const uint8_t hash[], const uint8_t sign[]) 
   pt public, sum;
 
   pt_decompress(&public, publ);
-  bit_pack(rx, sign); bit_pack(ry, sign + BYTES);
+  bit_pack(rx, sign);
+  bit_pack(ry, sign + BYTES);
   if (check_zero(rx) || check_zero(ry)) return 0;
   if (compare(curve_n, rx) != 1 || compare(curve_n, ry) != 1) return 0;
   mod_invers(rz, ry, curve_n);
   bit_pack(u1, hash);
-  mod_mod_mul(u1, u1, rz, curve_n); mod_mod_mul(u2, rx, rz, curve_n);
+  mod_mod_mul(u1, u1, rz, curve_n);
+  mod_mod_mul(u2, rx, rz, curve_n);
 
   // Calculate sum = G + Q.
-  set(sum.x, public.x); set(sum.y, public.y);
-  set(tx, curve_g.x); set(ty, curve_g.y);
-  mod_sub(rz, sum.x, tx, curve_p); pt_add(tx, ty, sum.x, sum.y);
-  mod_invers(rz, rz, curve_p); pt_apply_z(sum.x, sum.y, rz);
+  set(sum.x, public.x);
+  set(sum.y, public.y);
+  set(tx, curve_g.x);
+  set(ty, curve_g.y);
+  mod_sub(rz, sum.x, tx, curve_p);
+  pt_add(tx, ty, sum.x, sum.y);
+  mod_invers(rz, rz, curve_p);
+  pt_apply_z(sum.x, sum.y, rz);
   // Use Shamir's trick to calculate u1*G + u2*Q
   pt *points[4] = {NULL, &curve_g, &public, &sum};
   uint32_t nb = (check_bits(u1) > check_bits(u2) ? check_bits(u1) : check_bits(u2));
   uint32_t n1 = (!!check_set(u1, nb - 1)) | ((!!check_set(u2, nb - 1)) << 1);
-  set(rx, points[n1]->x); set(ry, points[n1]->y); clear(rz);
+  set(rx, points[n1]->x);
+  set(ry, points[n1]->y);
+  clear(rz);
   rz[0] = 1;
   for (int i = nb - 2; i >= 0; --i) {
     pt_double(rx, ry, rz);
     uint32_t n2 = (!!check_set(u1, i)) | ((!!check_set(u2, i)) << 1);
     if (n2) {
-      set(tx, points[n2]->x); set(ty, points[n2]->y);
-      pt_apply_z(tx, ty, rz); mod_sub(tz, rx, tx, curve_p);
-      pt_add(tx, ty, rx, ry); mod_mul(rz, rz, tz);
+      set(tx, points[n2]->x);
+      set(ty, points[n2]->y);
+      pt_apply_z(tx, ty, rz);
+      mod_sub(tz, rx, tx, curve_p);
+      pt_add(tx, ty, rx, ry);
+      mod_mul(rz, rz, tz);
     }
   }
-  mod_invers(rz, rz, curve_p); pt_apply_z(rx, ry, rz);
+  mod_invers(rz, rz, curve_p);
+  pt_apply_z(rx, ry, rz);
   if (compare(curve_n, rx) != 1) sub(rx, rx, curve_n);
   bit_pack(ry, sign);
   return (compare(rx, ry) == 0);
