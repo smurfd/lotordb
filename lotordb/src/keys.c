@@ -154,7 +154,7 @@ static void omega_mul(u64 *a, const u64 *b) {
 static void mod_add(u64 *a, const u64 *b, const u64 *c, const u64 *m) {
   if (c[0] == 0 && c[1] == 0 && c[2] == 0 && c[3] == 0 && c[4] == 0 && c[5] == 0) set(a, b);
   else {
-    u64 r[DIGITS], rb[DIGITS];
+    u64 rb[DIGITS];
     sub(rb, m, c);
     if (compare(b, rb) >= 1) {
       sub(a, b, rb);
@@ -602,7 +602,7 @@ int keys_sign(const uint8_t priv[], const uint8_t hash[], uint8_t sign[], const 
 // Verify signature
 int keys_vrfy(const uint8_t publ[], const uint8_t hash[], const uint8_t sign[]) {
   u64 u1[DIGITS] = {0}, u2[DIGITS] = {0}, tx[DIGITS] = {0}, ty[DIGITS] = {0}, tz[DIGITS] = {0};
-  u64 rx[DIGITS] = {0}, ry[DIGITS] = {0}, rz[DIGITS] = {0}, xx[DIGITS] = {0}, yy[DIGITS] = {0};
+  u64 rx[DIGITS] = {0}, ry[DIGITS] = {0}, rz[DIGITS] = {0};
   pt public, sum;
   // TODO: This verification fails "randomly"
   pt_decompress(&public, publ);
