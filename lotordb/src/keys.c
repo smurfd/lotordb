@@ -150,22 +150,48 @@ static void omega_mul(u64 *a, const u64 *b) {
 
 //
 // Modulo add
+// https://www.jjj.de/fxt/fxtbook.pdf 39.1.1 add & sub
 static void mod_add(u64 *a, const u64 *b, const u64 *c, const u64 *m) {
-  if (add(a, b, c) || compare(a, m) >= 0) sub(a, a, m);
+  if (c[0] == 0 && c[1] == 0 && c[2] == 0 && c[3] == 0 && c[4] == 0 && c[5] == 0) set(a, b);
+  else {
+    u64 r[DIGITS], rb[DIGITS];
+    sub(rb, m, c);
+    if (compare(b, rb) >= 1) {
+      sub(a, b, rb);
+    } else {
+      u64 rr[DIGITS];
+      sub(rr, m, rb);
+      add(a, rr, b);
+    }
+  }
+  //if (add(a, b, c) || compare(a, m) >= 0) sub(a, a, m);
 }
 
 //
 // Modulo sub
 static void mod_sub(u64 *a, const u64 *b, const u64 *c, const u64 *m) {
-  if (sub(a, b, c)) add(a, a, m);
+  if (compare(b, c) >= 1) {
+    sub(a, b, c);
+  } else {
+    u64 r[DIGITS];
+    sub(r, m, c);
+    add(a, r, b);
+  }
+  //if (sub(a, b, c)) add(a, a, m);
+  //else {
+  //  u64 r[DIGITS];
+  //  sub(r, m, b);
+  //  add(a, r, a);
+  //}
 }
 
 //
 // Modulo mod
-static void mod_mod(u64 *a, u64 *b) {
+static void mod_mod(u64 *a, const u64 *bb) {
+  u64 b[DIGITS*2];
+  memcpy(b, bb, DIGITS *2* sizeof(u64));
   while (!check_zero(b + DIGITS)) {
     u64 ovr = 0, t[DIGITS * 2];
-
     clear(t);
     clear(t + DIGITS);
     omega_mul(t, b + DIGITS);
@@ -213,7 +239,11 @@ static void mod_sqrt(u64 a[DIGITS]) {
 
 //
 // Modulo multiply (b * c) % m
-static void mod_mod_mul(u64 *a, u64 *b, u64 *c, u64 *m) {
+static void mod_mod_mul(u64 *a, const u64 *bb, const u64 *cc, const u64 *mmm) {
+  u64 b[DIGITS], c[DIGITS], m[DIGITS];
+  set(b, bb);
+  set(c, cc);
+  set(m, mmm);
   u64 ds, bs, pb, mb = check_bits(m), p[DIGITS * 2], mm[DIGITS * 2];
 
   mul(p, b, c);
@@ -263,10 +293,11 @@ static void rs_sub_au(u64 *a, u64 *b, u64 *u, u64 *v, u64 *m, u64 car, bool sb) 
 
 //
 // Modulo inversion
-static void mod_invers(u64 *r, u64 *p, u64 *m) {
-  u64 a[DIGITS], b[DIGITS], u[DIGITS], v[DIGITS], tmp[DIGITS], car;
+static void mod_invers(u64 *r, const u64 *pp, const u64 *mm) {
+  u64 a[DIGITS], b[DIGITS], u[DIGITS], v[DIGITS], tmp[DIGITS], p[DIGITS], m[DIGITS], car;
   int cmpResult;
-
+  set(p, pp);
+  set(m, mm);
   if(check_zero(p)) {
     clear(r);
     return;
@@ -296,7 +327,6 @@ static int pt_check_zero(pt *a) {
 // Points double
 static void pt_double(u64 *a, u64 *b, u64 *c) {
   u64 t4[DIGITS], t5[DIGITS];
-
   if (check_zero(c)) return;
   mod_sqr(t4, b);
   mod_mul(t5, a, t4);
@@ -345,7 +375,7 @@ static void pt_decompress(pt *a, const uint8_t b[]) {
 //
 // Points apply z
 // Modify (x1, y1) => (x1 * z^2, y1 * z^3)
-static void pt_apply_z(u64 *a, u64 *b, u64 *z) {
+static void pt_apply_z(u64 *a, u64 *b, const u64 *z) {
   u64 t[DIGITS];
 
   mod_sqr(t, z);
@@ -370,7 +400,7 @@ static void pt_init_double(u64 *a, u64 *b, u64 *c, u64 *d, const u64 *p) {
   pt_apply_z(c, d, z);
 }
 
-static void ssmm(u64 *t5, u64 *c, u64 *a, u64 *curve_p) {
+static void ssmm(u64 *t5, u64 *c, u64 *a, const u64 *curve_p) {
   mod_sub(t5, c, a, curve_p);
   mod_sqr(t5, t5);
   mod_mul(a, a, t5);
@@ -381,17 +411,18 @@ static void ssmm(u64 *t5, u64 *c, u64 *a, u64 *curve_p) {
 // Points add
 static void pt_add(u64 *a, u64 *b, u64 *c, u64 *d) {
   u64 t5[DIGITS];
-
   ssmm(t5, c, a, curve_p);
   mod_sub(d, d, b, curve_p);
   mod_sqr(t5, d);
+
   mod_sub(t5, t5, a, curve_p);
   mod_sub(t5, t5, c, curve_p);
   mod_sub(c, c, a, curve_p);
+
   mod_mul(b, b, c);
   mod_sub(c, a, t5, curve_p);
   mod_mul(d, d, c);
-  mod_sub(d, d, b, curve_p);
+  mod_sub(d, d, b, curve_p); // TODO: Seems to error out here
   set(c, t5);
 }
 
@@ -424,7 +455,7 @@ static void pt_addc(u64 *a, u64 *b, u64 *c, u64 *d) {
 
 //
 // Point multiplication
-static void pt_mul(pt *r, pt *p, u64 *q, u64 *s) {
+static void pt_mul(pt *r, pt *p, const u64 *q, const u64 *s) {
   u64 Rx[2][DIGITS], Ry[2][DIGITS], z[DIGITS], nb;
 
   set(Rx[1], p->x);
@@ -453,7 +484,7 @@ static void pt_mul(pt *r, pt *p, u64 *q, u64 *s) {
 
 //
 // Write cert to file
-static u64 write_crt(FILE* ptr, uint8_t data[]) {
+static u64 write_crt(FILE* ptr, const uint8_t data[]) {
   int i = 4;
 
   fprintf(ptr, "-----BEGIN CERTIFICATE-----\n");
@@ -472,7 +503,7 @@ static u64 write_crt(FILE* ptr, uint8_t data[]) {
 // Write key to file
 // Public key: https://datatracker.ietf.org/doc/html/rfc5480
 // Private key: https://datatracker.ietf.org/doc/html/rfc5915.html
-static u64 write_key(FILE* ptr, uint8_t data[]) {
+static u64 write_key(FILE* ptr, const uint8_t data[]) {
   char tmp[257] = {0};
   uint8_t d[BYTES] = {0};
   int i = 10, j = 0;
@@ -490,7 +521,7 @@ static u64 write_key(FILE* ptr, uint8_t data[]) {
 
 //
 // Write cms to file
-static u64 write_cms(FILE* ptr, uint8_t data[]) {
+static u64 write_cms(FILE* ptr, const uint8_t data[]) {
   fprintf(ptr, "%s\n", data);
   return 1;
 }
@@ -512,16 +543,18 @@ u64 keys_write(char *fn, uint8_t data[], int type) {
 
 //
 // Make public key
-int keys_make(uint8_t publ[], uint8_t priv[], u64 private[]) {
+int keys_make(uint8_t publ[], uint8_t priv[], const u64 private[]) {
   pt public;
+  u64 p[DIGITS];
 
+  set(p, private);
   while(true) {
-    if (compare(curve_n, private) != 1)
-      sub(private, private, curve_n);
-    pt_mul(&public, &curve_g, private, NULL);
+    if (compare(curve_n, p) != 1)
+      sub(p, p, curve_n);
+    pt_mul(&public, &curve_g, p, NULL);
     if (!pt_check_zero(&public)) break;
   }
-  bit_unpack(priv, private);
+  bit_unpack(priv, p);
   bit_unpack(publ + 1, public.x);
   publ[0] = 2 + (public.y[0] & 0x01);
   return 1;
@@ -529,27 +562,29 @@ int keys_make(uint8_t publ[], uint8_t priv[], u64 private[]) {
 
 //
 // Create a secret from the public and private key
-int keys_secr(const uint8_t pub[], const uint8_t prv[], uint8_t scr[], u64 r[]) {
+int keys_secr(const uint8_t pub[], const uint8_t prv[], uint8_t scr[], const u64 r[]) {
   pt public, product;
-  u64 private[DIGITS];
+  u64 private[DIGITS], rr[DIGITS];
+  set(rr, r);
 
   pt_decompress(&public, pub);
   bit_pack(private, prv);
-  pt_mul(&product, &public, private, r);
+  pt_mul(&product, &public, private, rr);
   bit_unpack(scr, product.x);
   return !pt_check_zero(&product);
 }
 
 //
 // Create signature
-int keys_sign(const uint8_t priv[], const uint8_t hash[], uint8_t sign[], u64 k[]) {
-  u64 tmp[DIGITS], s[DIGITS];
+int keys_sign(const uint8_t priv[], const uint8_t hash[], uint8_t sign[], const u64 k[]) {
+  u64 tmp[DIGITS], s[DIGITS], kk[DIGITS];
   pt p;
+  set(kk, k);
 
   do {
-    if (check_zero(k)) continue;
-    if (compare(curve_n, k) != 1) sub(k, k, curve_n);
-    pt_mul(&p, &curve_g, k, NULL);
+    if (check_zero(kk)) continue;
+    if (compare(curve_n, kk) != 1) sub(kk, kk, curve_n);
+    pt_mul(&p, &curve_g, kk, NULL);
     if (compare(curve_n, p.x) != 1) sub(p.x, p.x, curve_n);
   } while (check_zero(p.x));
   bit_unpack(sign, p.x);
@@ -557,8 +592,8 @@ int keys_sign(const uint8_t priv[], const uint8_t hash[], uint8_t sign[], u64 k[
   mod_mod_mul(s, p.x, tmp, curve_n);
   bit_pack(tmp, hash);
   mod_add(s, tmp, s, curve_n);
-  mod_invers(k, k, curve_n);
-  mod_mod_mul(s, s, k, curve_n);
+  mod_invers(kk, kk, curve_n);
+  mod_mod_mul(s, s, kk, curve_n);
   bit_unpack(sign + BYTES, s);
   return 1;
 }
@@ -567,9 +602,9 @@ int keys_sign(const uint8_t priv[], const uint8_t hash[], uint8_t sign[], u64 k[
 // Verify signature
 int keys_vrfy(const uint8_t publ[], const uint8_t hash[], const uint8_t sign[]) {
   u64 u1[DIGITS] = {0}, u2[DIGITS] = {0}, tx[DIGITS] = {0}, ty[DIGITS] = {0}, tz[DIGITS] = {0};
-  u64 rx[DIGITS] = {0}, ry[DIGITS] = {0}, rz[DIGITS] = {0};
+  u64 rx[DIGITS] = {0}, ry[DIGITS] = {0}, rz[DIGITS] = {0}, xx[DIGITS] = {0}, yy[DIGITS] = {0};
   pt public, sum;
-
+  // TODO: This verification fails "randomly"
   pt_decompress(&public, publ);
   bit_pack(rx, sign);
   bit_pack(ry, sign + BYTES);
@@ -595,6 +630,7 @@ int keys_vrfy(const uint8_t publ[], const uint8_t hash[], const uint8_t sign[]) 
   uint32_t n1 = (!!check_set(u1, nb - 1)) | ((!!check_set(u2, nb - 1)) << 1);
   set(rx, points[n1]->x);
   set(ry, points[n1]->y);
+
   clear(rz);
   rz[0] = 1;
   for (int i = nb - 2; i >= 0; --i) {

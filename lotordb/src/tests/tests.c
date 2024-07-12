@@ -98,11 +98,7 @@ void test_ciphers_cfb_long_str(void) {
 void test_keys_verify(void) {
   uint8_t sig[BYTES * 2],  pubkey[BYTES + 1],  sec[BYTES], privkey[BYTES], h[BYTES] = {0};
   u64 k[BYTES] = {0};
-
-  for (uint8_t i = 0; i < BYTES; i++) {
-    h[i] = u64rnd();
-    k[i] = u64rnd();
-  }
+  u64rnd_array(h, k, BYTES);
   assert(keys_make(pubkey, privkey, k));
   assert(keys_secr(pubkey, privkey, sec, k));
   assert(keys_sign(privkey, h, sig, k));
