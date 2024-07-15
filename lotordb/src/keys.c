@@ -113,6 +113,8 @@ static u64 sub(u64 *a, const u64 *b, const u64 *c) {
 
 //
 // Multiply
+// BUG: Both b[j] and c[k - j] is 18446744073709551615 == u64max
+//      which is triggered once the run fails. See test howto trigger it repeadedly
 static void mul(u64 *a, const u64 *b, const u64 *c) {
   u64 r2 = 0, di22 = DIGITS * 2 - 1;
   unsigned __int128 r = 0;

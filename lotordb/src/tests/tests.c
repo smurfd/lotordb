@@ -99,6 +99,11 @@ void test_keys_verify(void) {
   uint8_t sig[BYTES * 2],  pubkey[BYTES + 1],  sec[BYTES], privkey[BYTES], h[BYTES] = {0};
   u64 k[BYTES] = {0};
   u64rnd_array(h, k, BYTES);
+  // BUG: uncomment to trigger u64 overflow bug
+  //for (int i = 0; i < BYTES;++i) {
+  //  h[i] = 66;
+  //  k[i] = 99999999;
+  //}
   assert(keys_make(pubkey, privkey, k));
   assert(keys_secr(pubkey, privkey, sec, k));
   assert(keys_sign(privkey, h, sig, k));
