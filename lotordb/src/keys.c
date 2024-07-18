@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "hash_tooling.h"
+#include "crypto.h"
 #include "keys.h"
 
 //
@@ -53,7 +54,7 @@ static uint32_t check_bits(const u64 *a) {
 //
 // Compare a and b
 static int compare(const u64 *a, const u64 *b) {
-  for (int8_t i = DIGITS - 1; i >= 0; --i) {
+  for (int i = DIGITS - 1; i >= 0; --i) {
     if (a[i] > b[i]) return 1;
     else if (a[i] < b[i]) return -1;
   }
@@ -65,7 +66,7 @@ static int compare(const u64 *a, const u64 *b) {
 static u64 lshift(u64 *a, const u64 *b, const u64 c) {
   u64 ovr = 0;
 
-  for (int8_t i = 0; i < DIGITS; ++i) {
+  for (uint32_t i = 0; i < DIGITS; ++i) {
     u64 t = b[i];
     a[i] = (t << c) | ovr;
     ovr = t >> (64 - c);
@@ -90,7 +91,7 @@ static void rshift1(u64 *a) {
 static u64 add(u64 *a, const u64 *b, const u64 *c) {
   u64 ovr = 0;
 
-  for (int8_t i = 0; i < DIGITS; ++i) {
+  for (uint32_t i = 0; i < DIGITS; ++i) {
     u64 s = b[i] + c[i] + ovr;
     if (s != b[i]) ovr = (s < b[i]);
     a[i] = s;
@@ -103,7 +104,7 @@ static u64 add(u64 *a, const u64 *b, const u64 *c) {
 static u64 sub(u64 *a, const u64 *b, const u64 *c) {
   u64 ovr = 0;
 
-  for (int8_t i = 0; i < DIGITS; ++i) {
+  for (uint32_t i = 0; i < DIGITS; ++i) {
     u64 d = b[i] - c[i] - ovr;
     if (d != b[i]) ovr = (d > b[i]);
     a[i] = d;
@@ -119,10 +120,11 @@ static void mul(u64 *a, const u64 *b, const u64 *c) {
   u64 r2 = 0, di22 = DIGITS * 2 - 1;
   unsigned __int128 r = 0;
 
-  for (u64 k = 0; k < di22; ++k) {
+  for (uint32_t k = 0; k < di22; ++k) {
     u64 min = (k < DIGITS ? 0 : (k + 1) - DIGITS);
     for (u64 j = min; j <= k && j < DIGITS; ++j) {
       unsigned __int128 p = (unsigned __int128)b[j] * c[k - j]; // product
+      printf("mul: %llu %llu, %d %d %d\n", b[j], c[k-j], j, k, k-j);
       r += p;
       r2 += (r < p);
     }
@@ -131,6 +133,7 @@ static void mul(u64 *a, const u64 *b, const u64 *c) {
     r2 = 0;
   }
   a[di22] = (u64)r;
+  for (int i = 0; i < di22; i++) printf("mul res: %llu\n", a[i]);
 }
 
 //
@@ -144,7 +147,8 @@ static void omega_mul(u64 *a, const u64 *b) {
   u64 d = a[DIGITS] - ovr;
   if (d > a[DIGITS]) {
     for (u64 i = 1 + DIGITS; ; ++i) {
-      if (--a[i] != (u64) - 1) break;
+      --a[i];
+      if (a[i] != (u64)-1) break;
     }
   }
   a[DIGITS] = d;
@@ -189,11 +193,12 @@ static void mod_sub(u64 *a, const u64 *b, const u64 *c, const u64 *m) {
 
 //
 // Modulo mod
-static void mod_mod(u64 *a, const u64 *bb) {
-  u64 b[DIGITS*2];
-  memcpy(b, bb, DIGITS *2* sizeof(u64));
+static void mod_mod(u64 *a, u64 *b) {
+  //u64 b[DIGITS*2];
+  //memcpy(b, bb, DIGITS *2* sizeof(u64));
+  u64 t[DIGITS*2];
   while (!check_zero(b + DIGITS)) {
-    u64 ovr = 0, t[DIGITS * 2];
+    u64 ovr = 0;//, t[DIGITS * 2];
     clear(t);
     clear(t + DIGITS);
     omega_mul(t, b + DIGITS);
@@ -545,11 +550,14 @@ u64 keys_write(char *fn, uint8_t data[], int type) {
 
 //
 // Make public key
-int keys_make(uint8_t publ[], uint8_t priv[], const u64 private[]) {
+int keys_make(uint8_t publ[BYTES+1], uint8_t priv[BYTES]) {//, const u64 private[]) {
   pt public;
   u64 p[DIGITS];
 
-  set(p, private);
+  uint8_t h[BYTES] = {0};
+  u64 k[BYTES] = {0};
+  u64rnd_array(h, k, BYTES);
+  set(p, k);
   while(true) {
     if (compare(curve_n, p) != 1)
       sub(p, p, curve_n);
@@ -564,24 +572,31 @@ int keys_make(uint8_t publ[], uint8_t priv[], const u64 private[]) {
 
 //
 // Create a secret from the public and private key
-int keys_secr(const uint8_t pub[], const uint8_t prv[], uint8_t scr[], const u64 r[]) {
+int keys_secr(const uint8_t pub[BYTES+1], const uint8_t prv[BYTES], uint8_t scr[BYTES]) {//, const u64 rr[BYTES]) {
   pt public, product;
-  u64 private[DIGITS], rr[DIGITS];
-  set(rr, r);
+  u64 private[DIGITS];//, rr[DIGITS];
+  uint8_t h[BYTES] = {0};
+  u64 k[BYTES] = {0};
+  u64rnd_array(h, k, BYTES);
 
   pt_decompress(&public, pub);
   bit_pack(private, prv);
-  pt_mul(&product, &public, private, rr);
+  //pt_mul(&product, &public, private, rr);
+  pt_mul(&product, &public, private, h);
   bit_unpack(scr, product.x);
   return !pt_check_zero(&product);
 }
 
 //
 // Create signature
-int keys_sign(const uint8_t priv[], const uint8_t hash[], uint8_t sign[], const u64 k[]) {
-  u64 tmp[DIGITS], s[DIGITS], kk[DIGITS];
+//int keys_sign(const uint8_t priv[BYTES], const uint8_t hash[BYTES], uint8_t sign[BYTES*2], const u64 k[]) {
+int keys_sign(const uint8_t priv[BYTES], const uint8_t hash[BYTES], uint8_t sign[BYTES*2]) {//, const u64 k[]) {
+  u64 tmp[DIGITS], s[DIGITS];//, kk[DIGITS];
   pt p;
-  set(kk, k);
+  //set(kk, k);
+  uint8_t h[BYTES] = {0};
+  u64 kk[BYTES] = {0};
+  u64rnd_array(h, kk, BYTES);
 
   do {
     if (check_zero(kk)) continue;
@@ -602,7 +617,7 @@ int keys_sign(const uint8_t priv[], const uint8_t hash[], uint8_t sign[], const 
 
 //
 // Verify signature
-int keys_vrfy(const uint8_t publ[], const uint8_t hash[], const uint8_t sign[]) {
+int keys_vrfy(const uint8_t publ[BYTES+1], const uint8_t hash[BYTES], const uint8_t sign[BYTES*2]) {
   u64 u1[DIGITS] = {0}, u2[DIGITS] = {0}, tx[DIGITS] = {0}, ty[DIGITS] = {0}, tz[DIGITS] = {0};
   u64 rx[DIGITS] = {0}, ry[DIGITS] = {0}, rz[DIGITS] = {0};
   pt public, sum;
