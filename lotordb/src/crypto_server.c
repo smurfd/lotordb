@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <pthread.h>
+#include <sys/socket.h>
 #include "crypto_server.h"
 #include "db_tables.h"
 #include "crypto.h"

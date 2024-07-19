@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
 #include "db_keystore.h"
 #include "db_tables.h"
 #include "crypto.h"

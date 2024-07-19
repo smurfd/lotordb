@@ -2,6 +2,7 @@
 #ifndef CRYPTO_H
 #define CRYPTO_H 1
 #include <stdbool.h>
+#include <stdint.h>
 #include <netinet/in.h>
 
 #define u64 unsigned long long int // because linux uint64_t is not same as on mac
