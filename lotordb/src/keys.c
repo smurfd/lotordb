@@ -124,7 +124,6 @@ static void mul(u64 *a, const u64 *b, const u64 *c) {
     u64 min = (k < DIGITS ? 0 : (k + 1) - DIGITS);
     for (u64 j = min; j <= k && j < DIGITS; ++j) {
       unsigned __int128 p = (unsigned __int128)b[j] * c[k - j]; // product
-      printf("mul: %llu %llu, %d %d %d\n", b[j], c[k-j], j, k, k-j);
       r += p;
       r2 += (r < p);
     }
@@ -133,7 +132,6 @@ static void mul(u64 *a, const u64 *b, const u64 *c) {
     r2 = 0;
   }
   a[di22] = (u64)r;
-  for (int i = 0; i < di22; i++) printf("mul res: %llu\n", a[i]);
 }
 
 //
@@ -550,12 +548,10 @@ u64 keys_write(char *fn, uint8_t data[], int type) {
 
 //
 // Make public key
-int keys_make(uint8_t publ[BYTES+1], uint8_t priv[BYTES]) {//, const u64 private[]) {
-  pt public;
-  u64 p[DIGITS];
-
+int keys_make(uint8_t publ[], uint8_t priv[]) {
+  u64 p[DIGITS], k[BYTES] = {0};
   uint8_t h[BYTES] = {0};
-  u64 k[BYTES] = {0};
+  pt public;
   u64rnd_array(h, k, BYTES);
   set(p, k);
   while(true) {
@@ -572,38 +568,33 @@ int keys_make(uint8_t publ[BYTES+1], uint8_t priv[BYTES]) {//, const u64 private
 
 //
 // Create a secret from the public and private key
-int keys_secr(const uint8_t pub[BYTES+1], const uint8_t prv[BYTES], uint8_t scr[BYTES]) {//, const u64 rr[BYTES]) {
-  pt public, product;
-  u64 private[DIGITS];//, rr[DIGITS];
+int keys_secr(const uint8_t pub[], const uint8_t prv[], uint8_t scr[]) {
+  u64 private[DIGITS], k[BYTES] = {0};
   uint8_t h[BYTES] = {0};
-  u64 k[BYTES] = {0};
+  pt public, product;
   u64rnd_array(h, k, BYTES);
-
   pt_decompress(&public, pub);
   bit_pack(private, prv);
-  //pt_mul(&product, &public, private, rr);
-  pt_mul(&product, &public, private, h);
+  pt_mul(&product, &public, private, (u64*)h);
   bit_unpack(scr, product.x);
   return !pt_check_zero(&product);
 }
 
 //
 // Create signature
-//int keys_sign(const uint8_t priv[BYTES], const uint8_t hash[BYTES], uint8_t sign[BYTES*2], const u64 k[]) {
-int keys_sign(const uint8_t priv[BYTES], const uint8_t hash[BYTES], uint8_t sign[BYTES*2]) {//, const u64 k[]) {
-  u64 tmp[DIGITS], s[DIGITS];//, kk[DIGITS];
-  pt p;
-  //set(kk, k);
+int keys_sign(const uint8_t priv[], uint8_t hash[], uint8_t sign[]) {
+  u64 tmp[DIGITS], s[DIGITS], kk[BYTES] = {0};
   uint8_t h[BYTES] = {0};
-  u64 kk[BYTES] = {0};
+  int firstrun = 0;
+  pt p;
   u64rnd_array(h, kk, BYTES);
-
-  do {
+  memcpy(hash, (uint8_t*)h, BYTES * sizeof(uint8_t));
+  while (check_zero(p.x) || firstrun++ <= 1) {
     if (check_zero(kk)) continue;
     if (compare(curve_n, kk) != 1) sub(kk, kk, curve_n);
     pt_mul(&p, &curve_g, kk, NULL);
     if (compare(curve_n, p.x) != 1) sub(p.x, p.x, curve_n);
-  } while (check_zero(p.x));
+  }
   bit_unpack(sign, p.x);
   bit_pack(tmp, priv);
   mod_mod_mul(s, p.x, tmp, curve_n);
@@ -617,11 +608,10 @@ int keys_sign(const uint8_t priv[BYTES], const uint8_t hash[BYTES], uint8_t sign
 
 //
 // Verify signature
-int keys_vrfy(const uint8_t publ[BYTES+1], const uint8_t hash[BYTES], const uint8_t sign[BYTES*2]) {
+int keys_vrfy(const uint8_t publ[], const uint8_t hash[], const uint8_t sign[]) {
   u64 u1[DIGITS] = {0}, u2[DIGITS] = {0}, tx[DIGITS] = {0}, ty[DIGITS] = {0}, tz[DIGITS] = {0};
   u64 rx[DIGITS] = {0}, ry[DIGITS] = {0}, rz[DIGITS] = {0};
   pt public, sum;
-  // TODO: This verification fails "randomly"
   pt_decompress(&public, publ);
   bit_pack(rx, sign);
   bit_pack(ry, sign + BYTES);
@@ -647,7 +637,6 @@ int keys_vrfy(const uint8_t publ[BYTES+1], const uint8_t hash[BYTES], const uint
   uint32_t n1 = (!!check_set(u1, nb - 1)) | ((!!check_set(u2, nb - 1)) << 1);
   set(rx, points[n1]->x);
   set(ry, points[n1]->y);
-
   clear(rz);
   rz[0] = 1;
   for (int i = nb - 2; i >= 0; --i) {

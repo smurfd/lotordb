@@ -122,9 +122,7 @@ u64 u64rnd(void) {
 void u64rnd_array(uint8_t h[], u64 k[], int len) {
   u64 f7 = 0x7fffffffffffffff;
   int r[2*len], f = open("/dev/urandom", O_RDONLY);
-  printf("READ %d, should be %d %d\n", read(f, &r, sizeof r), 2*len, sizeof(r));
   close(f);
-
   for (int i = 0; i < len; ++i) {
     h[i] = (uint8_t)(r[i] & f7);
     k[i] = (u64)(r[i] & f7);
