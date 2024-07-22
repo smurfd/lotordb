@@ -36,14 +36,12 @@ keys:
 	${CL} -c keys.c -o ${BUILD}/keys.o
 
 client:
-	${CL} -o ${BUILD}/client client.c ${BUILD}/crypto.o ${BUILD}/ciphers.o ${BUILD}/keys.o ${BUILD}/crypto_client.o\
-	  ${BUILD}/db_keystore.o ${BUILD}/db_tables.o ${BUILD}/hash_tooling.o ${BUILD}/hash.o ${BUILD}/ciphers_aes_gcm.o\
-	   -fuse-ld=lld -lpthread -lm
+	${CL} -o ${BUILD}/client client.c ${BUILD}/crypto.o ${BUILD}/crypto_client.o ${BUILD}/hash.o ${BUILD}/hash_tooling.o\
+	  ${BUILD}/db_keystore.o ${BUILD}/db_tables.o -fuse-ld=lld -lpthread -lm
 
 server:
-	${CL} -o ${BUILD}/server server.c ${BUILD}/crypto.o ${BUILD}/ciphers.o ${BUILD}/keys.o ${BUILD}/crypto_server.o\
-	  ${BUILD}/db_keystore.o ${BUILD}/db_tables.o ${BUILD}/hash_tooling.o ${BUILD}/hash.o ${BUILD}/ciphers_aes_gcm.o\
-	   -fuse-ld=lld -lpthread -lm
+	${CL} -o ${BUILD}/server server.c ${BUILD}/crypto.o ${BUILD}/crypto_server.o ${BUILD}/hash_tooling.o ${BUILD}/hash.o\
+	  ${BUILD}/db_keystore.o ${BUILD}/db_tables.o -fuse-ld=lld -lpthread -lm
 
 test:
 	make -Ctests

@@ -6,7 +6,7 @@
 #include "hash_tooling.h"
 #include "crypto.h"
 #include "keys.h"
-
+// 105664 Jul 22 18:27 tests
 //
 // Clear a
 static void clear(u64 *a) {
@@ -15,7 +15,7 @@ static void clear(u64 *a) {
 
 //
 // Count 64bit in a
-static u64 count(const u64 *a) {
+static int8_t count(const u64 *a) {
   for (int8_t i = DIGITS - 1; i >= 0; --i) {
     if (a[i] != 0) return (i + 1);
   }
@@ -30,7 +30,7 @@ static void set(u64 *a, const u64 *b) {
 
 //
 // Check if a is zero, return 1, if not return 0
-static int check_zero(const u64 *a) {
+static int8_t check_zero(const u64 *a) {
   if (a[0] == 0 && memcmp(a, a + 1, (DIGITS - 1) * sizeof(a[0])) == 0) return 1;
   return 0;
 }
@@ -53,8 +53,8 @@ static uint32_t check_bits(const u64 *a) {
 
 //
 // Compare a and b
-static int compare(const u64 *a, const u64 *b) {
-  for (int i = DIGITS - 1; i >= 0; --i) {
+static int8_t compare(const u64 *a, const u64 *b) {
+  for (int8_t i = DIGITS - 1; i >= 0; --i) {
     if (a[i] > b[i]) return 1;
     else if (a[i] < b[i]) return -1;
   }
@@ -114,8 +114,6 @@ static u64 sub(u64 *a, const u64 *b, const u64 *c) {
 
 //
 // Multiply
-// BUG: Both b[j] and c[k - j] is 18446744073709551615 == u64max
-//      which is triggered once the run fails. See test howto trigger it repeadedly
 static void mul(u64 *a, const u64 *b, const u64 *c) {
   u64 r2 = 0, di22 = DIGITS * 2 - 1;
   unsigned __int128 r = 0;
@@ -144,7 +142,7 @@ static void omega_mul(u64 *a, const u64 *b) {
   ovr += sub(a, a, t);
   u64 d = a[DIGITS] - ovr;
   if (d > a[DIGITS]) {
-    for (u64 i = 1 + DIGITS; ; ++i) {
+    for (int8_t i = 1 + DIGITS; ; ++i) {
       --a[i];
       if (a[i] != (u64)-1) break;
     }
@@ -168,40 +166,31 @@ static void mod_add(u64 *a, const u64 *b, const u64 *c, const u64 *m) {
       add(a, rr, b);
     }
   }
-  //if (add(a, b, c) || compare(a, m) >= 0) sub(a, a, m);
 }
 
 //
 // Modulo sub
-static void mod_sub(u64 *a, const u64 *b, const u64 *c, const u64 *m) {
+static void mod_sub(u64 *a, const u64 *b, const u64 *c) {
   if (compare(b, c) >= 1) {
     sub(a, b, c);
   } else {
     u64 r[DIGITS];
-    sub(r, m, c);
+    sub(r, curve_p, c);
     add(a, r, b);
   }
-  //if (sub(a, b, c)) add(a, a, m);
-  //else {
-  //  u64 r[DIGITS];
-  //  sub(r, m, b);
-  //  add(a, r, a);
-  //}
 }
 
 //
 // Modulo mod
 static void mod_mod(u64 *a, u64 *b) {
-  //u64 b[DIGITS*2];
-  //memcpy(b, bb, DIGITS *2* sizeof(u64));
   u64 t[DIGITS*2];
   while (!check_zero(b + DIGITS)) {
-    u64 ovr = 0;//, t[DIGITS * 2];
+    u64 ovr = 0;
     clear(t);
     clear(t + DIGITS);
     omega_mul(t, b + DIGITS);
     clear(b + DIGITS);
-    for (u64 i = 0; i < DIGITS + 3; ++i) {
+    for (int8_t i = 0; i < DIGITS + 3; ++i) {
       u64 s = b[i] + t[i] + ovr;
       if (s != b[i]) ovr = (s < b[i]);
       b[i] = s;
@@ -244,11 +233,7 @@ static void mod_sqrt(u64 a[DIGITS]) {
 
 //
 // Modulo multiply (b * c) % m
-static void mod_mod_mul(u64 *a, const u64 *bb, const u64 *cc, const u64 *mmm) {
-  u64 b[DIGITS], c[DIGITS], m[DIGITS];
-  set(b, bb);
-  set(c, cc);
-  set(m, mmm);
+static void mod_mod_mul(u64 *a, const u64 *b, const u64 *c, const u64 *m) {
   u64 ds, bs, pb, mb = check_bits(m), p[DIGITS * 2], mm[DIGITS * 2];
 
   mul(p, b, c);
@@ -259,14 +244,12 @@ static void mod_mod_mul(u64 *a, const u64 *bb, const u64 *cc, const u64 *mmm) {
     set(a, p);
     return;
   }
-
   clear(mm);
   clear(mm + DIGITS);
   ds = (pb - mb) / 64;
   bs = MOD(pb - mb, 64);
   if (bs) mm[ds + DIGITS] = lshift(mm + ds, m, bs);
   else set(mm + ds, m);
-
   clear(a);
   a[0] = 1;
   while (pb > DIGITS * 64 || compare(mm, m) >= 0) {
@@ -284,7 +267,7 @@ static void mod_mod_mul(u64 *a, const u64 *bb, const u64 *cc, const u64 *mmm) {
   set(a, p);
 }
 
-static void rs_sub_au(u64 *a, u64 *b, u64 *u, u64 *v, u64 *m, u64 car, bool sb) {
+static void rs_sub_au(u64 *a, const u64 *b, u64 *u, const u64 *v, const u64 *m, u64 car, const bool sb) {
   if (sb) {
     sub(a, a, b);
     rshift1(a);
@@ -298,11 +281,9 @@ static void rs_sub_au(u64 *a, u64 *b, u64 *u, u64 *v, u64 *m, u64 car, bool sb) 
 
 //
 // Modulo inversion
-static void mod_invers(u64 *r, const u64 *pp, const u64 *mm) {
-  u64 a[DIGITS], b[DIGITS], u[DIGITS], v[DIGITS], tmp[DIGITS], p[DIGITS], m[DIGITS], car;
+static void mod_invers(u64 *r, const u64 *p, const u64 *m) {
+  u64 a[DIGITS], b[DIGITS], u[DIGITS], v[DIGITS], tmp[DIGITS], car;
   int cmpResult;
-  set(p, pp);
-  set(m, mm);
   if(check_zero(p)) {
     clear(r);
     return;
@@ -324,7 +305,7 @@ static void mod_invers(u64 *r, const u64 *pp, const u64 *mm) {
 
 //
 // Points is this zero?
-static int pt_check_zero(pt *a) {
+static int pt_check_zero(const pt *a) {
   return (check_zero(a->x) && check_zero(a->y));
 }
 
@@ -341,7 +322,7 @@ static void pt_double(u64 *a, u64 *b, u64 *c) {
 
   mod_add(a, a, c, curve_p);
   mod_add(c, c, c, curve_p);
-  mod_sub(c, a, c, curve_p);
+  mod_sub(c, a, c);
   mod_mul(a, a, c);
 
   mod_add(c, a, a, curve_p);
@@ -353,11 +334,11 @@ static void pt_double(u64 *a, u64 *b, u64 *c) {
     a[DIGITS - 1] |= ovr << 63;
   } else rshift1(a);
   mod_sqr(c, a);
-  mod_sub(c, c, t5, curve_p);
-  mod_sub(c, c, t5, curve_p);
-  mod_sub(t5, t5, c, curve_p);
+  mod_sub(c, c, t5);
+  mod_sub(c, c, t5);
+  mod_sub(t5, t5, c);
   mod_mul(a, a, t5);
-  mod_sub(t4, a, t4, curve_p);
+  mod_sub(t4, a, t4);
   set(a, c);
   set(c, b);
   set(b, t4);
@@ -370,7 +351,7 @@ static void pt_decompress(pt *a, const uint8_t b[]) {
 
   bit_pack(a->x, b + 1);
   mod_sqr(a->y, a->x);
-  mod_sub(a->y, a->y, tr, curve_p);
+  mod_sub(a->y, a->y, tr);
   mod_mul(a->y, a->y, a->x);
   mod_add(a->y, a->y, curve_b, curve_p);
   mod_sqrt(a->y);
@@ -405,8 +386,8 @@ static void pt_init_double(u64 *a, u64 *b, u64 *c, u64 *d, const u64 *p) {
   pt_apply_z(c, d, z);
 }
 
-static void ssmm(u64 *t5, u64 *c, u64 *a, const u64 *curve_p) {
-  mod_sub(t5, c, a, curve_p);
+static void ssmm(u64 *t5, u64 *c, u64 *a) {
+  mod_sub(t5, c, a);
   mod_sqr(t5, t5);
   mod_mul(a, a, t5);
   mod_mul(c, c, t5);
@@ -416,18 +397,18 @@ static void ssmm(u64 *t5, u64 *c, u64 *a, const u64 *curve_p) {
 // Points add
 static void pt_add(u64 *a, u64 *b, u64 *c, u64 *d) {
   u64 t5[DIGITS];
-  ssmm(t5, c, a, curve_p);
-  mod_sub(d, d, b, curve_p);
+  ssmm(t5, c, a);
+  mod_sub(d, d, b);
   mod_sqr(t5, d);
 
-  mod_sub(t5, t5, a, curve_p);
-  mod_sub(t5, t5, c, curve_p);
-  mod_sub(c, c, a, curve_p);
+  mod_sub(t5, t5, a);
+  mod_sub(t5, t5, c);
+  mod_sub(c, c, a);
 
   mod_mul(b, b, c);
-  mod_sub(c, a, t5, curve_p);
+  mod_sub(c, a, t5);
   mod_mul(d, d, c);
-  mod_sub(d, d, b, curve_p); // TODO: Seems to error out here
+  mod_sub(d, d, b);
   set(c, t5);
 }
 
@@ -437,24 +418,24 @@ static void pt_add(u64 *a, u64 *b, u64 *c, u64 *d) {
 static void pt_addc(u64 *a, u64 *b, u64 *c, u64 *d) {
   u64 t5[DIGITS], t6[DIGITS], t7[DIGITS];
 
-  ssmm(t5, c, a, curve_p);
+  ssmm(t5, c, a);
   mod_add(t5, d, b, curve_p);
-  mod_sub(d, d, b, curve_p);
-  mod_sub(t6, c, a, curve_p);
+  mod_sub(d, d, b);
+  mod_sub(t6, c, a);
   mod_mul(b, b, t6);
   mod_add(t6, a, c, curve_p);
   mod_sqr(c, d);
-  mod_sub(c, c, t6, curve_p);
+  mod_sub(c, c, t6);
 
-  mod_sub(t7, a, c, curve_p);
+  mod_sub(t7, a, c);
   mod_mul(d, d, t7);
-  mod_sub(d, d, b, curve_p);
+  mod_sub(d, d, b);
 
   mod_sqr(t7, t5);
-  mod_sub(t7, t7, t6, curve_p);
-  mod_sub(t6, t7, a, curve_p);
+  mod_sub(t7, t7, t6);
+  mod_sub(t6, t7, a);
   mod_mul(t6, t6, t5);
-  mod_sub(b, t6, b, curve_p);
+  mod_sub(b, t6, b);
   set(a, t7);
 }
 
@@ -466,7 +447,7 @@ static void pt_mul(pt *r, pt *p, const u64 *q, const u64 *s) {
   set(Rx[1], p->x);
   set(Ry[1], p->y);
   pt_init_double(Rx[1], Ry[1], Rx[0], Ry[0], s);
-  for (int i = check_bits(q) - 2; i > 0; --i) {
+  for (uint16_t i = check_bits(q) - 2; i > 0; --i) {
     nb = !check_set(q, i);
     pt_addc(Rx[1 - nb], Ry[1 - nb], Rx[nb], Ry[nb]);
     pt_add(Rx[nb], Ry[nb], Rx[1 - nb], Ry[1 - nb]);
@@ -474,7 +455,7 @@ static void pt_mul(pt *r, pt *p, const u64 *q, const u64 *s) {
   nb = !check_set(q, 0);
   pt_addc(Rx[1 - nb], Ry[1 - nb], Rx[nb], Ry[nb]);
   // Find final 1/Z value.
-  mod_sub(z, Rx[1], Rx[0], curve_p);
+  mod_sub(z, Rx[1], Rx[0]);
   mod_mul(z, z, Ry[1 - nb]);
   mod_mul(z, z, p->x);
   mod_invers(z, z, curve_p);
@@ -533,7 +514,7 @@ static u64 write_cms(FILE* ptr, const uint8_t data[]) {
 
 //
 // Write certificates/keys/cms
-u64 keys_write(char *fn, uint8_t data[], int type) {
+u64 keys_write(char *fn, uint8_t data[], const int8_t type) {
   FILE* ptr = fopen(fn, "w");
   u64 ret = 0;
   // type : 1 = certificate
@@ -555,8 +536,7 @@ int keys_make(uint8_t publ[], uint8_t priv[]) {
   u64rnd_array(h, k, BYTES);
   set(p, k);
   while(true) {
-    if (compare(curve_n, p) != 1)
-      sub(p, p, curve_n);
+    if (compare(curve_n, p) != 1) sub(p, p, curve_n);
     pt_mul(&public, &curve_g, p, NULL);
     if (!pt_check_zero(&public)) break;
   }
@@ -627,7 +607,7 @@ int keys_vrfy(const uint8_t publ[], const uint8_t hash[], const uint8_t sign[]) 
   set(sum.y, public.y);
   set(tx, curve_g.x);
   set(ty, curve_g.y);
-  mod_sub(rz, sum.x, tx, curve_p);
+  mod_sub(rz, sum.x, tx);
   pt_add(tx, ty, sum.x, sum.y);
   mod_invers(rz, rz, curve_p);
   pt_apply_z(sum.x, sum.y, rz);
@@ -646,7 +626,7 @@ int keys_vrfy(const uint8_t publ[], const uint8_t hash[], const uint8_t sign[]) 
       set(tx, points[n2]->x);
       set(ty, points[n2]->y);
       pt_apply_z(tx, ty, rz);
-      mod_sub(tz, rx, tx, curve_p);
+      mod_sub(tz, rx, tx);
       pt_add(tx, ty, rx, ry);
       mod_mul(rz, rz, tz);
     }
@@ -675,4 +655,4 @@ int keys_vrfy(const uint8_t publ[], const uint8_t hash[], const uint8_t sign[]) 
 // https://www.ietf.org/rfc/rfc4492.txt
 
 // secp384r1
-// Rewritten from https://github.com/jestan/easy-ecc
+// Rewritten from https://github.com/jestan/easy-ecc <--------

@@ -21,7 +21,7 @@ static pt curve_g = {{0x3a545e3872760ab7, 0x5502f25dbf55296c, 0x59f741e082542a38
   0x3617de4a96262c6f}};
 static prng_t prng_ctx;
 
-u64 keys_write(char *fn, uint8_t data[], int type);
+u64 keys_write(char *fn, uint8_t data[], int8_t type);
 int keys_make(uint8_t publ[], uint8_t priv[]);
 int keys_secr(const uint8_t pub[], const uint8_t prv[], uint8_t scr[]);
 int keys_sign(const uint8_t priv[], uint8_t hash[], uint8_t sign[]);
