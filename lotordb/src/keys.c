@@ -6,7 +6,7 @@
 #include "hash_tooling.h"
 #include "crypto.h"
 #include "keys.h"
-// 105664 Jul 22 18:27 tests
+
 //
 // Clear a
 static void clear(u64 *a) {
@@ -15,7 +15,7 @@ static void clear(u64 *a) {
 
 //
 // Count 64bit in a
-static int8_t count(const u64 *a) {
+static u64 count(const u64 *a) {
   for (int8_t i = DIGITS - 1; i >= 0; --i) {
     if (a[i] != 0) return (i + 1);
   }
