@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include "../ciphers_aes_gcm.h"
 #include "../crypto_server.h"
 #include "../crypto_client.h"
 #include "../keys.h"
@@ -9,6 +11,23 @@
 #include "../ciphers.h"
 #include "../db_tables.h"
 #include "../db_keystore.h"
+
+void test_ciphers_aes_gcm(void) {
+  const char *vf = "tests/gcm_test_vectors.bin";
+  uchar *vd;
+  aes_init_keygen_tables();
+  //gcm_initialize();
+  if (load_file_into_ram(vf, &vd) < 0) {
+    printf("Cant load the test vector file\n");
+    exit(0);
+  }
+  if(verify_gcm(vd)) {
+    printf("NIST AES-GCM validation test suite: FAILED!\n");
+    free(vd);
+    exit(0);
+  }
+  free(vd);
+}
 
 //
 // Generate a keypair & shared key then print it (test / demo)
@@ -105,6 +124,7 @@ void test_keys_verify(void) {
   assert(!keys_vrfy(privkey, h, sig)); // assert failure
 }
 
+
 int main(void) {
   printf("\"[o.o]\"              testing ....              \"[o.o]\"\n\n");
   printf("lotordb test\n");
@@ -116,5 +136,6 @@ int main(void) {
   test_ciphers_cfb_long();
   test_ciphers_cbc_long_str();
   test_ciphers_cfb_long_str();
+  test_ciphers_aes_gcm();
   printf("OK\n");
 }
