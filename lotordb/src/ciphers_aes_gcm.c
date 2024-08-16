@@ -4,7 +4,6 @@
 #include <string.h>
 #include <assert.h>
 #include "ciphers_aes_gcm.h"
-#include "ciphers.h"
 
 // AES
 void aes_init_keygen_tables(void) {
@@ -74,7 +73,7 @@ static uint8_t aes_set_encryption_key(aes_context *c, const uint8_t *key, uint8_
       RK[10] = RK[2] ^ RK[9];
       RK[11] = RK[3] ^ RK[10];
 
-      RK[12] = RK[4] ^ ((U32)fsb.b[(RK[11]) & 0xFF]) ^ ((U32)fsb.b[(RK[11] >> 8) & 0xFF] << 8) ^ ((U32)fsb.b[(RK[11] >> 16) & 0xFF] << 16) ^ ((U32)fsb.b[(RK[11] >> 24) & 0xFF] << 24);
+      RK[12] = RK[4] ^ ENCDEC(fsb.b, RK[11], RK[11], RK[11], RK[11]);
       RK[13] = RK[5] ^ RK[12];
       RK[14] = RK[6] ^ RK[13];
       RK[15] = RK[7] ^ RK[14];
@@ -150,7 +149,7 @@ int aes_cipher(aes_context *c, const uint8_t in[16], uint8_t out[16]) {
 // GCM
 static void gcm_mult(gcm_context *ctx, const uint8_t x[16], uint8_t out[16]) {
   uint8_t lo = (uint8_t)(x[15] & 0x0F), hi = (uint8_t)(x[15] >> 4), r;
-  uint64_t zh = ctx->HH[lo], zl = ctx->HL[lo];
+  u64 zh = ctx->HH[lo], zl = ctx->HL[lo];
   for (int i = 15; i >= 0; i--) {
     lo = (uint8_t)(x[i] & 0x0F);
     hi = (uint8_t)(x[i] >> 4);
@@ -158,14 +157,14 @@ static void gcm_mult(gcm_context *ctx, const uint8_t x[16], uint8_t out[16]) {
       r = (uint8_t)(zl & 0x0F);
       zl = (zh << 60) | (zl >> 4);
       zh = (zh >> 4);
-      zh ^= (uint64_t)last4[r] << 48;
+      zh ^= (u64)last4[r] << 48;
       zh ^= ctx->HH[lo];
       zl ^= ctx->HL[lo];
     }
     r = (uint8_t)(zl & 0x0F);
     zl = (zh << 60) | (zl >> 4);
     zh = (zh >> 4);
-    zh ^= (uint64_t) last4[r] << 48;
+    zh ^= (u64) last4[r] << 48;
     zh ^= ctx->HH[hi];
     zl ^= ctx->HL[hi];
   }
@@ -177,7 +176,7 @@ static void gcm_mult(gcm_context *ctx, const uint8_t x[16], uint8_t out[16]) {
 
 // keysize in bytes (must be 16, 24, 32 for 128, 192 or 256-bit keys respectively)
 int gcm_setkey(gcm_context *ctx, const uint8_t *key, const uint32_t keysize) {
-  uint64_t hi, lo;
+  u64 hi, lo;
   uint8_t h[16];
   memset(ctx, 0, sizeof(gcm_context));
   memset(h, 0, 16);
@@ -185,10 +184,10 @@ int gcm_setkey(gcm_context *ctx, const uint8_t *key, const uint32_t keysize) {
   if (aes_cipher(&ctx->aes_ctx, h, h) != 0) return 1;
   GET_UINT32_BE(hi, h, 0); // pack h as two 64-bit ints, big-endian
   GET_UINT32_BE(lo, h, 4);
-  uint64_t vh = (uint64_t)hi << 32 | lo;
+  u64 vh = (u64)hi << 32 | lo;
   GET_UINT32_BE(hi, h, 8);
   GET_UINT32_BE(lo, h, 12);
-  uint64_t vl = (uint64_t)hi << 32 | lo;
+  u64 vl = (u64)hi << 32 | lo;
   ctx->HL[8] = vl; // 8 = 1000 corresponds to 1 in GF(2^128)
   ctx->HH[8] = vh;
   ctx->HH[0] = 0; // 0 corresponds to 0 in GF(2^128)
@@ -196,12 +195,12 @@ int gcm_setkey(gcm_context *ctx, const uint8_t *key, const uint32_t keysize) {
   for(int i = 4; i > 0; i >>= 1) {
     uint32_t T = (uint32_t)(vl & 1) * 0xe1000000U;
     vl = (vh << 63) | (vl >> 1);
-    vh = (vh >> 1) ^ ((uint64_t)T << 32);
+    vh = (vh >> 1) ^ ((u64)T << 32);
     ctx->HL[i] = vl;
     ctx->HH[i] = vh;
   }
   for (int i = 2; i < 16; i <<= 1) {
-    uint64_t *HiL = ctx->HL + i, *HiH = ctx->HH + i;
+    u64 *HiL = ctx->HL + i, *HiH = ctx->HH + i;
     vh = *HiH;
     vl = *HiL;
     for(int j = 1; j < i; j++) {
@@ -304,7 +303,7 @@ int gcm_update(gcm_context *ctx, size_t length, const uint8_t *input, uint8_t *o
 }
 
 int gcm_finish(gcm_context *ctx, uint8_t *tag, size_t tag_len) {
-  uint64_t orig_len = ctx->len * 8, orig_add_len = ctx->add_len * 8;
+  u64 orig_len = ctx->len * 8, orig_add_len = ctx->add_len * 8;
   uint8_t work_buf[16];
   if(tag_len != 0) memcpy(tag, ctx->base_ectr, tag_len);
   if(orig_len || orig_add_len) {
@@ -347,8 +346,8 @@ int aes_gcm_decrypt(uint8_t *output, const uint8_t *input, int input_length, con
 
 
 // TEST AES GCM functions
-static int verify_gcm_encryption(const uchar *key, size_t key_len, const uchar *iv, size_t iv_len, const uchar *aad, size_t aad_len, const uchar *pt, const uchar *ct, size_t ct_len, const uchar *tag, size_t tag_len) {
-  uchar ct_buf[256], tag_buf[16];
+static int verify_gcm_encryption(const uint8_t *key, size_t key_len, const uint8_t *iv, size_t iv_len, const uint8_t *aad, size_t aad_len, const uint8_t *pt, const uint8_t *ct, size_t ct_len, const uint8_t *tag, size_t tag_len) {
+  uint8_t ct_buf[256], tag_buf[16];
   gcm_context ctx;
   gcm_setkey(&ctx, key, key_len);
   int ret = gcm_crypt_and_tag(&ctx, ENCRYPT, iv, iv_len, aad, aad_len, pt, ct_buf, ct_len, tag_buf, tag_len);
@@ -358,8 +357,8 @@ static int verify_gcm_encryption(const uchar *key, size_t key_len, const uchar *
   return ret;
 }
 
-static int verify_gcm_decryption(const uchar *key, size_t key_len, const uchar *iv, size_t iv_len, const uchar *aad, size_t aad_len, const uchar *pt, const uchar *ct, size_t ct_len, const uchar *tag, size_t tag_len) {
-  uchar pt_buf[256];
+static int verify_gcm_decryption(const uint8_t *key, size_t key_len, const uint8_t *iv, size_t iv_len, const uint8_t *aad, size_t aad_len, const uint8_t *pt, const uint8_t *ct, size_t ct_len, const uint8_t *tag, size_t tag_len) {
+  uint8_t pt_buf[256];
   gcm_context ctx;
   gcm_setkey(&ctx, key, key_len);
   int ret = gcm_auth_decrypt(&ctx, iv, iv_len, aad, aad_len, ct, pt_buf, ct_len, tag, tag_len);
@@ -368,8 +367,8 @@ static int verify_gcm_decryption(const uchar *key, size_t key_len, const uchar *
   return ret;
 }
 
-static int verify_bad_decryption(const uchar *key, size_t key_len, const uchar *iv, size_t iv_len, const uchar *aad, size_t aad_len, const uchar *ct, size_t ct_len, const uchar *tag, size_t tag_len) {
-  uchar pt_buf[256];
+static int verify_bad_decryption(const uint8_t *key, size_t key_len, const uint8_t *iv, size_t iv_len, const uint8_t *aad, size_t aad_len, const uint8_t *ct, size_t ct_len, const uint8_t *tag, size_t tag_len) {
+  uint8_t pt_buf[256];
   gcm_context ctx;
   gcm_setkey(&ctx, key, key_len);
   int ret = gcm_auth_decrypt(&ctx, iv, iv_len, aad, aad_len, ct, pt_buf, ct_len, tag, tag_len);
@@ -378,14 +377,14 @@ static int verify_bad_decryption(const uchar *key, size_t key_len, const uchar *
   return ret;
 }
 
-static void bump_vd(uchar **key, size_t *key_len, uchar **vd) {
+static void bump_vd(uint8_t **key, size_t *key_len, uint8_t **vd) {
   (*key_len) = *(*vd)++;
   (*key) = (*vd);
   (*vd) += (*key_len);
 }
 
-int verify_gcm(uchar *vd) {
-  uchar *key = NULL, *iv = NULL, *aad = NULL, *pt = NULL, *ct = NULL, *tag = NULL, ret, RecordType;
+int verify_gcm(uint8_t *vd) {
+  uint8_t *key = NULL, *iv = NULL, *aad = NULL, *pt = NULL, *ct = NULL, *tag = NULL, ret, RecordType;
   size_t key_len = 0, iv_len = 0, aad_len = 0, pt_len = 0, ct_len = 0, tag_len = 0;
   while ((RecordType = *vd++)) {
     bump_vd(&key, &key_len, &vd);
@@ -401,13 +400,13 @@ int verify_gcm(uchar *vd) {
   return ret; // 0 == OK
 }
 
-int load_file_into_ram(const char *filename, uchar **result) {
+int load_file_into_ram(const char *filename, uint8_t **result) {
   FILE *f = fopen(filename, "rb");
   if (f == NULL) {*result = NULL; return -1;}
   fseek(f, 0, SEEK_END);
   size_t size = ftell(f);
   fseek(f, 0, SEEK_SET);
-  if ((*result = (uchar *)malloc(size)) == 0) return -2;
+  if ((*result = (uint8_t*)malloc(size)) == 0) return -2;
   if(size != fread(*result, sizeof(char), size, f)) {free(*result); return -3;}
   fclose(f);
   return size;
