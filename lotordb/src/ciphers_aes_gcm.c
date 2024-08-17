@@ -324,54 +324,54 @@ void gcm_zero_ctx(gcm_context *ctx) {
 }
 
 // AES GCM
-int aes_gcm_encrypt(uint8_t *output, const uint8_t *input, int input_length, const uint8_t *key, const size_t key_len, const uint8_t *iv, const size_t iv_len) {
+int aes_gcm_encrypt(uint8_t *out, const uint8_t *in, int in_len, const uint8_t *key, const size_t key_len, const uint8_t *iv, const size_t iv_len) {
   uint8_t *tag_buf = NULL;
   size_t tl = 0;
   gcm_context c;
   gcm_setkey(&c, key, (const uint32_t)key_len);
-  gcm_crypt_and_tag(&c, 1, iv, iv_len, NULL, 0, input, output, input_length, tag_buf, tl);
+  gcm_crypt_and_tag(&c, 1, iv, iv_len, NULL, 0, in, out, in_len, tag_buf, tl);
   gcm_zero_ctx(&c);
   return 0;
 }
 
-int aes_gcm_decrypt(uint8_t *output, const uint8_t *input, int input_length, const uint8_t *key, const size_t key_len, const uint8_t *iv, const size_t iv_len) {
+int aes_gcm_decrypt(uint8_t *out, const uint8_t *in, int in_len, const uint8_t *key, const size_t key_len, const uint8_t *iv, const size_t iv_len) {
   uint8_t *tag_buf = NULL;
   size_t tl = 0;
   gcm_context c;
   gcm_setkey(&c, key, (const uint32_t)key_len);
-  gcm_crypt_and_tag(&c, 0, iv, iv_len, NULL, 0, input, output, input_length, tag_buf, tl);
+  gcm_crypt_and_tag(&c, 0, iv, iv_len, NULL, 0, in, out, in_len, tag_buf, tl);
   gcm_zero_ctx(&c);
   return 0;
 }
 
 
 // TEST AES GCM functions
-static int verify_gcm_encryption(const uint8_t *key, size_t key_len, const uint8_t *iv, size_t iv_len, const uint8_t *aad, size_t aad_len, const uint8_t *pt, const uint8_t *ct, size_t ct_len, const uint8_t *tag, size_t tag_len) {
+static int verify_gcm_encryption(ctx_param par) {
   uint8_t ct_buf[256], tag_buf[16];
   gcm_context ctx;
-  gcm_setkey(&ctx, key, key_len);
-  int ret = gcm_crypt_and_tag(&ctx, ENCRYPT, iv, iv_len, aad, aad_len, pt, ct_buf, ct_len, tag_buf, tag_len);
-  ret |= memcmp(ct_buf, ct, ct_len);
-  ret |= memcmp(tag_buf, tag, tag_len);
+  gcm_setkey(&ctx, par.key, par.key_len);
+  int ret = gcm_crypt_and_tag(&ctx, ENCRYPT, par.iv, par.iv_len, par.aad, par.aad_len, par.pt, ct_buf, par.ct_len, tag_buf, par.tag_len);
+  ret |= memcmp(ct_buf, par.ct, par.ct_len);
+  ret |= memcmp(tag_buf, par.tag, par.tag_len);
   gcm_zero_ctx(&ctx);
   return ret;
 }
 
-static int verify_gcm_decryption(const uint8_t *key, size_t key_len, const uint8_t *iv, size_t iv_len, const uint8_t *aad, size_t aad_len, const uint8_t *pt, const uint8_t *ct, size_t ct_len, const uint8_t *tag, size_t tag_len) {
+static int verify_gcm_decryption(ctx_param par) {
   uint8_t pt_buf[256];
   gcm_context ctx;
-  gcm_setkey(&ctx, key, key_len);
-  int ret = gcm_auth_decrypt(&ctx, iv, iv_len, aad, aad_len, ct, pt_buf, ct_len, tag, tag_len);
-  ret |= memcmp(pt_buf, pt, ct_len);
+  gcm_setkey(&ctx, par.key, par.key_len);
+  int ret = gcm_auth_decrypt(&ctx, par.iv, par.iv_len, par.aad, par.aad_len, par.ct, pt_buf, par.ct_len, par.tag, par.tag_len);
+  ret |= memcmp(pt_buf, par.pt, par.ct_len);
   gcm_zero_ctx(&ctx);
   return ret;
 }
 
-static int verify_bad_decryption(const uint8_t *key, size_t key_len, const uint8_t *iv, size_t iv_len, const uint8_t *aad, size_t aad_len, const uint8_t *ct, size_t ct_len, const uint8_t *tag, size_t tag_len) {
+static int verify_bad_decryption(ctx_param par) {
   uint8_t pt_buf[256];
   gcm_context ctx;
-  gcm_setkey(&ctx, key, key_len);
-  int ret = gcm_auth_decrypt(&ctx, iv, iv_len, aad, aad_len, ct, pt_buf, ct_len, tag, tag_len);
+  gcm_setkey(&ctx, par.key, par.key_len);
+  int ret = gcm_auth_decrypt(&ctx, par.iv, par.iv_len, par.aad, par.aad_len, par.ct, pt_buf, par.ct_len, par.tag, par.tag_len);
   ret ^= GCM_AUTH_FAILURE;
   gcm_zero_ctx(&ctx);
   return ret;
@@ -384,18 +384,18 @@ static void bump_vd(uint8_t **key, size_t *key_len, uint8_t **vd) {
 }
 
 int verify_gcm(uint8_t *vd) {
-  uint8_t *key = NULL, *iv = NULL, *aad = NULL, *pt = NULL, *ct = NULL, *tag = NULL, ret, RecordType;
-  size_t key_len = 0, iv_len = 0, aad_len = 0, pt_len = 0, ct_len = 0, tag_len = 0;
+  uint8_t ret, RecordType;
+  ctx_param par;
   while ((RecordType = *vd++)) {
-    bump_vd(&key, &key_len, &vd);
-    bump_vd(&iv, &iv_len, &vd);
-    bump_vd(&aad, &aad_len, &vd);
-    bump_vd(&pt, &pt_len, &vd);
-    bump_vd(&ct, &ct_len, &vd);
-    bump_vd(&tag, &tag_len, &vd);
-    if (RecordType == 1) {if ((ret = verify_gcm_encryption(key, key_len, iv, iv_len, aad, aad_len, pt, ct, ct_len, tag, tag_len))) break;}
-    else if (RecordType == 2) {if ((ret = verify_gcm_decryption(key, key_len, iv, iv_len, aad, aad_len, pt, ct, ct_len, tag, tag_len))) break;}
-    else if (RecordType == 3) {if ((ret = verify_bad_decryption(key, key_len, iv, iv_len, aad, aad_len, ct, ct_len, tag, tag_len))) break;}
+    bump_vd(&par.key, &par.key_len, &vd);
+    bump_vd(&par.iv, &par.iv_len, &vd);
+    bump_vd(&par.aad, &par.aad_len, &vd);
+    bump_vd(&par.pt, &par.pt_len, &vd);
+    bump_vd(&par.ct, &par.ct_len, &vd);
+    bump_vd(&par.tag, &par.tag_len, &vd);
+    if (RecordType == 1) {if ((ret = verify_gcm_encryption(par))) break;}
+    else if (RecordType == 2) {if ((ret = verify_gcm_decryption(par))) break;}
+    else if (RecordType == 3) {if ((ret = verify_bad_decryption(par))) break;}
   }
   return ret; // 0 == OK
 }

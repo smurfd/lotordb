@@ -30,6 +30,15 @@ typedef struct {
   uint32_t T0[256], T1[256], T2[256], T3[256]; // key schedule assembly tables
 } box;
 
+typedef struct {
+  uint8_t *key, *iv, *aad, *pt, *ct, *tag;
+  size_t key_len, iv_len, aad_len, pt_len, ct_len, tag_len;
+} ctx_param;
+
+/*typedef struct {
+  const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len, const uint8_t *input, uint8_t *output, size_t length, uint8_t *tag, size_t tag_len;
+} gcm_param;
+*/
 static box fsb;
 static box rsb;
 static uint32_t RCON[10];   // AES round constants
@@ -89,8 +98,8 @@ int gcm_finish(gcm_context *ctx, uint8_t *tag, size_t tag_len);
 void gcm_zero_ctx(gcm_context *ctx);
 
 // AES GCM
-int aes_gcm_encrypt(uint8_t* output, const uint8_t* input, int input_length, const uint8_t* key, const size_t key_len, const uint8_t * iv, const size_t iv_len);
-int aes_gcm_decrypt(uint8_t* output, const uint8_t* input, int input_length, const uint8_t* key, const size_t key_len, const uint8_t * iv, const size_t iv_len);
+int aes_gcm_encrypt(uint8_t* out, const uint8_t* in, int in_len, const uint8_t* key, const size_t key_len, const uint8_t * iv, const size_t iv_len);
+int aes_gcm_decrypt(uint8_t* out, const uint8_t* in, int in_len, const uint8_t* key, const size_t key_len, const uint8_t * iv, const size_t iv_len);
 
 // AES GCM Test functions
 int verify_gcm(uint8_t *vd);
