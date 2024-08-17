@@ -31,14 +31,12 @@ typedef struct {
 } box;
 
 typedef struct {
-  uint8_t *key, *iv, *aad, *pt, *ct, *tag;
-  size_t key_len, iv_len, aad_len, pt_len, ct_len, tag_len;
+  uint8_t *key, *iv, *aad, *pt, *ct, *tag, *input, *output;
+  //uint8_t *key, *iv, *aad, *pt, *ct, *tag;
+  //size_t key_len, iv_len, aad_len, pt_len, ct_len, tag_len;
+  size_t key_len, iv_len, aad_len, pt_len, ct_len, tag_len, length;
 } ctx_param;
 
-/*typedef struct {
-  const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len, const uint8_t *input, uint8_t *output, size_t length, uint8_t *tag, size_t tag_len;
-} gcm_param;
-*/
 static box fsb;
 static box rsb;
 static uint32_t RCON[10];   // AES round constants

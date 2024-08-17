@@ -218,6 +218,15 @@ int gcm_crypt_and_tag(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_l
   return 0;
 }
 
+int gcm_crypt_and_tag2(gcm_context *ctx, int mode, ctx_param *cprm) {
+  gcm_start(ctx, mode, cprm->iv, cprm->iv_len, cprm->aad, cprm->aad_len);
+  gcm_update(ctx, cprm->length, cprm->input, cprm->output);
+  gcm_finish(ctx, cprm->tag, cprm->tag_len);
+  return 0;
+}
+
+
+
 int gcm_auth_decrypt(gcm_context *ctx, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len, const uint8_t *input, uint8_t *output, size_t length, const uint8_t *tag, size_t tag_len) {
   uint8_t check_tag[16];
   size_t i;
@@ -323,13 +332,24 @@ void gcm_zero_ctx(gcm_context *ctx) {
   memset(ctx, 0, sizeof(gcm_context));
 }
 
+static void set_ctxparm(ctx_param *c, const uint8_t *i, size_t il, uint8_t *a, size_t al, const uint8_t *in, size_t inl, uint8_t *t, size_t tl) {
+  memcpy((*c).iv, i, il);
+  (*c).iv_len = il;
+  memcpy((*c).aad, a, al);
+  (*c).aad_len = al;
+  memcpy((*c).input, in, inl);
+  memcpy((*c).tag, t, tl);
+  (*c).tag_len = tl;
+}
 // AES GCM
 int aes_gcm_encrypt(uint8_t *out, const uint8_t *in, int in_len, const uint8_t *key, const size_t key_len, const uint8_t *iv, const size_t iv_len) {
   uint8_t *tag_buf = NULL;
   size_t tl = 0;
   gcm_context c;
+  ctx_param cprm;
   gcm_setkey(&c, key, (const uint32_t)key_len);
-  gcm_crypt_and_tag(&c, 1, iv, iv_len, NULL, 0, in, out, in_len, tag_buf, tl);
+  set_ctxparm(&cprm, iv, iv_len, NULL, 0, in, in_len, tag_buf, tl);
+  gcm_crypt_and_tag2(&c, 1, &cprm);
   gcm_zero_ctx(&c);
   return 0;
 }
@@ -338,17 +358,19 @@ int aes_gcm_decrypt(uint8_t *out, const uint8_t *in, int in_len, const uint8_t *
   uint8_t *tag_buf = NULL;
   size_t tl = 0;
   gcm_context c;
+  ctx_param cprm;
   gcm_setkey(&c, key, (const uint32_t)key_len);
-  gcm_crypt_and_tag(&c, 0, iv, iv_len, NULL, 0, in, out, in_len, tag_buf, tl);
+  set_ctxparm(&cprm, iv, iv_len, NULL, 0, in, in_len, tag_buf, tl);
+  gcm_crypt_and_tag2(&c, 1, &cprm);
   gcm_zero_ctx(&c);
   return 0;
 }
-
 
 // TEST AES GCM functions
 static int verify_gcm_encryption(ctx_param par) {
   uint8_t ct_buf[256], tag_buf[16];
   gcm_context ctx;
+  ctx_param cprm;
   gcm_setkey(&ctx, par.key, par.key_len);
   int ret = gcm_crypt_and_tag(&ctx, ENCRYPT, par.iv, par.iv_len, par.aad, par.aad_len, par.pt, ct_buf, par.ct_len, tag_buf, par.tag_len);
   ret |= memcmp(ct_buf, par.ct, par.ct_len);
