@@ -32,8 +32,6 @@ typedef struct {
 
 typedef struct {
   uint8_t *key, *iv, *aad, *pt, *ct, *tag, *input, *output;
-  //uint8_t *key, *iv, *aad, *pt, *ct, *tag;
-  //size_t key_len, iv_len, aad_len, pt_len, ct_len, tag_len;
   size_t key_len, iv_len, aad_len, pt_len, ct_len, tag_len, length;
 } ctx_param;
 
@@ -68,17 +66,13 @@ static const u64 last4[16] = {0x0000, 0x1c20, 0x3840, 0x2460, 0x7080, 0x6ca0, 0x
 #define XTIME(x) ((x << 1) ^ ((x & 0x80) ? 0x1B : 0x00))
 #define MUL(x,y) ((x && y) ? pow[(log[x]+log[y]) % 255] : 0)
 #define MIX(x,y) {y = ((y << 1) | (y >> 7)) & 0xFF; x ^= y;}
+#define MIX4(x, y) {MIX(x, y); MIX(x, y); MIX(x, y); MIX(x, y);}
 #define CPY128(RK,SK) {*RK++ = *SK++; *RK++ = *SK++; *RK++ = *SK++; *RK++ = *SK++;}
-#define ENCDECKEY(sb, RK, x) ({uint32_t r; \
-  r = (((uint32_t)sb[(RK[x] >> 8) & 0xFF]) ^ \
-      ((uint32_t)sb[(RK[x] >> 16) & 0xFF] << 8) ^ \
-      ((uint32_t)sb[(RK[x] >> 24) & 0xFF] << 16) ^ \
-      ((uint32_t)sb[(RK[x]) & 0xFF] << 24)); r;})
-#define ENCDEC(S, A, B, C, D) ({uint32_t r; \
-  r = ((uint32_t)S[A & 0xFF]) ^ \
-      ((uint32_t)S[B >> 8 & 0xFF] << 8) ^ \
-      ((uint32_t)S[C >> 16 & 0xFF] << 16) ^ \
-      ((uint32_t)S[D >> 24 & 0xFF] << 24); r;})
+#define ROUND(S, A0, A1, A2, A3, B0, B1, B2, B3) ({uint32_t r; \
+  r = ((uint32_t)S[A0 & 0xFF] << B0) ^ \
+      ((uint32_t)S[A1 & 0xFF] << B1) ^ \
+      ((uint32_t)S[A2 & 0xFF] << B2) ^ \
+      ((uint32_t)S[A3 & 0xFF] << B3); r;})
 
 // AES
 void aes_init_keygen_tables(void);
