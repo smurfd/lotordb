@@ -1,5 +1,5 @@
-CL:=clang -O3 -Wall -pedantic -Wno-gnu-statement-expression
-CC:=clang -O3 -Wall -pedantic -Wno-gnu-statement-expression
+CL:=clang -O3 -Wall -pedantic# -Wno-gnu-statement-expression
+CC:=clang -O3 -Wall -pedantic# -Wno-gnu-statement-expression
 BUILD:=../.build
 
 all: tests

@@ -1,5 +1,5 @@
-CL:=clang -O3 -Wall -pedantic -Wno-gnu-statement-expression
-CC:=clang -O3 -Wall -pedantic -Wno-gnu-statement-expression
+CL := clang -O3 -Wall -pedantic# -Wno-gnu-statement-expression
+CC := clang -O3 -Wall -pedantic# -Wno-gnu-statement-expression
 BUILD:=.build
 
 all: mkbuilddir db_keystore hash db_tables ciphers ciphers_aes_gcm keys crypto crypto_server crypto_client client server test
