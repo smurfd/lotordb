@@ -79,7 +79,7 @@ static uint8_t aes_set_encryption_key(aes_context *c, const uint8_t *key, uint8_
 }
 
 static uint8_t aes_set_decryption_key(aes_context *c, const uint8_t *key, uint8_t keysize) {
-  uint32_t *SK, *RK = c->rk, i, SKtmp;
+  uint32_t *SK, *RK = c->rk, i, St;
   aes_context cc;
   cc.rounds = c->rounds;
   cc.rk = cc.buf;
@@ -87,11 +87,11 @@ static uint8_t aes_set_decryption_key(aes_context *c, const uint8_t *key, uint8_
   SK = cc.rk + cc.rounds * 4;
   CPY128(RK, SK);
   for (i = c->rounds - 1, SK -= 8; i > 0; i--, SK -= 8) {
-    SKtmp = *SK;
-    *RK++ = rsb.T0[fsb.b[(SKtmp) & 0xFF]] ^ rsb.T1[fsb.b[(SKtmp >> 8) & 0xFF]] ^ rsb.T2[fsb.b[(SKtmp >> 16) & 0xFF]] ^ rsb.T3[fsb.b[(SKtmp >> 24) & 0xFF]]; SKtmp++;
-    *RK++ = rsb.T0[fsb.b[(SKtmp) & 0xFF]] ^ rsb.T1[fsb.b[(SKtmp >> 8) & 0xFF]] ^ rsb.T2[fsb.b[(SKtmp >> 16) & 0xFF]] ^ rsb.T3[fsb.b[(SKtmp >> 24) & 0xFF]]; SKtmp++;
-    *RK++ = rsb.T0[fsb.b[(SKtmp) & 0xFF]] ^ rsb.T1[fsb.b[(SKtmp >> 8) & 0xFF]] ^ rsb.T2[fsb.b[(SKtmp >> 16) & 0xFF]] ^ rsb.T3[fsb.b[(SKtmp >> 24) & 0xFF]]; SKtmp++;
-    *RK++ = rsb.T0[fsb.b[(SKtmp) & 0xFF]] ^ rsb.T1[fsb.b[(SKtmp >> 8) & 0xFF]] ^ rsb.T2[fsb.b[(SKtmp >> 16) & 0xFF]] ^ rsb.T3[fsb.b[(SKtmp >> 24) & 0xFF]]; SKtmp++;
+    St = *SK;
+    *RK++ = rsb.T0[fsb.b[(St) & 0xFF]] ^ rsb.T1[fsb.b[(St >> 8) & 0xFF]] ^ rsb.T2[fsb.b[(St >> 16) & 0xFF]] ^ rsb.T3[fsb.b[(St >> 24) & 0xFF]]; St++;
+    *RK++ = rsb.T0[fsb.b[(St) & 0xFF]] ^ rsb.T1[fsb.b[(St >> 8) & 0xFF]] ^ rsb.T2[fsb.b[(St >> 16) & 0xFF]] ^ rsb.T3[fsb.b[(St >> 24) & 0xFF]]; St++;
+    *RK++ = rsb.T0[fsb.b[(St) & 0xFF]] ^ rsb.T1[fsb.b[(St >> 8) & 0xFF]] ^ rsb.T2[fsb.b[(St >> 16) & 0xFF]] ^ rsb.T3[fsb.b[(St >> 24) & 0xFF]]; St++;
+    *RK++ = rsb.T0[fsb.b[(St) & 0xFF]] ^ rsb.T1[fsb.b[(St >> 8) & 0xFF]] ^ rsb.T2[fsb.b[(St >> 16) & 0xFF]] ^ rsb.T3[fsb.b[(St >> 24) & 0xFF]]; St++;
   }
   CPY128(RK, SK);
   memset(&cc, 0, sizeof(aes_context));
@@ -211,7 +211,8 @@ int gcm_setkey(gcm_context *ctx, const uint8_t *key, const uint32_t keysize) {
   return 0;
 }
 
-int gcm_crypt_and_tag(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len, const uint8_t *input, uint8_t *output, size_t length, uint8_t *tag, size_t tag_len) {
+int gcm_crypt_and_tag(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len, const uint8_t *input,
+    uint8_t *output, size_t length, uint8_t *tag, size_t tag_len) {
   gcm_start(ctx, mode, iv, iv_len, add, add_len);
   gcm_update(ctx, length, input, output);
   gcm_finish(ctx, tag, tag_len);
@@ -225,7 +226,8 @@ int gcm_crypt_and_tag2(gcm_context *ctx, int mode, ctx_param *cprm) {
   return 0;
 }
 
-int gcm_auth_decrypt(gcm_context *ctx, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len, const uint8_t *input, uint8_t *output, size_t length, const uint8_t *tag, size_t tag_len) {
+int gcm_auth_decrypt(gcm_context *ctx, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len, const uint8_t *input, uint8_t *output,
+    size_t length, const uint8_t *tag, size_t tag_len) {
   uint8_t check_tag[16], diff = 0;
   gcm_crypt_and_tag(ctx, 0 , iv, iv_len, add, add_len, input, output, length, check_tag, tag_len); // decrypt
   for (size_t i = 0; i < tag_len; i++) {

@@ -38,15 +38,15 @@ typedef struct {
 static box fsb;
 static box rsb;
 static uint32_t RCON[10];   // AES round constants
-static const u64 last4[16] = {0x0000, 0x1c20, 0x3840, 0x2460, 0x7080, 0x6ca0, 0x48c0, 0x54e0, 0xe100, 0xfd20, 0xd940, 0xc560, 0x9180, 0x8da0, 0xa9c0, 0xb5e0};
+static const u64 last4[16] = {0x0000,0x1c20,0x3840,0x2460,0x7080,0x6ca0,0x48c0,0x54e0,0xe100,0xfd20,0xd940,0xc560,0x9180,0x8da0,0xa9c0,0xb5e0};
 
 #define ENCRYPT 1
 #define DECRYPT 0
 #define GCM_AUTH_FAILURE 0x55555555
 #define GET_UINT32_LE(n,b,i) {n = ((uint32_t)b[(i)]) | ((uint32_t)b[(i) + 1] << 8) | ((uint32_t)b[(i) + 2] << 16) | ((uint32_t)b[(i) + 3] << 24);}
-#define PUT_UINT32_LE(n,b,i) {b[(i)] = (uint8_t)((n)); b[(i) + 1] = (uint8_t)((n) >> 8); b[(i) + 2] = (uint8_t)((n) >> 16); b[(i) + 3] = (uint8_t)((n) >> 24);}
+#define PUT_UINT32_LE(n,b,i) {b[(i)]=(uint8_t)((n)); b[(i) + 1]=(uint8_t)((n) >> 8);b[(i) + 2]=(uint8_t)((n) >> 16); b[(i) + 3]=(uint8_t)((n) >> 24);}
 #define GET_UINT32_BE(n,b,i) {n = ((uint32_t)b[(i)] << 24) | ((uint32_t)b[(i) + 1] << 16) | ((uint32_t)b[(i) + 2] << 8) | ((uint32_t)b[(i) + 3]);}
-#define PUT_UINT32_BE(n,b,i) {b[(i)] = (uint8_t)((n) >> 24); b[(i) + 1] = (uint8_t)((n) >> 16); b[(i) + 2] = (uint8_t)((n) >> 8); b[(i) + 3] = (uint8_t)((n));}
+#define PUT_UINT32_BE(n,b,i) {b[(i)]=(uint8_t)((n) >> 24);b[(i) + 1]=(uint8_t)((n) >> 16);b[(i) + 2]=(uint8_t)((n) >> 8);b[(i) + 3] = (uint8_t)((n));}
 
 #define AES_FROUND(X0,X1,X2,X3,Y0,Y1,Y2,Y3) { \
   X0 = *RK++ ^ fsb.T0[(Y0) & 0xFF] ^ fsb.T1[(Y1 >> 8) & 0xFF] ^ fsb.T2[(Y2 >> 16) & 0xFF] ^ fsb.T3[(Y3 >> 24) & 0xFF]; \
@@ -82,8 +82,10 @@ int aes_cipher(aes_context *ctx, const uint8_t input[16], uint8_t output[16]); /
 // GCM
 int gcm_initialize(void);
 int gcm_setkey(gcm_context *ctx, const uint8_t *key, const uint32_t keysize); // keysize in bytes (must be 16, 24, 32 for 128, 192 or 256-bit keys)
-int gcm_crypt_and_tag(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len, const uint8_t *input, uint8_t *output, size_t length, uint8_t *tag, size_t tag_len);
-int gcm_auth_decrypt(gcm_context *ctx, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len, const uint8_t *input, uint8_t *output, size_t length, const uint8_t *tag, size_t tag_len);
+int gcm_crypt_and_tag(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len, const uint8_t *input,
+  uint8_t *output, size_t length, uint8_t *tag, size_t tag_len);
+int gcm_auth_decrypt(gcm_context *ctx, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len, const uint8_t *input, uint8_t *output,
+  size_t length, const uint8_t *tag, size_t tag_len);
 int gcm_start(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len);
 int gcm_update(gcm_context *ctx, size_t length, const uint8_t *input, uint8_t *output);
 int gcm_finish(gcm_context *ctx, uint8_t *tag, size_t tag_len);
