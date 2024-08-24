@@ -44,18 +44,20 @@ void aes_init_keygen_tables(void) {
 }
 
 static uint8_t aes_set_encryption_key(aes_context *c, const uint8_t *key, uint8_t kz) {
-  uint32_t *RK = c->rk;
+  uint32_t *RK = c->rk, tmp;
   for (uint32_t i = 0; i < (kz >> 2); i++) GET_UINT32_LE(RK[i], key, i << 2);
   if (c->rounds == 10) {
     for(uint32_t i = 0; i < 10; i++, RK += 4) {
-      RK[4] = RK[0] ^ RCON[i] ^ ROUND(fsb.b, RK[3] >> 8, RK[3] >> 16, RK[3] >> 24, RK[3] >> 0, 0, 8, 16, 24);
+      ROUND(tmp, fsb.b, RK[3] >> 8, RK[3] >> 16, RK[3] >> 24, RK[3] >> 0, 0, 8, 16, 24);
+      RK[4] = RK[0] ^ RCON[i] ^ tmp;
       RK[5] = RK[1] ^ RK[4];
       RK[6] = RK[2] ^ RK[5];
       RK[7] = RK[3] ^ RK[6];
     }
   } else if (c->rounds == 12) {
     for(uint32_t i = 0; i < 8; i++, RK += 6) {
-      RK[6] = RK[0] ^ RCON[i] ^ ROUND(fsb.b, RK[5] >> 8, RK[5] >> 16, RK[5] >> 24, RK[5] >> 0, 0, 8, 16, 24);
+      ROUND(tmp, fsb.b, RK[5] >> 8, RK[5] >> 16, RK[5] >> 24, RK[5] >> 0, 0, 8, 16, 24);
+      RK[6] = RK[0] ^ RCON[i] ^ tmp;
       RK[7] = RK[1] ^ RK[6];
       RK[8] = RK[2] ^ RK[7];
       RK[9] = RK[3] ^ RK[8];
@@ -64,12 +66,13 @@ static uint8_t aes_set_encryption_key(aes_context *c, const uint8_t *key, uint8_
     }
   } else if (c->rounds == 14) {
     for(uint32_t i = 0; i < 7; i++, RK += 8) {
-      RK[8] = RK[0] ^ RCON[i] ^ ROUND(fsb.b, RK[7] >> 8, RK[7] >> 16, RK[7] >> 24, RK[7] >> 0, 0, 8, 16, 24);
+      ROUND(tmp, fsb.b, RK[7] >> 8, RK[7] >> 16, RK[7] >> 24, RK[7] >> 0, 0, 8, 16, 24);
+      RK[8] = RK[0] ^ RCON[i] ^ tmp;
       RK[9]  = RK[1] ^ RK[8];
       RK[10] = RK[2] ^ RK[9];
       RK[11] = RK[3] ^ RK[10];
-
-      RK[12] = RK[4] ^ ROUND(fsb.b, RK[11] >> 0, RK[11] >> 8, RK[11] >> 16, RK[11] >> 24, 0, 8, 16, 24);
+      ROUND(tmp, fsb.b, RK[11] >> 0, RK[11] >> 8, RK[11] >> 16, RK[11] >> 24, 0, 8, 16, 24);
+      RK[12] = RK[4] ^ tmp;
       RK[13] = RK[5] ^ RK[12];
       RK[14] = RK[6] ^ RK[13];
       RK[15] = RK[7] ^ RK[14];
@@ -110,7 +113,7 @@ int aes_setkey(aes_context *c, uint8_t mode, const uint8_t *key, uint8_t keysize
 }
 
 int aes_cipher(aes_context *c, const uint8_t in[16], uint8_t out[16]) {
-  uint32_t *RK, X0, X1, X2, X3, Y0, Y1, Y2, Y3;
+  uint32_t *RK, X0, X1, X2, X3, Y0, Y1, Y2, Y3, tmp0, tmp1, tmp2, tmp3;
   RK = c->rk;
   GET_UINT32_LE(X0, in,  0); X0 ^= *RK++;
   GET_UINT32_LE(X1, in,  4); X1 ^= *RK++;
@@ -122,20 +125,28 @@ int aes_cipher(aes_context *c, const uint8_t in[16], uint8_t out[16]) {
       AES_RROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3);
     }
     AES_RROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
-    X0 = *RK++ ^ ROUND(rsb.b, Y0 >> 0, Y3 >> 8, Y2 >> 16, Y1 >> 24, 0, 8, 16, 24);
-    X1 = *RK++ ^ ROUND(rsb.b, Y1 >> 0, Y0 >> 8, Y3 >> 16, Y2 >> 24, 0, 8, 16, 24);
-    X2 = *RK++ ^ ROUND(rsb.b, Y2 >> 0, Y1 >> 8, Y0 >> 16, Y3 >> 24, 0, 8, 16, 24);
-    X3 = *RK++ ^ ROUND(rsb.b, Y3 >> 0, Y2 >> 8, Y1 >> 16, Y0 >> 24, 0, 8, 16, 24);
+    ROUND(tmp0, rsb.b, Y0 >> 0, Y3 >> 8, Y2 >> 16, Y1 >> 24, 0, 8, 16, 24);
+    ROUND(tmp1, rsb.b, Y1 >> 0, Y0 >> 8, Y3 >> 16, Y2 >> 24, 0, 8, 16, 24);
+    ROUND(tmp2, rsb.b, Y2 >> 0, Y1 >> 8, Y0 >> 16, Y3 >> 24, 0, 8, 16, 24);
+    ROUND(tmp3, rsb.b, Y3 >> 0, Y2 >> 8, Y1 >> 16, Y0 >> 24, 0, 8, 16, 24);
+    X0 = *RK++ ^ tmp0;
+    X1 = *RK++ ^ tmp1;
+    X2 = *RK++ ^ tmp2;
+    X3 = *RK++ ^ tmp3;
   } else { // encrypt
     for (int i = (c->rounds >> 1) - 1; i > 0; i--) {
       AES_FROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
       AES_FROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3);
     }
     AES_FROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
-    X0 = *RK++ ^ ROUND(fsb.b, Y0 >> 0, Y1 >> 8, Y2 >> 16, Y3 >> 24, 0, 8, 16, 24);
-    X1 = *RK++ ^ ROUND(fsb.b, Y1 >> 0, Y2 >> 8, Y3 >> 16, Y0 >> 24, 0, 8, 16, 24);
-    X2 = *RK++ ^ ROUND(fsb.b, Y2 >> 0, Y3 >> 8, Y0 >> 16, Y1 >> 24, 0, 8, 16, 24);
-    X3 = *RK++ ^ ROUND(fsb.b, Y3 >> 0, Y0 >> 8, Y1 >> 16, Y2 >> 24, 0, 8, 16, 24);
+    ROUND(tmp0, fsb.b, Y0 >> 0, Y1 >> 8, Y2 >> 16, Y3 >> 24, 0, 8, 16, 24);
+    ROUND(tmp1, fsb.b, Y1 >> 0, Y2 >> 8, Y3 >> 16, Y0 >> 24, 0, 8, 16, 24);
+    ROUND(tmp2, fsb.b, Y2 >> 0, Y3 >> 8, Y0 >> 16, Y1 >> 24, 0, 8, 16, 24);
+    ROUND(tmp3, fsb.b, Y3 >> 0, Y0 >> 8, Y1 >> 16, Y2 >> 24, 0, 8, 16, 24);
+    X0 = *RK++ ^ tmp0;
+    X1 = *RK++ ^ tmp1;
+    X2 = *RK++ ^ tmp2;
+    X3 = *RK++ ^ tmp3;
   }
   PUT_UINT32_LE(X0, out,  0);
   PUT_UINT32_LE(X1, out,  4);

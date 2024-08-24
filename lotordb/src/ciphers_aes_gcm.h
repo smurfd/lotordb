@@ -68,11 +68,12 @@ static const u64 last4[16] = {0x0000,0x1c20,0x3840,0x2460,0x7080,0x6ca0,0x48c0,0
 #define MIX(x,y) {y = ((y << 1) | (y >> 7)) & 0xFF; x ^= y;}
 #define MIX4(x, y) {MIX(x, y); MIX(x, y); MIX(x, y); MIX(x, y);}
 #define CPY128(RK,SK) {*RK++ = *SK++; *RK++ = *SK++; *RK++ = *SK++; *RK++ = *SK++;}
-#define ROUND(S, A0, A1, A2, A3, B0, B1, B2, B3) ({uint32_t r; \
+#define ROUND(r, S, A0, A1, A2, A3, B0, B1, B2, B3) {\
   r = ((uint32_t)S[A0 & 0xFF] << B0) ^ \
       ((uint32_t)S[A1 & 0xFF] << B1) ^ \
       ((uint32_t)S[A2 & 0xFF] << B2) ^ \
-      ((uint32_t)S[A3 & 0xFF] << B3); r;})
+      ((uint32_t)S[A3 & 0xFF] << B3);}
+
 
 // AES
 void aes_init_keygen_tables(void);
