@@ -16,7 +16,7 @@ static void clear(u64 *a) {
 //
 // Count 64bit in a
 static u64 count(const u64 *a) {
-  for (int8_t i = DIGITS - 1; i >= 0; --i) {
+  for (int i = DIGITS - 1; i >= 0; --i) {
     if (a[i] != 0) return (i + 1);
   }
   return 0;
@@ -30,7 +30,7 @@ static void set(u64 *a, const u64 *b) {
 
 //
 // Check if a is zero, return 1, if not return 0
-static int8_t check_zero(const u64 *a) {
+static int check_zero(const u64 *a) {
   if (a[0] == 0 && memcmp(a, a + 1, (DIGITS - 1) * sizeof(a[0])) == 0) return 1;
   return 0;
 }
@@ -53,8 +53,8 @@ static uint32_t check_bits(const u64 *a) {
 
 //
 // Compare a and b
-static int8_t compare(const u64 *a, const u64 *b) {
-  for (int8_t i = DIGITS - 1; i >= 0; --i) {
+static int compare(const u64 *a, const u64 *b) {
+  for (int i = DIGITS - 1; i >= 0; --i) {
     if (a[i] > b[i]) return 1;
     else if (a[i] < b[i]) return -1;
   }
@@ -142,7 +142,7 @@ static void omega_mul(u64 *a, const u64 *b) {
   ovr += sub(a, a, t);
   u64 d = a[DIGITS] - ovr;
   if (d > a[DIGITS]) {
-    for (int8_t i = 1 + DIGITS; ; ++i) {
+    for (u64 i = 1 + DIGITS; ; ++i) {
       --a[i];
       if (a[i] != (u64)-1) break;
     }
@@ -190,7 +190,7 @@ static void mod_mod(u64 *a, u64 *b) {
     clear(t + DIGITS);
     omega_mul(t, b + DIGITS);
     clear(b + DIGITS);
-    for (int8_t i = 0; i < DIGITS + 3; ++i) {
+    for (u64 i = 0; i < DIGITS + 3; ++i) {
       u64 s = b[i] + t[i] + ovr;
       if (s != b[i]) ovr = (s < b[i]);
       b[i] = s;
@@ -447,7 +447,7 @@ static void pt_mul(pt *r, pt *p, const u64 *q, const u64 *s) {
   set(Rx[1], p->x);
   set(Ry[1], p->y);
   pt_init_double(Rx[1], Ry[1], Rx[0], Ry[0], s);
-  for (uint16_t i = check_bits(q) - 2; i > 0; --i) {
+  for (int i = check_bits(q) - 2; i > 0; --i) {
     nb = !check_set(q, i);
     pt_addc(Rx[1 - nb], Ry[1 - nb], Rx[nb], Ry[nb]);
     pt_add(Rx[nb], Ry[nb], Rx[1 - nb], Ry[1 - nb]);
@@ -514,7 +514,7 @@ static u64 write_cms(FILE* ptr, const uint8_t data[]) {
 
 //
 // Write certificates/keys/cms
-u64 keys_write(char *fn, uint8_t data[], const int8_t type) {
+u64 keys_write(char *fn, uint8_t data[], const int type) {
   FILE* ptr = fopen(fn, "w");
   u64 ret = 0;
   // type : 1 = certificate
