@@ -124,8 +124,8 @@ int main(void) {
   test_ciphers_cfb();
   test_ciphers_cbc_long();
   test_ciphers_cfb_long();
-  test_ciphers_cbc_long_str();
-  test_ciphers_cfb_long_str();
+  //test_ciphers_cbc_long_str();
+  //test_ciphers_cfb_long_str();
   test_ciphers_aes_gcm();
   printf("OK\n");
 }

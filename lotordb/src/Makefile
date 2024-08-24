@@ -1,5 +1,5 @@
-CL := clang -O3 -Wall -pedantic# -Wno-gnu-statement-expression
-CC := clang -O3 -Wall -pedantic# -Wno-gnu-statement-expression
+CL := gcc -O3 -Wall -pedantic
+CC := gcc -O3 -Wall -pedantic
 BUILD:=.build
 
 all: mkbuilddir db_keystore hash db_tables ciphers ciphers_aes_gcm keys crypto crypto_server crypto_client client server test
@@ -37,11 +37,11 @@ keys:
 
 client:
 	${CL} -o ${BUILD}/client client.c ${BUILD}/crypto.o ${BUILD}/crypto_client.o ${BUILD}/hash.o ${BUILD}/hash_tooling.o\
-	  ${BUILD}/db_keystore.o ${BUILD}/db_tables.o -fuse-ld=lld -lpthread -lm
+	  ${BUILD}/db_keystore.o ${BUILD}/db_tables.o -lpthread -lm
 
 server:
 	${CL} -o ${BUILD}/server server.c ${BUILD}/crypto.o ${BUILD}/crypto_server.o ${BUILD}/hash_tooling.o ${BUILD}/hash.o\
-	  ${BUILD}/db_keystore.o ${BUILD}/db_tables.o -fuse-ld=lld -lpthread -lm
+	  ${BUILD}/db_keystore.o ${BUILD}/db_tables.o -lpthread -lm
 
 test:
 	make -Ctests
