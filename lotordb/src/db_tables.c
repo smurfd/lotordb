@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <sys/socket.h>
 #include <string.h>
 #include <stdlib.h>
@@ -90,13 +91,13 @@ int table_write_data(tbls *t) {
 }
 
 void set_table_data(tbls *t, char unique_id[256], char data[4096]) {
-  strncpy((*t).d.unique_id, unique_id, strlen(unique_id) + 1);
-  strncpy((*t).d.data, data, strlen(data) + 1);
+  strncpy((*t).d.unique_id, unique_id, 255);//strlen(unique_id) + 1);
+  strncpy((*t).d.data, data, 4095);//strlen(data) + 1);
 }
 
 void set_table_index(tbls *t, u64 index, char unique_id[256], u64 length, char path[256]) {
-  strncpy((*t).i.unique_id, unique_id, strlen(unique_id) + 1);
-  strncpy((*t).i.path, path, strlen(path) + 1);
+  strncpy((*t).i.unique_id, unique_id, 255);//strlen(unique_id) + 1);
+  strncpy((*t).i.path, path, 255);//strlen(path) + 1);
   (*t).i.index = index;
   (*t).i.length = length;
 }

@@ -5,6 +5,10 @@
 #include <assert.h>
 #include "ciphers_aes_gcm.h"
 
+static box fsb;
+static box rsb;
+static uint32_t RCON[10];   // AES round constants
+
 // AES
 void aes_init_keygen_tables(void) {
   int x, y, z, pow[256], log[256];
@@ -340,6 +344,7 @@ void gcm_zero_ctx(gcm_context *ctx) {
 }
 
 static void set_ctxparm(ctx_param *c, const uint8_t *i, size_t il, uint8_t *a, size_t al, const uint8_t *in, size_t inl, uint8_t *t, size_t tl) {
+  memset(&(*c), 0, sizeof(ctx_param));
   memcpy((*c).iv, i, il);
   (*c).iv_len = il;
   memcpy((*c).aad, a, al);

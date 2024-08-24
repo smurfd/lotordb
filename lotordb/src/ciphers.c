@@ -281,7 +281,7 @@ static void rcon(uint8_t *wrd, const uint8_t a) {
 //
 //
 static void key_expansion(uint8_t w[], const uint8_t key[]) {
-  uint8_t tmp[4], rc[4];
+  uint8_t tmp[6], rc[6];
 
   memcpy(w, key, NK4 * sizeof(uint8_t));
   for (uint8_t i = NK4; i < 4 * NB * (NR + 1); i += 4) {
