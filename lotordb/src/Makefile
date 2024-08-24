@@ -1,5 +1,5 @@
-CL := gcc -O3 -Wall -pedantic
-CC := gcc -O3 -Wall -pedantic
+CL := gcc -O3 -Wall -pedantic -std=c99
+CC := gcc -O3 -Wall -pedantic -std=c99
 BUILD:=.build
 
 all: mkbuilddir db_keystore hash db_tables ciphers ciphers_aes_gcm keys crypto crypto_server crypto_client client server test
