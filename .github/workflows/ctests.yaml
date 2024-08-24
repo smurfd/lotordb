@@ -12,9 +12,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install dependencies
-      run: sudo apt-get update && sudo apt-get -y install clang make
-    - name: clang ver
-      run: clang --version
+      run: sudo apt-get update && sudo apt-get -y install make gcc
     - name: Build
       run: make -Clotordb/src
 
@@ -23,8 +21,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install dependencies
-      run: sudo apt-get update && sudo apt-get -y install clang make
-    - name: clang ver
-      run: clang --version
+      run: sudo apt-get update && sudo apt-get -y install make gcc
     - name: Build
       run: make -Clotordb/src
