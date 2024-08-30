@@ -7,6 +7,7 @@
 #include "crypto.h"
 #include "keys.h"
 
+// Static variables
 static u64 curve_p[DIGITS] = {0x00000000ffffffff, 0xffffffff00000000, 0xfffffffffffffffe, 0xffffffffffffffff,
   0xffffffffffffffff,0xffffffffffffffff}, curve_b[DIGITS] = {0x2a85c8edd3ec2aef, 0xc656398d8a2ed19d, 0x0314088f5013875a,
   0x181d9c6efe814112, 0x988e056be3f82d19, 0xb3312fa7e23ee7e4}, curve_n[DIGITS] = {0xecec196accc52973, 0x581a0db248b0a77a,
@@ -14,7 +15,6 @@ static u64 curve_p[DIGITS] = {0x00000000ffffffff, 0xffffffff00000000, 0xffffffff
 static pt curve_g = {{0x3a545e3872760ab7, 0x5502f25dbf55296c, 0x59f741e082542a38, 0x6e1d3b628ba79b98, 0x8eb1c71ef320ad74,
   0xaa87ca22be8b0537},{0x7a431d7c90ea0e5f, 0x0a60b1ce1d7e819d,0xe9da3113b5f0b8c0, 0xf8f41dbd289a147c, 0x5d9e98bf9292dc29,
   0x3617de4a96262c6f}};
-//static prng_t prng_ctx;
 
 //
 // Clear a
@@ -54,7 +54,6 @@ static u64 check_set(const u64 *a, const uint32_t b) {
 // Check number of bits needed for a
 static uint32_t check_bits(const u64 *a) {
   u64 i, nd = count(a), d = a[nd - 1];
-
   if (nd == 0) return 0;
   for (i = 0; d; ++i) d >>= 1;
   return ((nd - 1) * 64 + i);
@@ -74,7 +73,6 @@ static int compare(const u64 *a, const u64 *b) {
 // Left shift
 static u64 lshift(u64 *a, const u64 *b, const u64 c) {
   u64 ovr = 0;
-
   for (uint32_t i = 0; i < DIGITS; ++i) {
     u64 t = b[i];
     a[i] = (t << c) | ovr;
@@ -87,7 +85,6 @@ static u64 lshift(u64 *a, const u64 *b, const u64 c) {
 // Right shift by 1
 static void rshift1(u64 *a) {
   u64 *e = a, ovr = 0; a += DIGITS;
-
   while (a-- > e) {
     u64 t = *a;
     *a = (t >> 1) | ovr;
@@ -99,7 +96,6 @@ static void rshift1(u64 *a) {
 // Adds b and c
 static u64 add(u64 *a, const u64 *b, const u64 *c) {
   u64 ovr = 0;
-
   for (uint32_t i = 0; i < DIGITS; ++i) {
     u64 s = b[i] + c[i] + ovr;
     if (s != b[i]) ovr = (s < b[i]);
@@ -112,7 +108,6 @@ static u64 add(u64 *a, const u64 *b, const u64 *c) {
 // Sub b and c
 static u64 sub(u64 *a, const u64 *b, const u64 *c) {
   u64 ovr = 0;
-
   for (uint32_t i = 0; i < DIGITS; ++i) {
     u64 d = b[i] - c[i] - ovr;
     if (d != b[i]) ovr = (d > b[i]);
@@ -125,9 +120,7 @@ static u64 sub(u64 *a, const u64 *b, const u64 *c) {
 // Multiply
 static void mul(u64 *a, const u64 *b, const u64 *c) {
   u64 r2 = 0, di22 = DIGITS * 2 - 1;
-  //unsigned __int128 r = 0;
   uint128 r = 0;
-
   for (uint32_t k = 0; k < di22; ++k) {
     u64 min = (k < DIGITS ? 0 : (k + 1) - DIGITS);
     for (u64 j = min; j <= k && j < DIGITS; ++j) {
@@ -214,7 +207,6 @@ static void mod_mod(u64 *a, u64 *b) {
 // Modulo multiply
 static void mod_mul(u64 *a, const u64 *b, const u64 *c) {
   u64 p[DIGITS * 2];
-
   mul(p, b, c);
   mod_mod(a, p);
 }
@@ -223,7 +215,6 @@ static void mod_mul(u64 *a, const u64 *b, const u64 *c) {
 // Modulo square
 static void mod_sqr(u64 *a, const u64 *b) {
   u64 p[DIGITS* 2];
-
   mul(p, b, b);
   mod_mod(a, p);
 }
@@ -232,7 +223,6 @@ static void mod_sqr(u64 *a, const u64 *b) {
 // Modulo square root
 static void mod_sqrt(u64 a[DIGITS]) {
   u64 p1[DIGITS] = {1}, r[DIGITS] = {1};
-
   add(p1, curve_p, p1);
   for (u64 i = check_bits(p1) - 1; i > 1; --i) {
     mod_sqr(r, r);
@@ -245,7 +235,6 @@ static void mod_sqrt(u64 a[DIGITS]) {
 // Modulo multiply (b * c) % m
 static void mod_mod_mul(u64 *a, const u64 *b, const u64 *c, const u64 *m) {
   u64 ds, bs, pb, mb = check_bits(m), p[DIGITS * 2], mm[DIGITS * 2];
-
   mul(p, b, c);
   pb = check_bits(p + DIGITS);
   if (pb) pb += DIGITS * 64;
@@ -339,7 +328,6 @@ static void pt_double(u64 *a, u64 *b, u64 *c) {
   mod_add(a, a, c, curve_p);
   if (check_set(a, 0)) {
     u64 ovr = add(a, a, curve_p);
-
     rshift1(a);
     a[DIGITS - 1] |= ovr << 63;
   } else rshift1(a);
@@ -358,7 +346,6 @@ static void pt_double(u64 *a, u64 *b, u64 *c) {
 // Points decompress
 static void pt_decompress(pt *a, const uint8_t b[]) {
   u64 tr[DIGITS] = {3};
-
   bit_pack(a->x, b + 1);
   mod_sqr(a->y, a->x);
   mod_sub(a->y, a->y, tr);
@@ -373,7 +360,6 @@ static void pt_decompress(pt *a, const uint8_t b[]) {
 // Modify (x1, y1) => (x1 * z^2, y1 * z^3)
 static void pt_apply_z(u64 *a, u64 *b, const u64 *z) {
   u64 t[DIGITS];
-
   mod_sqr(t, z);
   mod_mul(a, a, t);
   mod_mul(t, t, z);
@@ -385,7 +371,6 @@ static void pt_apply_z(u64 *a, u64 *b, const u64 *z) {
 // P = (x1, y1) => 2P, (x2, y2) => P'
 static void pt_init_double(u64 *a, u64 *b, u64 *c, u64 *d, const u64 *p) {
   u64 z[DIGITS];
-
   set(c, a);
   set(d, b);
   clear(z);
@@ -427,7 +412,6 @@ static void pt_add(u64 *a, u64 *b, u64 *c, u64 *d) {
 // t1 = X1, t2 = Y1, t3 = X2, t4 = Y2
 static void pt_addc(u64 *a, u64 *b, u64 *c, u64 *d) {
   u64 t5[DIGITS], t6[DIGITS], t7[DIGITS];
-
   ssmm(t5, c, a);
   mod_add(t5, d, b, curve_p);
   mod_sub(d, d, b);
@@ -453,7 +437,6 @@ static void pt_addc(u64 *a, u64 *b, u64 *c, u64 *d) {
 // Point multiplication
 static void pt_mul(pt *r, pt *p, const u64 *q, const u64 *s) {
   u64 Rx[2][DIGITS], Ry[2][DIGITS], z[DIGITS], nb;
-
   set(Rx[1], p->x);
   set(Ry[1], p->y);
   pt_init_double(Rx[1], Ry[1], Rx[0], Ry[0], s);
@@ -482,7 +465,6 @@ static void pt_mul(pt *r, pt *p, const u64 *q, const u64 *s) {
 // Write cert to file
 static u64 write_crt(FILE* ptr, const uint8_t data[]) {
   int i = 4;
-
   fprintf(ptr, "-----BEGIN CERTIFICATE-----\n");
   fprintf(ptr, "MII");
   while (i < 1779) {
@@ -503,7 +485,6 @@ static u64 write_key(FILE* ptr, const uint8_t data[]) {
   char tmp[257] = {0};
   uint8_t d[BYTES] = {0};
   int i = 10, j = 0;
-
   bit_unpack(d, (u64*)data);
   j = base64enc(tmp, d, 164);
   fprintf(ptr, "-----BEGIN EC PRIVATE KEY-----\nMIGkAgEBBD");
@@ -527,12 +508,9 @@ static u64 write_cms(FILE* ptr, const uint8_t data[]) {
 u64 keys_write(char *fn, uint8_t data[], const int type) {
   FILE* ptr = fopen(fn, "w");
   u64 ret = 0;
-  // type : 1 = certificate
-  // type : 2 = private key
-  // type : 3 = cms
-  if (type == 1) ret = write_crt(ptr, data);
-  if (type == 2) ret = write_key(ptr, data);
-  if (type == 3) ret = write_cms(ptr, data);
+  if (type == 1) ret = write_crt(ptr, data); // Certificate
+  if (type == 2) ret = write_key(ptr, data); // Private key
+  if (type == 3) ret = write_cms(ptr, data); // CMS
   fclose(ptr);
   return ret;
 }

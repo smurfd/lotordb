@@ -9,7 +9,6 @@
 #include "hash.h"
 
 void set_key_value_store(kvsh *k, char key[256], char value[256], char store[256]) {
-  //u64 kl = strlen(key) + 1, vl = strlen(value) + 1, sl = strlen(store) + 1;
   strncpy((*k).key, key, 255);
   strncpy((*k).value, value, 255);
   strncpy((*k).store, store, 255);
@@ -18,7 +17,6 @@ void set_key_value_store(kvsh *k, char key[256], char value[256], char store[256
 }
 
 void key_del(kvsh *k) {
-  //u64 kl = strlen((*k).key) + 1, sl = strlen((*k).store) + 1;
   char s[512];
   strncpy(s, (*k).store, 512);
   strncat(s, "/", 2);
@@ -33,9 +31,9 @@ void key_write(kvsh *k) {
     mkdir((*k).store, 0700);
   }
   char s[512];
-  strncpy(s, (*k).store, 512);//strlen((*k).store) + 1);
+  strncpy(s, (*k).store, 512);
   strncat(s, "/", 2);
-  strncat(s, (*k).key, 512-strlen((*k).store)-1);//strlen((*k).key) + 1);
+  strncat(s, (*k).key, 512-strlen((*k).store)-1);
   f = fopen(s, "w");
   fprintf(f, "%s\n", (*k).value);
   fclose(f);

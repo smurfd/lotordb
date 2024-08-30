@@ -35,9 +35,6 @@ typedef struct {
   size_t key_len, iv_len, aad_len, pt_len, ct_len, tag_len, length;
 } ctx_param;
 
-//static box fsb;
-//static box rsb;
-//static uint32_t RCON[10];   // AES round constants
 static const u64 last4[16] = {0x0000,0x1c20,0x3840,0x2460,0x7080,0x6ca0,0x48c0,0x54e0,0xe100,0xfd20,0xd940,0xc560,0x9180,0x8da0,0xa9c0,0xb5e0};
 
 #define ENCRYPT 1

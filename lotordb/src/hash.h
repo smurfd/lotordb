@@ -2,6 +2,7 @@
 #ifndef LIGHTHASH_H
 #define LIGHTHASH_H 1
 #include <stdint.h>
+
 // Imitate pythons %. -1 % 5 = 4, not -1
 #define MOD(n, m) (((int)n % (int)m) + (int)m) % (int)m
 #define SHA3_BITS 1024 // SHA3-256 = 512, SHA3-512 = 1024 (default)

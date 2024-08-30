@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "hash_tooling.h" 
 
+// Static variables
 static char enc[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
   'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
   's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'};
@@ -32,13 +33,11 @@ static uint32_t sex(const char d[], char c[], int i) {
 // Convert a hex bitstring to a string
 void bit_hex_str(char hs[], const uint8_t *d, const int len) {
   int co = 2;
-
   hs[0] = '0';
   hs[1] = 'x';
   for (int i = 0; i < len; i++) {
     uint8_t h[2];
     char hc[2];
-
     to_hex(h, d[i]);
     to_hex_chr(hc, h);
     hs[co++] = hc[0];
@@ -105,7 +104,6 @@ int base64enc(char ed[], const uint8_t *data, int inl) {
 int base64dec(uint8_t dd[], const char *data, int inl) {
   static char dec[LEN] = {0};
   int ol = inl / 4 * 3;
-
   for (int i = 1; i <= 2; i++) {if (data[inl - i] == '=') ol--;}
   for (int i = 0; i < 64; i++) dec[(uint8_t)enc[i]] = i;
   for (int i = 0, j = 0; i < inl;) {
