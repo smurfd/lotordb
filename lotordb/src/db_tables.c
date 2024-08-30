@@ -63,7 +63,7 @@ int table_read_data(tbls *t) {
       for (ap = argv; (*ap = strsep(&line, "|")) != NULL;) {
         if (++ap >= &argv[2]) break;
       }
-      printf("SEP data %s %s", argv[0], argv[1]);
+      // printf("SEP data %s %s", argv[0], argv[1]);
     }
   }
   fclose(f);

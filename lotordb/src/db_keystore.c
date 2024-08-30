@@ -10,9 +10,9 @@
 
 void set_key_value_store(kvsh *k, char key[256], char value[256], char store[256]) {
   //u64 kl = strlen(key) + 1, vl = strlen(value) + 1, sl = strlen(store) + 1;
-  strncpy((*k).key, key, 256);
-  strncpy((*k).value, value, 256);
-  strncpy((*k).store, store, 256);
+  strncpy((*k).key, key, 255);
+  strncpy((*k).value, value, 255);
+  strncpy((*k).store, store, 255);
   hash_new((*k).hash, (uint8_t *)value);
   printf("KVSH: %s %s %s %s\n", key, value, store, (*k).hash);
 }
@@ -21,7 +21,7 @@ void key_del(kvsh *k) {
   //u64 kl = strlen((*k).key) + 1, sl = strlen((*k).store) + 1;
   char s[512];
   strncpy(s, (*k).store, 512);
-  strncat(s, "/", 1);
+  strncat(s, "/", 2);
   strncat(s, (*k).key, 512-strlen((*k).store) - 1);
   unlink(s);
 }
@@ -34,7 +34,7 @@ void key_write(kvsh *k) {
   }
   char s[512];
   strncpy(s, (*k).store, 512);//strlen((*k).store) + 1);
-  strncat(s, "/", 1);
+  strncat(s, "/", 2);
   strncat(s, (*k).key, 512-strlen((*k).store)-1);//strlen((*k).key) + 1);
   f = fopen(s, "w");
   fprintf(f, "%s\n", (*k).value);

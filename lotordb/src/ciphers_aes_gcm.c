@@ -345,7 +345,7 @@ void gcm_zero_ctx(gcm_context *ctx) {
 
 static void set_ctxparm(ctx_param *c, const uint8_t *i, size_t il, uint8_t *a, size_t al, const uint8_t *in, size_t inl, uint8_t *t, size_t tl) {
   memset(&(*c), 0, sizeof(ctx_param));
-  memcpy((*c).iv, i, il);
+  memcpy(&(*c).iv, i, il);
   (*c).iv_len = il;
   memcpy((*c).aad, a, al);
   (*c).aad_len = al;
