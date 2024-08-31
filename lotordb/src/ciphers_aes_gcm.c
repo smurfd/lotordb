@@ -1,3 +1,4 @@
+// Auth: smurfd 2024 https://github.com/mko-x/SharedAES-GCM // ----------------- taken from this, and massaged
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>

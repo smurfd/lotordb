@@ -26,6 +26,7 @@ void test_ciphers_aes_gcm(void) {
     exit(0);
   }
   free(vd);
+  printf(".");
 }
 
 //
@@ -54,6 +55,7 @@ void test_ciphers_cfb(void) {
   cipher_encrypt_cfb(out, plain, key, iv, sizeof(plain));
   cipher_decrypt_cfb(in, out, key, iv, sizeof(plain));
   assert(memcmp(plain, in, sizeof(plain) * sizeof(uint8_t)) == 0);
+  printf(".");
 }
 
 void test_ciphers_cbc(void) {
@@ -64,6 +66,7 @@ void test_ciphers_cbc(void) {
   cipher_encrypt_cbc(out, plain, key, iv, sizeof(plain));
   cipher_decrypt_cbc(in, out, key, iv, sizeof(plain));
   assert(memcmp(plain, in, sizeof(plain) * sizeof(uint8_t)) == 0);
+  printf(".");
 }
 
 void test_ciphers_cbc_long(void) {
@@ -74,6 +77,7 @@ void test_ciphers_cbc_long(void) {
   cipher_encrypt_cbc(out, plain, key, iv, sizeof(plain));
   cipher_decrypt_cbc(in, out, key, iv, sizeof(plain));
   assert(memcmp(plain, in, sizeof(plain) * sizeof(uint8_t)) == 0);
+  printf(".");
 }
 
 void test_ciphers_cfb_long(void) {
@@ -84,6 +88,7 @@ void test_ciphers_cfb_long(void) {
   cipher_encrypt_cfb(out, plain, key, iv, sizeof(plain));
   cipher_decrypt_cfb(in, out, key, iv, sizeof(plain));
   assert(memcmp(plain, in, sizeof(plain) * sizeof(uint8_t)) == 0);
+  printf(".");
 }
 
 void test_ciphers_cbc_long_str(void) {
@@ -94,6 +99,7 @@ void test_ciphers_cbc_long_str(void) {
   cipher_encrypt_cbc(out, (uint8_t*)plain, key, iv, sizeof(plain));
   cipher_decrypt_cbc(in, out, key, iv, sizeof(plain));
   assert(memcmp(plain, in, sizeof(plain) * sizeof(uint8_t)) == 0);
+  printf(".");
 }
 
 void test_ciphers_cfb_long_str(void) {
@@ -104,6 +110,7 @@ void test_ciphers_cfb_long_str(void) {
   cipher_encrypt_cfb(out, (uint8_t*)plain, key, iv, sizeof(plain));
   cipher_decrypt_cfb(in, out, key, iv, sizeof(plain));
   assert(memcmp(plain, in, sizeof(plain) * sizeof(uint8_t)) == 0);
+  printf(".");
 }
 
 void test_keys_verify(void) {
@@ -113,6 +120,7 @@ void test_keys_verify(void) {
   assert(keys_sign(privkey, h, sig));
   assert(keys_vrfy(pubkey, h, sig));
   assert(!keys_vrfy(privkey, h, sig)); // assert failure
+  printf(".");
 }
 
 int main(void) {
@@ -127,5 +135,5 @@ int main(void) {
   test_ciphers_cbc_long_str();
   test_ciphers_cfb_long_str();
   test_ciphers_aes_gcm();
-  printf("OK\n");
+  printf("\nOK\n");
 }
