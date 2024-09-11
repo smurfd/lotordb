@@ -348,33 +348,36 @@ static void set_ctxparm(ctx_param *c, const uint8_t *i, size_t il, uint8_t *a, s
   memset(&(*c), 0, sizeof(ctx_param));
   memcpy(&(*c).iv, i, il);
   (*c).iv_len = il;
-  memcpy((*c).aad, a, al);
+  memcpy(&(*c).aad, a, al);
   (*c).aad_len = al;
-  memcpy((*c).input, in, inl);
-  memcpy((*c).tag, t, tl);
+  memcpy(&(*c).input, in, inl);
+  memcpy(&(*c).tag, t, tl);
   (*c).tag_len = tl;
 }
+
 // AES GCM
 int aes_gcm_encrypt(uint8_t *out, const uint8_t *in, int in_len, const uint8_t *key, const size_t key_len, const uint8_t *iv, const size_t iv_len) {
-  uint8_t *tag_buf = NULL;
+  uint8_t tag_buf[16]; 
   size_t tl = 0;
   gcm_context c;
-  ctx_param cprm;
+  //ctx_param cprm;
   gcm_setkey(&c, key, (const uint32_t)key_len);
-  set_ctxparm(&cprm, iv, iv_len, NULL, 0, in, in_len, tag_buf, tl);
-  gcm_crypt_and_tag2(&c, 1, &cprm);
+  //set_ctxparm(&cprm, iv, iv_len, NULL, 0, in, in_len, tag_buf, tl);
+  //gcm_crypt_and_tag2(&c, 1, &cprm);
+  gcm_crypt_and_tag(&c, ENCRYPT, iv, iv_len, NULL, 0, in, out, in_len, tag_buf, tl);
   gcm_zero_ctx(&c);
   return 0;
 }
 
 int aes_gcm_decrypt(uint8_t *out, const uint8_t *in, int in_len, const uint8_t *key, const size_t key_len, const uint8_t *iv, const size_t iv_len) {
-  uint8_t *tag_buf = NULL;
+  uint8_t tag_buf[16]; 
   size_t tl = 0;
   gcm_context c;
-  ctx_param cprm;
+  //ctx_param cprm;
   gcm_setkey(&c, key, (const uint32_t)key_len);
-  set_ctxparm(&cprm, iv, iv_len, NULL, 0, in, in_len, tag_buf, tl);
-  gcm_crypt_and_tag2(&c, 1, &cprm);
+  //set_ctxparm(&cprm, iv, iv_len, NULL, 0, in, in_len, tag_buf, tl);
+  //gcm_crypt_and_tag2(&c, 1, &cprm);
+  gcm_crypt_and_tag(&c, DECRYPT, iv, iv_len, NULL, 0, in, out, in_len, tag_buf, tl);
   gcm_zero_ctx(&c);
   return 0;
 }
@@ -405,8 +408,7 @@ static int verify_bad_decryption(ctx_param par) {
   uint8_t pt_buf[256];
   gcm_context ctx;
   gcm_setkey(&ctx, par.key, par.key_len);
-  int ret = gcm_auth_decrypt(&ctx, par.iv, par.iv_len, par.aad, par.aad_len, par.ct, pt_buf, par.ct_len, par.tag, par.tag_len);
-  ret ^= GCM_AUTH_FAILURE;
+  int ret = gcm_auth_decrypt(&ctx, par.iv, par.iv_len, par.aad, par.aad_len, par.ct, pt_buf, par.ct_len, par.tag, par.tag_len) ^ GCM_AUTH_FAILURE;
   gcm_zero_ctx(&ctx);
   return ret;
 }
