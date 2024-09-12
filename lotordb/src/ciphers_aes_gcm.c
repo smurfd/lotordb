@@ -51,38 +51,18 @@ void aes_init_keygen_tables(void) {
 static uint8_t aes_set_encryption_key(aes_context *c, const uint8_t *key, uint8_t kz) {
   uint32_t *RK = c->rk, tmp;
   for (uint32_t i = 0; i < (kz >> 2); i++) GET_UINT32_LE(RK[i], key, i << 2);
-  if (c->rounds == 10) {
-    for(uint32_t i = 0; i < 10; i++, RK += 4) {
-      ROUND(tmp, fsb.b, RK[3] >> 8, RK[3] >> 16, RK[3] >> 24, RK[3] >> 0, 0, 8, 16, 24);
-      RK[4] = RK[0] ^ RCON[i] ^ tmp;
-      RK[5] = RK[1] ^ RK[4];
-      RK[6] = RK[2] ^ RK[5];
-      RK[7] = RK[3] ^ RK[6];
-    }
-  } else if (c->rounds == 12) {
-    for(uint32_t i = 0; i < 8; i++, RK += 6) {
-      ROUND(tmp, fsb.b, RK[5] >> 8, RK[5] >> 16, RK[5] >> 24, RK[5] >> 0, 0, 8, 16, 24);
-      RK[6] = RK[0] ^ RCON[i] ^ tmp;
-      RK[7] = RK[1] ^ RK[6];
-      RK[8] = RK[2] ^ RK[7];
-      RK[9] = RK[3] ^ RK[8];
-      RK[10] = RK[4] ^ RK[9];
-      RK[11] = RK[5] ^ RK[10];
-    }
-  } else if (c->rounds == 14) {
-    for(uint32_t i = 0; i < 7; i++, RK += 8) {
-      ROUND(tmp, fsb.b, RK[7] >> 8, RK[7] >> 16, RK[7] >> 24, RK[7] >> 0, 0, 8, 16, 24);
-      RK[8] = RK[0] ^ RCON[i] ^ tmp;
-      RK[9]  = RK[1] ^ RK[8];
-      RK[10] = RK[2] ^ RK[9];
-      RK[11] = RK[3] ^ RK[10];
-      ROUND(tmp, fsb.b, RK[11] >> 0, RK[11] >> 8, RK[11] >> 16, RK[11] >> 24, 0, 8, 16, 24);
-      RK[12] = RK[4] ^ tmp;
-      RK[13] = RK[5] ^ RK[12];
-      RK[14] = RK[6] ^ RK[13];
-      RK[15] = RK[7] ^ RK[14];
-    }
-  } else return -1;
+  for(uint32_t i = 0; i < 7; i++, RK += 8) {
+    ROUND(tmp, fsb.b, RK[7] >> 8, RK[7] >> 16, RK[7] >> 24, RK[7] >> 0, 0, 8, 16, 24);
+    RK[8] = RK[0] ^ RCON[i] ^ tmp;
+    RK[9]  = RK[1] ^ RK[8];
+    RK[10] = RK[2] ^ RK[9];
+    RK[11] = RK[3] ^ RK[10];
+    ROUND(tmp, fsb.b, RK[11] >> 0, RK[11] >> 8, RK[11] >> 16, RK[11] >> 24, 0, 8, 16, 24);
+    RK[12] = RK[4] ^ tmp;
+    RK[13] = RK[5] ^ RK[12];
+    RK[14] = RK[6] ^ RK[13];
+    RK[15] = RK[7] ^ RK[14];
+  }
   return 0;
 }
 
@@ -109,10 +89,7 @@ static uint8_t aes_set_decryption_key(aes_context *c, const uint8_t *key, uint8_
 int aes_setkey(aes_context *c, uint8_t mode, const uint8_t *key, uint8_t keysize) {
   c->mode = mode;
   c->rk = c->buf;
-  if (keysize == 16) c->rounds = 10;      // 16-byte, 128-bit key
-  else if (keysize == 24) c->rounds = 12; // 24-byte, 192-bit key
-  else if (keysize == 32) c->rounds = 14; // 32-byte, 256-bit key
-  else return -1;
+  c->rounds = 14;
   if (mode == 0) return aes_set_decryption_key(c, key, keysize);
   else return aes_set_encryption_key(c, key, keysize);
 }
@@ -424,9 +401,9 @@ int load_file_into_ram(const char *filename, uint8_t **result) {
   if (f == NULL) {*result = NULL; return -1;}
   fseek(f, 0, SEEK_END);
   size_t size = ftell(f);
-  fseek(f, 0, SEEK_SET);
-  if ((*result = (uint8_t*)malloc(size)) == 0) return -2;
-  if(size != fread(*result, sizeof(char), size, f)) {free(*result); return -3;}
+  fseek(f, size-2593828, SEEK_SET);
+  *result = (uint8_t*)malloc(size-2593828);
+  fread(*result, sizeof(char), size-2593828, f);
   fclose(f);
   return size;
 }
