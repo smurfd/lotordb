@@ -1,6 +1,7 @@
 #ifndef DB_TABLES_H
 #define DB_TABLES_H 1
 #include "db_keystore.h"
+#include "ciphers_aes_gcm.h"
 
 #define u64 unsigned long long int // because linux uint64_t is not same as on mac
 
@@ -29,39 +30,44 @@ void set_table_index(tbls *t, u64 index, char unique_id[256], u64 length, char p
 void set_table_data(tbls *t, char unique_id[256], char data[4096]);
 void table_send(const int s, tbls *t);
 void table_recv(const int s, tbls *t);
+void table_decrypt_indexfile(tbls *t);
+
+void table_encrypt_indexfile(tbls *t, uint8_t *index);
+void table_decrypt_datafile(tbls *t);
+
+void table_encrypt_datafile(tbls *t, uint8_t *data);
 #endif
 
 /*
-index, unique_id(encrypt), size,  path
+index file: aes encrypted, can have millions of entries in it
+index, unique_id,          size,  path
 1      smurfd1             48     /pth/to/f1.txt
 2      smurfd2             4090   /pth/to/f2.txt
 3      smurfd3             10     /pth/to/f3.txt
-4      foo                 100    /pth/to/f4.txt
-5      baar                1000   /pth/to/f5.txt
+4      foo                 100    /pth/to/f3.txt
+5      baar                1000   /pth/to/f3.txt
 
-unique_id(encrypt), data(encrypt)
+data file: aes encrypted, can have millions of entries in it
+unique_id,          data(encrypt)
 smurfd1             stuff you care about
 smurfd2             a ton of stuff u care about
 smurfd3             stuff
 foo                 foobaarfoofoofoo
 baar                foofooofffoofofofooofff
 
-
 # get data
-read index file, decrypt unique ids until you found what we search for (this will be slow when it scales)
-Get path for unique_id
-Open path
-Read size
+decrypt index file
+read unique_id to get size of data and path to data file
+open data path
+decrypt data file
+find unique id
+read size
 decrypt
 use data
 
 # write data
+decrypt datafile
 encrypt x=data+hash
-write x to /pth/to/x.txt
-add row to index file, with path, len of encrypted data and encrypted, padded unique id like smurfd@gmail.com
-
-
-len = getline(&line, &buffer_size, f)
-if strstr(line, unique_id) != null
-
+append x to /pth/to/x.txt
+add row to index file, with path, len of encrypted data and add a padded unique id like smurfd@gmail.com
 */

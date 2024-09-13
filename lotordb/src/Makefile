@@ -2,7 +2,7 @@ CL := gcc -O3 -Wall -pedantic -std=c99
 CC := gcc -O3 -Wall -pedantic -std=c99
 BUILD:=.build
 
-all: mkbuilddir db_keystore hash db_tables ciphers ciphers_aes_gcm keys crypto crypto_server crypto_client client server test
+all: mkbuilddir hash ciphers ciphers_aes_gcm keys db_keystore db_tables crypto crypto_server crypto_client client server test
 
 mkbuilddir:
 	mkdir -p ${BUILD}
@@ -37,11 +37,11 @@ keys:
 
 client:
 	${CL} -o ${BUILD}/client client.c ${BUILD}/crypto.o ${BUILD}/crypto_client.o ${BUILD}/hash.o ${BUILD}/hash_tooling.o\
-	  ${BUILD}/db_keystore.o ${BUILD}/db_tables.o -lpthread -lm
+	  ${BUILD}/db_keystore.o ${BUILD}/db_tables.o ${BUILD}/ciphers_aes_gcm.o -lpthread -lm
 
 server:
 	${CL} -o ${BUILD}/server server.c ${BUILD}/crypto.o ${BUILD}/crypto_server.o ${BUILD}/hash_tooling.o ${BUILD}/hash.o\
-	  ${BUILD}/db_keystore.o ${BUILD}/db_tables.o -lpthread -lm
+	  ${BUILD}/db_keystore.o ${BUILD}/db_tables.o ${BUILD}/ciphers_aes_gcm.o -lpthread -lm
 
 test:
 	make -Ctests

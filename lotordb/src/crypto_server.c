@@ -24,15 +24,16 @@ static head *set_header(head *h, u64 a, u64 b) {
 
 static void *server_connection_handler_ssl(void *conn) {
   int sock = *((connection*)conn)->clisocket;
-  if (((connection*)conn)->type == 1) {
+  if (((connection*)conn)->type == 1) { // keystore
     kvsh k;
     key_recv(sock, &k);
-  } else if (((connection*)conn)->type == 2) {
+  } else if (((connection*)conn)->type == 2) { // tables
     tbls *t = (tbls*)malloc(sizeof(struct tbls));
     table_recv(sock, t);
     if (table_write_index(t, "/tmp/dbindex1.db1") >= 0) { // Only write data if we can write to index
       table_write_data(t);
     }
+    // TODO: Verification steps, remove once fixed
     table_read_index(t, "/tmp/dbindex1.db1", t->i.unique_id);
     if (table_read_data(t) >= 0) {
       printf("either ok or no file\n");
