@@ -43,10 +43,10 @@ connection connection_init(int8_t descriptor, int type) {
 //
 // Print usage information
 int usage(char *arg, int count, char *clisrv) {
-  if (count != 2) {
+  if (count != 3) {
     printf("Usage:\n");
-    printf("  %s keys   # for keyvaluestore client\n", clisrv);
-    printf("  %s tables # for table database client\n", clisrv);
+    printf("  %s keys   # for keyvaluestore %s\n", clisrv, clisrv);
+    printf("  %s tables # for table database %s\n", clisrv, clisrv);
     exit(0);
   }
   int type = 0;

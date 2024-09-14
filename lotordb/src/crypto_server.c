@@ -118,7 +118,7 @@ void server_end(connection c) {
 void generate_shared_cryptokey_server(cryptokey *k1, cryptokey *k2, head *h) {
   (*k2).shar = (*h).p % (int64_t)pow((*k2).publ, (*k1).priv);
 }
-
+/*
 int main(int argc, char** argv) {
   int type = usage(argv[1], argc, "server");
   connection c = server_init("127.0.0.1", "9998", type);
@@ -126,3 +126,4 @@ int main(int argc, char** argv) {
   server_end(c);
   printf("OK\n");
 }
+*/
