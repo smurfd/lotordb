@@ -150,13 +150,11 @@ int main(int argc, char** argv) {
     printf("\nOK\n");
   } else {
     if (strcmp(argv[1], "server") == 0) {
-      int type = usage(argv[2], argc, "server");
-      connection c = server_init("127.0.0.1", "9998", type);
+      connection c = server_init("127.0.0.1", "9998", usage(argv[2], argc, "server"));
       server_handle(c);
       server_end(c);
     } else if (strcmp(argv[1], "client") == 0) {
-      int type = usage(argv[2], argc, "client");
-      connection c = client_init("127.0.0.1", "9998", type);
+      connection c = client_init("127.0.0.1", "9998", usage(argv[2], argc, "client"));
       if (client_handle(c) < 0) {
         printf("Cant connect to server\n");
         exit(0);
