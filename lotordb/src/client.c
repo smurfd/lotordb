@@ -1,4 +1,4 @@
-#include <stdio.h>
+/*#include <stdio.h>
 #include <stdlib.h>
 #include "crypto_client.h"
 #include "crypto.h"
@@ -14,3 +14,4 @@ int main(int argc, char** argv) {
   client_end(c);
   printf("OK\n");
 }
+*/

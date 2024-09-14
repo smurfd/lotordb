@@ -91,3 +91,14 @@ void client_end(connection c) {
 void generate_shared_cryptokey_client(cryptokey *k1, cryptokey *k2, head *h) {
   (*k1).shar = (*h).p % (int64_t)pow((*k1).publ, (*k2).priv);
 }
+
+int main(int argc, char** argv) {
+  int type = usage(argv[1], argc, "client");
+  connection c = client_init("127.0.0.1", "9998", type);
+  if (client_handle(c) < 0) {
+    printf("Cant connect to server\n");
+    exit(0);
+  }
+  client_end(c);
+  printf("OK\n");
+}

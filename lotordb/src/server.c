@@ -1,3 +1,4 @@
+/*
 #include <stdio.h>
 #include <stdlib.h>
 #include "crypto_server.h"
@@ -10,3 +11,4 @@ int main(int argc, char** argv) {
   server_end(c);
   printf("OK\n");
 }
+*/
