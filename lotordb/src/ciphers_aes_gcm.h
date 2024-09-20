@@ -14,15 +14,15 @@ typedef struct {
 } aes_context;
 
 typedef struct {
-  int mode;               // cipher direction: encrypt/decrypt
-  u64 len;           // cipher data length processed so far
-  u64 add_len;       // total add data length
-  u64 HL[16];        // precalculated lo-half HTable
-  u64 HH[16];        // precalculated hi-half HTable
-  uint8_t base_ectr[16];    // first counter-mode cipher output for tag
-  uint8_t y[16];            // the current cipher-input IV|Counter value
-  uint8_t buf[16];          // buf working value
-  aes_context aes_ctx;    // cipher context used
+  int mode;           // cipher direction: encrypt/decrypt
+  u64 len;            // cipher data length processed so far
+  u64 add_len;        // total add data length
+  u64 HL[16];         // precalculated lo-half HTable
+  u64 HH[16];         // precalculated hi-half HTable
+  uint8_t ectr[16];   // first counter-mode cipher output for tag
+  uint8_t y[16];      // the current cipher-input IV|Counter value
+  uint8_t buf[16];    // buf working value
+  aes_context aes_ctx;// cipher context used
 } gcm_context;
 
 typedef struct {
@@ -70,8 +70,8 @@ static const u64 last4[16] = {0x0000,0x1c20,0x3840,0x2460,0x7080,0x6ca0,0x48c0,0
       ((uint32_t)S[A1 & 0xFF] << B1) ^ \
       ((uint32_t)S[A2 & 0xFF] << B2) ^ \
       ((uint32_t)S[A3 & 0xFF] << B3);}
-
-
+#define XORARR(x, y, z){\
+for(size_t i = 0; i < z; i++) x[i] ^= y[i];}
 // AES
 void aes_init_keygen_tables(void);
 int aes_setkey(aes_context *c, uint8_t mode, const uint8_t *key, uint8_t kz);

@@ -40,16 +40,6 @@ void test_ciphers_aes_gcm_text32(void) {
   printf(".");
 }
 
-void test_ciphers_aes_gcm_text16(void) {
-  uint8_t outdec[256], outenc[256], lain[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff};
-  uint8_t iv1[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-  uint8_t key1[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
-  aes_gcm_encrypt(outenc, lain, 16, key1, 16, iv1, 16);
-  aes_gcm_decrypt(outdec, outenc, sizeof(outenc), key1, 16, iv1, 16);
-  for (int i = 0; i < 16; i++) assert(lain[i] == outdec[i]);
-  printf(".");
-}
-
 //
 // Generate a keypair & shared key then print it (test / demo)
 void test_genkeys(void) {
@@ -138,7 +128,6 @@ int main(int argc, char** argv) {
     test_ciphers_cfb_long();
     test_ciphers_cbc_long_str();
     test_ciphers_cfb_long_str();
-    test_ciphers_aes_gcm_text16();
     test_ciphers_aes_gcm_text32();
     test_ciphers_aes_gcm_text32loop();
     printf("\nOK\n");

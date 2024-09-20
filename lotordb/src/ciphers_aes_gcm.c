@@ -11,43 +11,6 @@ static box rsb;
 static uint32_t RCON[10]; // AES round constants
 
 // AES
-void aes_init_keygen_tables(void) {
-  int x, y, z, pow[256], log[256];
-  for (int i = 0, x = 1; i < 256; i++) {
-    pow[i] = x;
-    log[x] = i;
-    x = (x ^ XTIME(x)) & 0xFF;
-  }
-  for (int i = 0, x = 1; i < 10; i++) {
-    RCON[i] = (uint32_t)x;
-    x = XTIME(x) & 0xFF;
-  }
-  fsb.b[0x00] = 0x63;
-  rsb.b[0x63] = 0x00;
-  for (int i = 0; i < 256; i++) {
-    if (i) {
-      x = y = pow[255 - log[i]];
-      MIX4(x, y);
-      fsb.b[i] = (uint8_t)(x ^= 0x63);
-      rsb.b[x] = (uint8_t)i;
-    }
-    x = fsb.b[i];
-    y = XTIME(x) & 0xFF;
-    z = (y ^ x) & 0xFF;
-
-    fsb.T0[i] = ((uint32_t)y) ^ ((uint32_t)x << 8) ^ ((uint32_t)x << 16) ^ ((uint32_t)z << 24);
-    fsb.T1[i] = ROTL8(fsb.T0[i]);
-    fsb.T2[i] = ROTL8(fsb.T1[i]);
-    fsb.T3[i] = ROTL8(fsb.T2[i]);
-
-    x = rsb.b[i];
-    rsb.T0[i] = ((uint32_t)MUL(0x0E, x)) ^ ((uint32_t)MUL(0x09, x) <<  8) ^ ((uint32_t)MUL(0x0D, x) << 16) ^ ((uint32_t)MUL(0x0B, x) << 24);
-    rsb.T1[i] = ROTL8(rsb.T0[i]);
-    rsb.T2[i] = ROTL8(rsb.T1[i]);
-    rsb.T3[i] = ROTL8(rsb.T2[i]);
-  }
-}
-
 static uint8_t aes_set_encryption_key(aes_context *c, const uint8_t *key, uint8_t kz) {
   uint32_t *RK = c->rk, tmp;
   for (uint32_t i = 0; i < (kz >> 2); i++) GET_UINT32_LE(RK[i], key, i << 2);
@@ -94,46 +57,49 @@ int aes_setkey(aes_context *c, uint8_t mode, const uint8_t *key, uint8_t keysize
   else return aes_set_encryption_key(c, key, keysize);
 }
 
-int aes_cipher(aes_context *c, const uint8_t in[16], uint8_t out[16]) {
+int aes_cipher_encrypt(aes_context *c, const uint8_t in[16], uint8_t out[16]) {
   uint32_t *RK, X0, X1, X2, X3, Y0, Y1, Y2, Y3, tmp0, tmp1, tmp2, tmp3;
   RK = c->rk;
   GET_UINT32_LE(X0, in,  0); X0 ^= *RK++;
   GET_UINT32_LE(X1, in,  4); X1 ^= *RK++;
   GET_UINT32_LE(X2, in,  8); X2 ^= *RK++;
   GET_UINT32_LE(X3, in, 12); X3 ^= *RK++;
-  if (c->mode == 0) { // decrypt
-    for (int i = (c->rounds >> 1) - 1; i > 0; i--) {
-      AES_RROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
-      AES_RROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3);
-    }
-    AES_RROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
-    ROUND(tmp0, rsb.b, Y0 >> 0, Y3 >> 8, Y2 >> 16, Y1 >> 24, 0, 8, 16, 24);
-    ROUND(tmp1, rsb.b, Y1 >> 0, Y0 >> 8, Y3 >> 16, Y2 >> 24, 0, 8, 16, 24);
-    ROUND(tmp2, rsb.b, Y2 >> 0, Y1 >> 8, Y0 >> 16, Y3 >> 24, 0, 8, 16, 24);
-    ROUND(tmp3, rsb.b, Y3 >> 0, Y2 >> 8, Y1 >> 16, Y0 >> 24, 0, 8, 16, 24);
-    X0 = *RK++ ^ tmp0;
-    X1 = *RK++ ^ tmp1;
-    X2 = *RK++ ^ tmp2;
-    X3 = *RK++ ^ tmp3;
-  } else { // encrypt
-    for (int i = (c->rounds >> 1) - 1; i > 0; i--) {
-      AES_FROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
-      AES_FROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3);
-    }
+  for (int i = (c->rounds >> 1) - 1; i > 0; i--) {
     AES_FROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
-    ROUND(tmp0, fsb.b, Y0 >> 0, Y1 >> 8, Y2 >> 16, Y3 >> 24, 0, 8, 16, 24);
-    ROUND(tmp1, fsb.b, Y1 >> 0, Y2 >> 8, Y3 >> 16, Y0 >> 24, 0, 8, 16, 24);
-    ROUND(tmp2, fsb.b, Y2 >> 0, Y3 >> 8, Y0 >> 16, Y1 >> 24, 0, 8, 16, 24);
-    ROUND(tmp3, fsb.b, Y3 >> 0, Y0 >> 8, Y1 >> 16, Y2 >> 24, 0, 8, 16, 24);
-    X0 = *RK++ ^ tmp0;
-    X1 = *RK++ ^ tmp1;
-    X2 = *RK++ ^ tmp2;
-    X3 = *RK++ ^ tmp3;
+    AES_FROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3);
   }
-  PUT_UINT32_LE(X0, out,  0);
-  PUT_UINT32_LE(X1, out,  4);
-  PUT_UINT32_LE(X2, out,  8);
-  PUT_UINT32_LE(X3, out, 12);
+  AES_FROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
+  ROUND(tmp0, fsb.b, Y0 >> 0, Y1 >> 8, Y2 >> 16, Y3 >> 24, 0, 8, 16, 24);
+  ROUND(tmp1, fsb.b, Y1 >> 0, Y2 >> 8, Y3 >> 16, Y0 >> 24, 0, 8, 16, 24);
+  ROUND(tmp2, fsb.b, Y2 >> 0, Y3 >> 8, Y0 >> 16, Y1 >> 24, 0, 8, 16, 24);
+  ROUND(tmp3, fsb.b, Y3 >> 0, Y0 >> 8, Y1 >> 16, Y2 >> 24, 0, 8, 16, 24);
+  PUT_UINT32_LE(*RK++ ^ tmp0, out,  0);
+  PUT_UINT32_LE(*RK++ ^ tmp1, out,  4);
+  PUT_UINT32_LE(*RK++ ^ tmp2, out,  8);
+  PUT_UINT32_LE(*RK++ ^ tmp3, out, 12);
+  return 0;
+}
+
+int aes_cipher_decrypt(aes_context *c, const uint8_t in[16], uint8_t out[16]) {
+  uint32_t *RK, X0, X1, X2, X3, Y0, Y1, Y2, Y3, tmp0, tmp1, tmp2, tmp3;
+  RK = c->rk;
+  GET_UINT32_LE(X0, in,  0); X0 ^= *RK++;
+  GET_UINT32_LE(X1, in,  4); X1 ^= *RK++;
+  GET_UINT32_LE(X2, in,  8); X2 ^= *RK++;
+  GET_UINT32_LE(X3, in, 12); X3 ^= *RK++;
+  for (int i = (c->rounds >> 1) - 1; i > 0; i--) {
+    AES_RROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
+    AES_RROUND(X0, X1, X2, X3, Y0, Y1, Y2, Y3);
+  }
+  AES_RROUND(Y0, Y1, Y2, Y3, X0, X1, X2, X3);
+  ROUND(tmp0, rsb.b, Y0 >> 0, Y3 >> 8, Y2 >> 16, Y1 >> 24, 0, 8, 16, 24);
+  ROUND(tmp1, rsb.b, Y1 >> 0, Y0 >> 8, Y3 >> 16, Y2 >> 24, 0, 8, 16, 24);
+  ROUND(tmp2, rsb.b, Y2 >> 0, Y1 >> 8, Y0 >> 16, Y3 >> 24, 0, 8, 16, 24);
+  ROUND(tmp3, rsb.b, Y3 >> 0, Y2 >> 8, Y1 >> 16, Y0 >> 24, 0, 8, 16, 24);
+  PUT_UINT32_LE(*RK++ ^ tmp0, out,  0);
+  PUT_UINT32_LE(*RK++ ^ tmp1, out,  4);
+  PUT_UINT32_LE(*RK++ ^ tmp2, out,  8);
+  PUT_UINT32_LE(*RK++ ^ tmp3, out, 12);
   return 0;
 }
 
@@ -174,7 +140,7 @@ int gcm_setkey(gcm_context *ctx, const uint8_t *key, const uint32_t keysize) {
   memset(ctx, 0, sizeof(gcm_context));
   memset(h, 0, 16);
   if (aes_setkey(&ctx->aes_ctx, 1, key, keysize) != 0) return 1;
-  if (aes_cipher(&ctx->aes_ctx, h, h) != 0) return 1;
+  if (aes_cipher_encrypt(&ctx->aes_ctx, h, h) != 0) return 1;
   GET_UINT32_BE(hi, h, 0); // pack h as two 64-bit ints, big-endian
   GET_UINT32_BE(lo, h, 4);
   u64 vh = (u64)hi << 32 | lo;
@@ -204,39 +170,9 @@ int gcm_setkey(gcm_context *ctx, const uint8_t *key, const uint32_t keysize) {
   return 0;
 }
 
-int gcm_crypt_and_tag(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len, const uint8_t *input,
-    uint8_t *output, size_t length, uint8_t *tag, size_t tag_len) {
-  gcm_start(ctx, mode, iv, iv_len, add, add_len);
-  gcm_update(ctx, length, input, output);
-  gcm_finish(ctx, tag, tag_len);
-  return 0;
-}
-
-int gcm_crypt_and_tag2(gcm_context *ctx, int mode, ctx_param *cprm) {
-  gcm_start(ctx, mode, cprm->iv, cprm->iv_len, cprm->aad, cprm->aad_len);
-  gcm_update(ctx, cprm->length, cprm->input, cprm->output);
-  gcm_finish(ctx, cprm->tag, cprm->tag_len);
-  return 0;
-}
-
-int gcm_auth_decrypt(gcm_context *ctx, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len, const uint8_t *input, uint8_t *output,
-    size_t length, const uint8_t *tag, size_t tag_len) {
-  uint8_t check_tag[16], diff = 0;
-  gcm_crypt_and_tag(ctx, 0 , iv, iv_len, add, add_len, input, output, length, check_tag, tag_len); // decrypt
-  for (size_t i = 0; i < tag_len; i++) {
-    diff |= tag[i] ^ check_tag[i];
-  }
-  if (diff != 0) {
-    memset(output, 0, length);
-    return GCM_AUTH_FAILURE; // auth failure
-  }
-  return 0;
-}
-
 int gcm_start(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len) {
   uint8_t work_buf[16], ret;
-  const uint8_t *p;
-  size_t use_len;
+  const uint8_t *p = iv;
   memset(ctx->y, 0, sizeof(ctx->y));
   memset(ctx->buf, 0, sizeof(ctx->buf));
   ctx->len = 0;
@@ -245,47 +181,29 @@ int gcm_start(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, cons
   ctx->aes_ctx.mode = 1; // encrypt
   memset(work_buf, 0, 16);
   PUT_UINT32_BE(iv_len * 8, work_buf, 12); // place the IV into buffer
-  p = iv;
-  while(iv_len > 0) {
-    use_len = 16;
-    for(size_t i = 0; i < use_len; i++) ctx->y[i] ^= p[i];
-    gcm_mult(ctx, ctx->y, ctx->y);
-    iv_len -= use_len;
-    p += use_len;
-  }
-  for(size_t i = 0; i < 16; i++) ctx->y[i] ^= work_buf[i];
+  XORARR(ctx->y, p, 16);
   gcm_mult(ctx, ctx->y, ctx->y);
-  if ((ret = aes_cipher(&ctx->aes_ctx, ctx->y, ctx->base_ectr)) != 0) return ret;
+  p += 16;
+  XORARR(ctx->y, p, 16);
+  gcm_mult(ctx, ctx->y, ctx->y);
+  XORARR(ctx->y, work_buf, 16);
+  gcm_mult(ctx, ctx->y, ctx->y);
+  if ((ret = aes_cipher_encrypt(&ctx->aes_ctx, ctx->y, ctx->ectr)) != 0) return ret;
   ctx->add_len = add_len;
   p = add;
-  while(add_len > 0) {
-    use_len = 16;
-    for(size_t i = 0; i < use_len; i++) ctx->buf[i] ^= p[i];
-    gcm_mult(ctx, ctx->buf, ctx->buf);
-    add_len -= use_len;
-    p += use_len;
-  }
   return 0;
 }
 
-int gcm_update(gcm_context *ctx, size_t length, const uint8_t *input, uint8_t *output) {
+int gcm_update_encrypt(gcm_context *ctx, size_t length, const uint8_t *input, uint8_t *output) {
   uint8_t ectr[16], ret;
-  size_t use_len;
+  size_t use_len = 16;
   ctx->len += length;
   while(length > 0) {
-    use_len = 16;
-    for (size_t i = 16; i > 12; i--) if(++ctx->y[i-1] != 0) break;
-    if ((ret = aes_cipher(&ctx->aes_ctx, ctx->y, ectr)) != 0) return ret;
-    if (ctx->mode == 1) { // encrypt
-      for (size_t i = 0; i < use_len; i++) {
-        output[i] = (uint8_t)(ectr[i] ^ input[i]);
-        ctx->buf[i] ^= output[i];
-      }
-    } else { // decrypt
-      for (size_t i = 0; i < use_len; i++) {
-        ctx->buf[i] ^= input[i];
-        output[i] = (uint8_t)(ectr[i] ^ input[i]);
-      }
+    for (size_t i = 16; i > 12; i--) if (++ctx->y[i - 1] != 0) break;
+    if ((ret = aes_cipher_encrypt(&ctx->aes_ctx, ctx->y, ectr)) != 0) return ret;
+    for (size_t i = 0; i < use_len; i++) {
+      output[i] = (uint8_t)(ectr[i] ^ input[i]);
+      ctx->buf[i] ^= output[i];
     }
     gcm_mult(ctx, ctx->buf, ctx->buf); // perform a GHASH operation
     length -= use_len; // drop the remaining byte count to process
@@ -295,10 +213,38 @@ int gcm_update(gcm_context *ctx, size_t length, const uint8_t *input, uint8_t *o
   return 0;
 }
 
+int gcm_update_decrypt(gcm_context *ctx, size_t length, const uint8_t *input, uint8_t *output) {
+  uint8_t ectr[16], ret;
+  size_t use_len = 16;
+  ctx->len += length;
+  while(length > 0) {
+    for (size_t i = 16; i > 12; i--) if (++ctx->y[i - 1] != 0) break;
+    if ((ret = aes_cipher_decrypt(&ctx->aes_ctx, ctx->y, ectr)) != 0) return ret;
+    for (size_t i = 0; i < use_len; i++) {
+      ctx->buf[i] ^= input[i];
+      output[i] = (uint8_t)(ectr[i] ^ input[i]);
+    }
+    gcm_mult(ctx, ctx->buf, ctx->buf); // perform a GHASH operation
+    length -= use_len; // drop the remaining byte count to process
+    input  += use_len; // bump our input pointer forward
+    output += use_len; // bump our output pointer forward
+  }
+  return 0;
+}
+
+int gcm_crypt_and_tag(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len, const uint8_t *input,
+    uint8_t *output, size_t length, uint8_t *tag, size_t tag_len) {
+  gcm_start(ctx, mode, iv, iv_len, add, add_len);
+  if (mode == 0) gcm_update_decrypt(ctx, length, input, output);
+  else if (mode == 1) gcm_update_encrypt(ctx, length, input, output);
+  gcm_finish(ctx, tag, tag_len);
+  return 0;
+}
+
 int gcm_finish(gcm_context *ctx, uint8_t *tag, size_t tag_len) {
   u64 orig_len = ctx->len * 8, orig_add_len = ctx->add_len * 8;
   uint8_t work_buf[16];
-  if(tag_len != 0) memcpy(tag, ctx->base_ectr, tag_len);
+  if(tag_len != 0) memcpy(tag, ctx->ectr, tag_len);
   if(orig_len || orig_add_len) {
     memset(work_buf, 0, 16);
     PUT_UINT32_BE((orig_add_len >> 32), work_buf, 0);
