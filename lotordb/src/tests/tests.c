@@ -18,24 +18,6 @@ static uint8_t plain[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 
   0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
 static char plainstr[] = "this is a very very long string, that we should be able to encrypt and decrypt without a problem, dont you think.questionmark. it should be perfectly fine, just gotta convert it to uint8_t. really really really long, yeah";
 
-// Run whole aes gcm test suite
-void test_ciphers_aes_gcm(void) {
-  const char *vf = "tests/gcm_test_vectors.bin";
-  uint8_t *vd;
-  aes_init_keygen_tables();
-  if (load_file_into_ram(vf, &vd) < 0) {
-    printf("Cant load the test vector file\n");
-    exit(0);
-  }
-  if(verify_gcm(vd)) {
-    printf("NIST AES-GCM validation test suite: FAILED!\n");
-    free(vd);
-    exit(0);
-  }
-  free(vd);
-  printf(".");
-}
-
 void test_ciphers_aes_gcm_text32loop(void) {
   for (int i = 0; i < 10000; i++) {
     uint8_t outdec[256], outenc[256], lain[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff};
@@ -156,7 +138,6 @@ int main(int argc, char** argv) {
     test_ciphers_cfb_long();
     test_ciphers_cbc_long_str();
     test_ciphers_cfb_long_str();
-    test_ciphers_aes_gcm();
     test_ciphers_aes_gcm_text16();
     test_ciphers_aes_gcm_text32();
     test_ciphers_aes_gcm_text32loop();

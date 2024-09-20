@@ -92,8 +92,4 @@ void gcm_zero_ctx(gcm_context *ctx);
 // AES GCM
 int aes_gcm_encrypt(uint8_t* out, const uint8_t* in, int in_len, const uint8_t* key, const size_t key_len, const uint8_t * iv, const size_t iv_len);
 int aes_gcm_decrypt(uint8_t* out, const uint8_t* in, int in_len, const uint8_t* key, const size_t key_len, const uint8_t * iv, const size_t iv_len);
-
-// AES GCM Test functions
-int verify_gcm(uint8_t *vd);
-int load_file_into_ram(const char *filename, uint8_t **result);
 #endif

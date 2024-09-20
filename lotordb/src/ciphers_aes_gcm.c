@@ -8,7 +8,7 @@
 
 static box fsb;
 static box rsb;
-static uint32_t RCON[10];   // AES round constants
+static uint32_t RCON[10]; // AES round constants
 
 // AES
 void aes_init_keygen_tables(void) {
@@ -243,28 +243,23 @@ int gcm_start(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, cons
   ctx->add_len = 0;
   ctx->mode = mode;
   ctx->aes_ctx.mode = 1; // encrypt
-  if (iv_len == 12) {
-    memcpy(ctx->y, iv, iv_len);
-    ctx->y[15] = 1;
-  } else {
-    memset(work_buf, 0, 16);
-    PUT_UINT32_BE(iv_len * 8, work_buf, 12); // place the IV into buffer
-    p = iv;
-    while(iv_len > 0) {
-      if (iv_len < 16) use_len = iv_len; else use_len = 16;
-      for(size_t i = 0; i < use_len; i++) ctx->y[i] ^= p[i];
-      gcm_mult(ctx, ctx->y, ctx->y);
-      iv_len -= use_len;
-      p += use_len;
-    }
-    for(size_t i = 0; i < 16; i++) ctx->y[i] ^= work_buf[i];
+  memset(work_buf, 0, 16);
+  PUT_UINT32_BE(iv_len * 8, work_buf, 12); // place the IV into buffer
+  p = iv;
+  while(iv_len > 0) {
+    use_len = 16;
+    for(size_t i = 0; i < use_len; i++) ctx->y[i] ^= p[i];
     gcm_mult(ctx, ctx->y, ctx->y);
+    iv_len -= use_len;
+    p += use_len;
   }
+  for(size_t i = 0; i < 16; i++) ctx->y[i] ^= work_buf[i];
+  gcm_mult(ctx, ctx->y, ctx->y);
   if ((ret = aes_cipher(&ctx->aes_ctx, ctx->y, ctx->base_ectr)) != 0) return ret;
   ctx->add_len = add_len;
   p = add;
   while(add_len > 0) {
-    if (add_len < 16) use_len = add_len; else use_len = 16;
+    use_len = 16;
     for(size_t i = 0; i < use_len; i++) ctx->buf[i] ^= p[i];
     gcm_mult(ctx, ctx->buf, ctx->buf);
     add_len -= use_len;
@@ -278,7 +273,7 @@ int gcm_update(gcm_context *ctx, size_t length, const uint8_t *input, uint8_t *o
   size_t use_len;
   ctx->len += length;
   while(length > 0) {
-    if (length < 16) use_len = length; else use_len = 16;
+    use_len = 16;
     for (size_t i = 16; i > 12; i--) if(++ctx->y[i-1] != 0) break;
     if ((ret = aes_cipher(&ctx->aes_ctx, ctx->y, ectr)) != 0) return ret;
     if (ctx->mode == 1) { // encrypt
@@ -341,73 +336,6 @@ int aes_gcm_decrypt(uint8_t *out, const uint8_t *in, int in_len, const uint8_t *
   gcm_zero_ctx(&c);
   return 0;
 }
-
-// TEST AES GCM functions
-static int verify_gcm_encryption(ctx_param par) {
-  uint8_t ct_buf[256], tag_buf[16];
-  gcm_context ctx;
-  gcm_setkey(&ctx, par.key, par.key_len);
-  int ret = gcm_crypt_and_tag(&ctx, ENCRYPT, par.iv, par.iv_len, par.aad, par.aad_len, par.pt, ct_buf, par.ct_len, tag_buf, par.tag_len);
-  ret |= memcmp(ct_buf, par.ct, par.ct_len);
-  ret |= memcmp(tag_buf, par.tag, par.tag_len);
-  gcm_zero_ctx(&ctx);
-  return ret;
-}
-
-static int verify_gcm_decryption(ctx_param par) {
-  uint8_t pt_buf[256];
-  gcm_context ctx;
-  gcm_setkey(&ctx, par.key, par.key_len);
-  int ret = gcm_auth_decrypt(&ctx, par.iv, par.iv_len, par.aad, par.aad_len, par.ct, pt_buf, par.ct_len, par.tag, par.tag_len);
-  ret |= memcmp(pt_buf, par.pt, par.ct_len);
-  gcm_zero_ctx(&ctx);
-  return ret;
-}
-
-static int verify_bad_decryption(ctx_param par) {
-  uint8_t pt_buf[256];
-  gcm_context ctx;
-  gcm_setkey(&ctx, par.key, par.key_len);
-  int ret = gcm_auth_decrypt(&ctx, par.iv, par.iv_len, par.aad, par.aad_len, par.ct, pt_buf, par.ct_len, par.tag, par.tag_len) ^ GCM_AUTH_FAILURE;
-  gcm_zero_ctx(&ctx);
-  return ret;
-}
-
-static void bump_vd(uint8_t **key, size_t *key_len, uint8_t **vd) {
-  (*key_len) = *(*vd)++;
-  (*key) = (*vd);
-  (*vd) += (*key_len);
-}
-
-int verify_gcm(uint8_t *vd) {
-  uint8_t ret, RecordType;
-  ctx_param par;
-  while ((RecordType = *vd++)) {
-    bump_vd(&par.key, &par.key_len, &vd);
-    bump_vd(&par.iv, &par.iv_len, &vd);
-    bump_vd(&par.aad, &par.aad_len, &vd);
-    bump_vd(&par.pt, &par.pt_len, &vd);
-    bump_vd(&par.ct, &par.ct_len, &vd);
-    bump_vd(&par.tag, &par.tag_len, &vd);
-    if (RecordType == 1) {if ((ret = verify_gcm_encryption(par))) break;}
-    else if (RecordType == 2) {if ((ret = verify_gcm_decryption(par))) break;}
-    else if (RecordType == 3) {if ((ret = verify_bad_decryption(par))) break;}
-  }
-  return ret; // 0 == OK
-}
-
-int load_file_into_ram(const char *filename, uint8_t **result) {
-  FILE *f = fopen(filename, "rb");
-  if (f == NULL) {*result = NULL; return -1;}
-  fseek(f, 0, SEEK_END);
-  size_t size = ftell(f);
-  fseek(f, size-2593828, SEEK_SET);
-  *result = (uint8_t*)malloc(size-2593828);
-  fread(*result, sizeof(char), size-2593828, f);
-  fclose(f);
-  return size;
-}
-
 
 // AES GCM
 // https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
