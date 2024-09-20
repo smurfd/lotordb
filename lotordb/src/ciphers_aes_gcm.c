@@ -283,6 +283,12 @@ int aes_gcm_decrypt(uint8_t *out, const uint8_t *in, int in_len, const uint8_t *
   return 0;
 }
 
+// AES
+// https://en.wikipedia.org/wiki/Advanced_Encryption_Standard
+// https://www.rfc-editor.org/rfc/rfc3565
+// https://www.rfc-editor.org/rfc/rfc3565
+// https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf
+
 // AES GCM
 // https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 // https://csrc.nist.rip/groups/ST/toolkit/BCM/documents/proposedmodes/gcm/gcm-revised-spec.pdf

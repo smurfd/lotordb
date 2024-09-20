@@ -8,15 +8,8 @@
 #include "../crypto_client.h"
 #include "../keys.h"
 #include "../crypto.h"
-#include "../ciphers.h"
 #include "../db_tables.h"
 #include "../db_keystore.h"
-
-static uint8_t plain[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff},
-  iv[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, key[] = {
-  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13,
-  0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
-static char plainstr[] = "this is a very very long string, that we should be able to encrypt and decrypt without a problem, dont you think.questionmark. it should be perfectly fine, just gotta convert it to uint8_t. really really really long, yeah";
 
 void test_ciphers_aes_gcm_text32loop(void) {
   for (int i = 0; i < 10000; i++) {
@@ -58,54 +51,6 @@ void test_genkeys(void) {
   assert(c == e);
 }
 
-void test_ciphers_cfb(void) {
-  uint8_t out[sizeof(plain)] = {0}, in[sizeof(plain)];
-  cipher_encrypt_cfb(out, plain, key, iv, sizeof(plain));
-  cipher_decrypt_cfb(in, out, key, iv, sizeof(plain));
-  assert(memcmp(plain, in, sizeof(plain) * sizeof(uint8_t)) == 0);
-  printf(".");
-}
-
-void test_ciphers_cbc(void) {
-  uint8_t out[sizeof(plain)] = {0}, in[sizeof(plain)];
-  cipher_encrypt_cbc(out, plain, key, iv, sizeof(plain));
-  cipher_decrypt_cbc(in, out, key, iv, sizeof(plain));
-  assert(memcmp(plain, in, sizeof(plain) * sizeof(uint8_t)) == 0);
-  printf(".");
-}
-
-void test_ciphers_cbc_long(void) {
-  uint8_t out[sizeof(plain)] = {0}, in[sizeof(plain)];
-  cipher_encrypt_cbc(out, plain, key, iv, sizeof(plain));
-  cipher_decrypt_cbc(in, out, key, iv, sizeof(plain));
-  assert(memcmp(plain, in, sizeof(plain) * sizeof(uint8_t)) == 0);
-  printf(".");
-}
-
-void test_ciphers_cfb_long(void) {
-  uint8_t out[sizeof(plain)] = {0}, in[sizeof(plain)];
-  cipher_encrypt_cfb(out, plain, key, iv, sizeof(plain));
-  cipher_decrypt_cfb(in, out, key, iv, sizeof(plain));
-  assert(memcmp(plain, in, sizeof(plain) * sizeof(uint8_t)) == 0);
-  printf(".");
-}
-
-void test_ciphers_cbc_long_str(void) {
-  uint8_t out[sizeof(plainstr)] = {0}, in[sizeof(plainstr)];
-  cipher_encrypt_cbc(out, (uint8_t*)plainstr, key, iv, sizeof(plainstr));
-  cipher_decrypt_cbc(in, out, key, iv, sizeof(plainstr));
-  assert(memcmp(plainstr, in, sizeof(plainstr) * sizeof(uint8_t)) == 0);
-  printf(".");
-}
-
-void test_ciphers_cfb_long_str(void) {
-  uint8_t out[sizeof(plainstr)] = {0}, in[sizeof(plainstr)];
-  cipher_encrypt_cfb(out, (uint8_t*)plainstr, key, iv, sizeof(plainstr));
-  cipher_decrypt_cfb(in, out, key, iv, sizeof(plainstr));
-  assert(memcmp(plainstr, in, sizeof(plainstr) * sizeof(uint8_t)) == 0);
-  printf(".");
-}
-
 void test_keys_verify(void) {
   uint8_t sig[BYTES * 2],  pubkey[BYTES + 1],  sec[BYTES], privkey[BYTES], h[BYTES] = {0};
   assert(keys_make(pubkey, privkey));
@@ -122,12 +67,6 @@ int main(int argc, char** argv) {
     printf("lotordb test\n");
     test_genkeys();
     test_keys_verify();
-    test_ciphers_cbc();
-    test_ciphers_cfb();
-    test_ciphers_cbc_long();
-    test_ciphers_cfb_long();
-    test_ciphers_cbc_long_str();
-    test_ciphers_cfb_long_str();
     test_ciphers_aes_gcm_text32();
     test_ciphers_aes_gcm_text32loop();
     printf("\nOK\n");
