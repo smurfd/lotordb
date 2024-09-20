@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "ciphers_aes_gcm.h"
+#include "ciphers.h"
 
 static box fsb;
 static box rsb;

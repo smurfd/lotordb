@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "../ciphers_aes_gcm.h"
+#include "../ciphers.h"
 #include "../crypto_server.h"
 #include "../crypto_client.h"
 #include "../keys.h"

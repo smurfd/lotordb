@@ -1,7 +1,7 @@
 #ifndef DB_TABLES_H
 #define DB_TABLES_H 1
 #include "db_keystore.h"
-#include "ciphers_aes_gcm.h"
+#include "ciphers.h"
 
 #define u64 unsigned long long int // because linux uint64_t is not same as on mac
 

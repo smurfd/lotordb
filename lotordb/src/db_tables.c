@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "db_tables.h"
-#include "ciphers_aes_gcm.h"
+#include "ciphers.h"
 // TODO: add check that f is not NULL == couldnt open file
 // TODO: this feels stupid. read the index file several times.
 //       is worse to have whole indexfile in memory(probably, especially when it scales)
