@@ -74,10 +74,14 @@ int aes_cipher_encrypt(aes_context *c, const uint8_t in[16], uint8_t out[16]) {
   ROUND(tmp1, fsb.b, Y1 >> 0, Y2 >> 8, Y3 >> 16, Y0 >> 24, 0, 8, 16, 24);
   ROUND(tmp2, fsb.b, Y2 >> 0, Y3 >> 8, Y0 >> 16, Y1 >> 24, 0, 8, 16, 24);
   ROUND(tmp3, fsb.b, Y3 >> 0, Y0 >> 8, Y1 >> 16, Y2 >> 24, 0, 8, 16, 24);
-  PUT_UINT32_LE(*RK++ ^ tmp0, out,  0);
-  PUT_UINT32_LE(*RK++ ^ tmp1, out,  4);
-  PUT_UINT32_LE(*RK++ ^ tmp2, out,  8);
-  PUT_UINT32_LE(*RK++ ^ tmp3, out, 12);
+  X0 = *RK++ ^ tmp0;
+  X1 = *RK++ ^ tmp1;
+  X2 = *RK++ ^ tmp2;
+  X3 = *RK++ ^ tmp3;
+  PUT_UINT32_LE(X0, out,  0);
+  PUT_UINT32_LE(X1, out,  4);
+  PUT_UINT32_LE(X2, out,  8);
+  PUT_UINT32_LE(X3, out, 12);
   return 0;
 }
 
@@ -97,10 +101,14 @@ int aes_cipher_decrypt(aes_context *c, const uint8_t in[16], uint8_t out[16]) {
   ROUND(tmp1, rsb.b, Y1 >> 0, Y0 >> 8, Y3 >> 16, Y2 >> 24, 0, 8, 16, 24);
   ROUND(tmp2, rsb.b, Y2 >> 0, Y1 >> 8, Y0 >> 16, Y3 >> 24, 0, 8, 16, 24);
   ROUND(tmp3, rsb.b, Y3 >> 0, Y2 >> 8, Y1 >> 16, Y0 >> 24, 0, 8, 16, 24);
-  PUT_UINT32_LE(*RK++ ^ tmp0, out,  0);
-  PUT_UINT32_LE(*RK++ ^ tmp1, out,  4);
-  PUT_UINT32_LE(*RK++ ^ tmp2, out,  8);
-  PUT_UINT32_LE(*RK++ ^ tmp3, out, 12);
+  X0 = *RK++ ^ tmp0;
+  X1 = *RK++ ^ tmp1;
+  X2 = *RK++ ^ tmp2;
+  X3 = *RK++ ^ tmp3;
+  PUT_UINT32_LE(X0, out,  0);
+  PUT_UINT32_LE(X1, out,  4);
+  PUT_UINT32_LE(X2, out,  8);
+  PUT_UINT32_LE(X3, out, 12);
   return 0;
 }
 
@@ -198,7 +206,7 @@ int gcm_start(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, cons
 int gcm_update_encrypt(gcm_context *ctx, size_t length, const uint8_t *input, uint8_t *output) {
   uint8_t ectr[16] = {0}, ret = 0;
   size_t use_len = 16;
-  ctx->len += length;
+  ctx->len = length;
   while(length > 0) {
     for (size_t i = 16; i > 12; i--) if (++ctx->y[i - 1] != 0) break;
     if ((ret = aes_cipher_encrypt(&ctx->aes_ctx, ctx->y, ectr)) != 0) return ret;
@@ -217,7 +225,7 @@ int gcm_update_encrypt(gcm_context *ctx, size_t length, const uint8_t *input, ui
 int gcm_update_decrypt(gcm_context *ctx, size_t length, const uint8_t *input, uint8_t *output) {
   uint8_t ectr[16] = {0}, ret = 0;
   size_t use_len = 16;
-  ctx->len += length;
+  ctx->len = length;
   while(length > 0) {
     for (size_t i = 16; i > 12; i--) if (++ctx->y[i - 1] != 0) break;
     if ((ret = aes_cipher_decrypt(&ctx->aes_ctx, ctx->y, ectr)) != 0) return ret;
