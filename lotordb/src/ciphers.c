@@ -12,7 +12,7 @@ static uint32_t RCON[10]; // AES round constants
 
 // AES
 static uint8_t aes_set_encryption_key(aes_context *c, const uint8_t *key, uint8_t kz) {
-  uint32_t *RK = c->rk, tmp;
+  uint32_t *RK = c->rk, tmp = 0;
   for (uint32_t i = 0; i < (kz >> 2); i++) GET_UINT32_LE(RK[i], key, i << 2);
   for(uint32_t i = 0; i < 7; i++, RK += 8) {
     ROUND(tmp, fsb.b, RK[7] >> 8, RK[7] >> 16, RK[7] >> 24, RK[7] >> 0, 0, 8, 16, 24);
@@ -30,7 +30,7 @@ static uint8_t aes_set_encryption_key(aes_context *c, const uint8_t *key, uint8_
 }
 
 static uint8_t aes_set_decryption_key(aes_context *c, const uint8_t *key, uint8_t keysize) {
-  uint32_t *SK, *RK = c->rk, i, St;
+  uint32_t *SK = NULL, *RK = c->rk, i = 0, St = 0;
   aes_context cc;
   memset(&cc, 0, sizeof(aes_context));
   cc.rounds = c->rounds;
@@ -59,7 +59,7 @@ int aes_setkey(aes_context *c, uint8_t mode, const uint8_t *key, uint8_t keysize
 }
 
 int aes_cipher_encrypt(aes_context *c, const uint8_t in[16], uint8_t out[16]) {
-  uint32_t *RK, X0, X1, X2, X3, Y0, Y1, Y2, Y3, tmp0, tmp1, tmp2, tmp3;
+  uint32_t *RK = NULL, X0 = 0, X1 = 0, X2 = 0, X3 = 0, Y0 = 0, Y1 = 0, Y2 = 0, Y3 = 0, tmp0 = 0, tmp1 = 0, tmp2 = 0, tmp3 = 0;
   RK = c->rk;
   GET_UINT32_LE(X0, in,  0); X0 ^= *RK++;
   GET_UINT32_LE(X1, in,  4); X1 ^= *RK++;
@@ -82,7 +82,7 @@ int aes_cipher_encrypt(aes_context *c, const uint8_t in[16], uint8_t out[16]) {
 }
 
 int aes_cipher_decrypt(aes_context *c, const uint8_t in[16], uint8_t out[16]) {
-  uint32_t *RK, X0, X1, X2, X3, Y0, Y1, Y2, Y3, tmp0, tmp1, tmp2, tmp3;
+  uint32_t *RK = NULL, X0 = 0, X1 = 0, X2 = 0, X3 = 0, Y0 = 0, Y1 = 0, Y2 = 0, Y3 = 0, tmp0 = 0, tmp1 = 0, tmp2 = 0, tmp3 = 0;
   RK = c->rk;
   GET_UINT32_LE(X0, in,  0); X0 ^= *RK++;
   GET_UINT32_LE(X1, in,  4); X1 ^= *RK++;
@@ -136,7 +136,7 @@ static void gcm_mult(gcm_context *ctx, const uint8_t x[16], uint8_t out[16]) {
 
 // keysize in bytes (must be 16, 24, 32 for 128, 192 or 256-bit keys respectively)
 int gcm_setkey(gcm_context *ctx, const uint8_t *key, const uint32_t keysize) {
-  u64 hi, lo;
+  u64 hi = 0, lo = 0;
   uint8_t h[16] = {0};
   memset(ctx, 0, sizeof(gcm_context));
   memset(h, 0, 16);
@@ -172,7 +172,7 @@ int gcm_setkey(gcm_context *ctx, const uint8_t *key, const uint32_t keysize) {
 }
 
 int gcm_start(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len) {
-  uint8_t work_buf[16] = {0}, ret;
+  uint8_t work_buf[16] = {0}, ret = 0;
   const uint8_t *p = iv;
   memset(ctx->y, 0, sizeof(ctx->y));
   memset(ctx->buf, 0, sizeof(ctx->buf));
@@ -196,7 +196,7 @@ int gcm_start(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, cons
 }
 
 int gcm_update_encrypt(gcm_context *ctx, size_t length, const uint8_t *input, uint8_t *output) {
-  uint8_t ectr[16] = {0}, ret;
+  uint8_t ectr[16] = {0}, ret = 0;
   size_t use_len = 16;
   ctx->len += length;
   while(length > 0) {
@@ -204,7 +204,7 @@ int gcm_update_encrypt(gcm_context *ctx, size_t length, const uint8_t *input, ui
     if ((ret = aes_cipher_encrypt(&ctx->aes_ctx, ctx->y, ectr)) != 0) return ret;
     for (size_t i = 0; i < use_len; i++) {
       output[i] = (uint8_t)(ectr[i] ^ input[i]);
-      ctx->buf[i] ^= output[i];
+      ctx->buf[i] = (uint8_t)(ectr[i] ^ output[i]);
     }
     gcm_mult(ctx, ctx->buf, ctx->buf); // perform a GHASH operation
     length -= use_len; // drop the remaining byte count to process
@@ -215,14 +215,14 @@ int gcm_update_encrypt(gcm_context *ctx, size_t length, const uint8_t *input, ui
 }
 
 int gcm_update_decrypt(gcm_context *ctx, size_t length, const uint8_t *input, uint8_t *output) {
-  uint8_t ectr[16] = {0}, ret;
+  uint8_t ectr[16] = {0}, ret = 0;
   size_t use_len = 16;
   ctx->len += length;
   while(length > 0) {
     for (size_t i = 16; i > 12; i--) if (++ctx->y[i - 1] != 0) break;
     if ((ret = aes_cipher_decrypt(&ctx->aes_ctx, ctx->y, ectr)) != 0) return ret;
     for (size_t i = 0; i < use_len; i++) {
-      ctx->buf[i] ^= input[i];
+      ctx->buf[i] = (uint8_t)(ctx->buf[i] ^ input[i]);
       output[i] = (uint8_t)(ectr[i] ^ input[i]);
     }
     gcm_mult(ctx, ctx->buf, ctx->buf); // perform a GHASH operation
@@ -252,9 +252,9 @@ int gcm_finish(gcm_context *ctx, uint8_t *tag, size_t tag_len) {
     PUT_UINT32_BE((orig_add_len), work_buf, 4);
     PUT_UINT32_BE((orig_len >> 32), work_buf, 8);
     PUT_UINT32_BE((orig_len), work_buf, 12);
-    for(size_t i = 0; i < 16; i++) ctx->buf[i] ^= work_buf[i];
+    for(size_t i = 0; i < 16; i++) ctx->buf[i] = (uint8_t)(ctx->buf[i] ^ work_buf[i]);
     gcm_mult(ctx, ctx->buf, ctx->buf);
-    for(size_t i = 0; i < tag_len; i++) tag[i] ^= ctx->buf[i];
+    for(size_t i = 0; i < tag_len; i++) tag[i] = (uint8_t)(tag[i] ^ ctx->buf[i]);
   }
   return 0;
 }
