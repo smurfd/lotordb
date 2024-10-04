@@ -32,6 +32,7 @@ static uint8_t aes_set_encryption_key(aes_context *c, const uint8_t *key, uint8_
 static uint8_t aes_set_decryption_key(aes_context *c, const uint8_t *key, uint8_t keysize) {
   uint32_t *SK, *RK = c->rk, i, St;
   aes_context cc;
+  memset(&cc, 0, sizeof(aes_context));
   cc.rounds = c->rounds;
   cc.rk = cc.buf;
   if (aes_set_encryption_key(&cc, key, keysize) != 0) return 1;
@@ -136,7 +137,7 @@ static void gcm_mult(gcm_context *ctx, const uint8_t x[16], uint8_t out[16]) {
 // keysize in bytes (must be 16, 24, 32 for 128, 192 or 256-bit keys respectively)
 int gcm_setkey(gcm_context *ctx, const uint8_t *key, const uint32_t keysize) {
   u64 hi, lo;
-  uint8_t h[16];
+  uint8_t h[16] = {0};
   memset(ctx, 0, sizeof(gcm_context));
   memset(h, 0, 16);
   if (aes_setkey(&ctx->aes_ctx, 1, key, keysize) != 0) return 1;
@@ -171,7 +172,7 @@ int gcm_setkey(gcm_context *ctx, const uint8_t *key, const uint32_t keysize) {
 }
 
 int gcm_start(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, const uint8_t *add, size_t add_len) {
-  uint8_t work_buf[16], ret;
+  uint8_t work_buf[16] = {0}, ret;
   const uint8_t *p = iv;
   memset(ctx->y, 0, sizeof(ctx->y));
   memset(ctx->buf, 0, sizeof(ctx->buf));
@@ -195,7 +196,7 @@ int gcm_start(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_len, cons
 }
 
 int gcm_update_encrypt(gcm_context *ctx, size_t length, const uint8_t *input, uint8_t *output) {
-  uint8_t ectr[16], ret;
+  uint8_t ectr[16] = {0}, ret;
   size_t use_len = 16;
   ctx->len += length;
   while(length > 0) {
@@ -214,7 +215,7 @@ int gcm_update_encrypt(gcm_context *ctx, size_t length, const uint8_t *input, ui
 }
 
 int gcm_update_decrypt(gcm_context *ctx, size_t length, const uint8_t *input, uint8_t *output) {
-  uint8_t ectr[16], ret;
+  uint8_t ectr[16] = {0}, ret;
   size_t use_len = 16;
   ctx->len += length;
   while(length > 0) {
@@ -243,7 +244,7 @@ int gcm_crypt_and_tag(gcm_context *ctx, int mode, const uint8_t *iv, size_t iv_l
 
 int gcm_finish(gcm_context *ctx, uint8_t *tag, size_t tag_len) {
   u64 orig_len = ctx->len * 8, orig_add_len = ctx->add_len * 8;
-  uint8_t work_buf[16];
+  uint8_t work_buf[16] = {0};
   if(tag_len != 0) memcpy(tag, ctx->ectr, tag_len);
   if(orig_len || orig_add_len) {
     memset(work_buf, 0, 16);
@@ -264,9 +265,10 @@ void gcm_zero_ctx(gcm_context *ctx) {
 
 // AES GCM
 int aes_gcm_encrypt(uint8_t *out, const uint8_t *in, int in_len, const uint8_t *key, const size_t key_len, const uint8_t *iv, const size_t iv_len) {
-  uint8_t tag_buf[16]; 
+  uint8_t tag_buf[16] = {0};
   size_t tl = 0;
   gcm_context c;
+  gcm_zero_ctx(&c);
   gcm_setkey(&c, key, (const uint32_t)key_len);
   gcm_crypt_and_tag(&c, ENCRYPT, iv, iv_len, NULL, 0, in, out, in_len, tag_buf, tl);
   gcm_zero_ctx(&c);
@@ -274,9 +276,10 @@ int aes_gcm_encrypt(uint8_t *out, const uint8_t *in, int in_len, const uint8_t *
 }
 
 int aes_gcm_decrypt(uint8_t *out, const uint8_t *in, int in_len, const uint8_t *key, const size_t key_len, const uint8_t *iv, const size_t iv_len) {
-  uint8_t tag_buf[16]; 
+  uint8_t tag_buf[16] = {0};
   size_t tl = 0;
   gcm_context c;
+  gcm_zero_ctx(&c);
   gcm_setkey(&c, key, (const uint32_t)key_len);
   gcm_crypt_and_tag(&c, DECRYPT, iv, iv_len, NULL, 0, in, out, in_len, tag_buf, tl);
   gcm_zero_ctx(&c);
