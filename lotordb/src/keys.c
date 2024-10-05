@@ -53,8 +53,9 @@ static u64 check_set(const u64 *a, const uint32_t b) {
 //
 // Check number of bits needed for a
 static uint32_t check_bits(const u64 *a) {
-  u64 i, nd = count(a), d = a[nd - 1];
+  u64 i, nd = count(a);
   if (nd == 0) return 0;
+  u64 d = a[nd - 1];
   for (i = 0; d; ++i) d >>= 1;
   return ((nd - 1) * 64 + i);
 }

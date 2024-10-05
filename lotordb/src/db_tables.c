@@ -155,3 +155,78 @@ void table_encrypt_datafile(tbls *t, uint8_t *data) {
   fwrite(outenc, sizeof(uint8_t), sizeof(outenc), f);
   fclose(f);
 }
+
+// Write binary data to file
+// Read specific "struct" from file
+/*
+# Python
+import struct, os
+with open('bin.b', 'ab') as f:
+  name = 'John'
+  age = 35
+  height = 6.0
+  packedheader = 123456789
+  f.write(packedheader.to_bytes(packedheader.bit_length() + 7 // 8))
+  f.write(name.encode())
+  f.write(age.to_bytes(age.bit_length() + 7 // 8))
+  f.write(bytes(struct.pack('d', height)))
+
+  #  f.write(height.to_bytes(height.bit_length() + 7 // 8))
+
+  print(packedheader.bit_length() + 7 // 8)
+  print(age.bit_length() + 7 // 8)
+  print(len(bytes(struct.pack('d', height))))
+  print(len(name.encode()))
+  print(27+6+8+4)
+
+with open('bin.b', 'rb') as f:
+  len = 27+6+8+4
+  fs = os.path.getsize('bin.b')
+  chunk = fs // len
+  print("fs = ", fs)
+  print("chunks", fs // len)
+  for i in range(fs // len): pkh, name, age, h = f.read(27), f.read(4), f.read(6), f.read(8)
+  f.seek(len*10)
+  pkh, name, age, h = f.read(27), f.read(4), f.read(6), f.read(8)
+
+  print("11th entry")
+  print(name)
+  print(int.from_bytes(age, "big"))
+  print(struct.unpack('d', h)[0])
+  print(int.from_bytes(pkh, "big"))
+*/
+
+/*
+// C
+#include <stdio.h>
+#include <stdlib.h>
+
+struct Person {
+  long long int packedheader;
+  char name[50];
+  int age;
+  float height;
+};
+
+int main(void) {
+  FILE *ptr, *write_ptr;
+  struct Person person = {1234567890, "John", 35, 6.0}, p2;
+  // write binary struct to file
+  write_ptr = fopen("cbin.b", "ab");
+  fwrite(&person, sizeof(struct Person), 1, write_ptr);
+  fclose(write_ptr);
+  // find size of file
+  ptr = fopen("cbin.b", "rb");
+  fseek(ptr, 0, SEEK_END);
+  int size = ftell(ptr);
+  int chunk = size / sizeof(struct Person);
+  printf("size of the file: %d\n", size);
+  printf("number of chunks: %d\n", chunk);
+  // read 11th entry
+  fseek(ptr, 0, SEEK_SET);
+  fseek(ptr, 0, sizeof(struct Person) * 10);
+  fread(&p2, sizeof(struct Person), 1, ptr);
+  printf("Person 10: %llu %s %d %f\n", p2.packedheader, p2.name, p2.age, p2.height);
+  fclose(ptr);
+}
+*/
