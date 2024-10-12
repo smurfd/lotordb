@@ -165,34 +165,26 @@ void table_encrypt_datafile(tbls *t, uint8_t *data) {
 import struct, os
 with open('bin.b', 'ab') as f:
   for i in range(20):
-    name = 'John'.ljust(20)[:20]
-    age = 32 + i
-    height = 6.0
-    packedheader = 123456789
-    f.write(packedheader.to_bytes(packedheader.bit_length() + 7 // 8))  # len = 27
-    f.write(name.encode())  # len = 20
-    f.write(age.to_bytes(age.bit_length() + 7 // 8))  # len = 6
-    f.write(bytes(struct.pack('d', height)))  # len 8
+    packedheader = 123456789  # len = 27
+    name = 'John'.ljust(20)[:20]  # len = 20
+    age = 32 + i  # len = 6
+    height = 6.0  # len = 8
+    data = packedheader.to_bytes(packedheader.bit_length() + 7 // 8) + name.encode() + age.to_bytes(age.bit_length() + 7 // 8) + bytes(struct.pack('d', height)) + b' ' * (512-(27+6+8+20))
+    # TODO: encrypt data before write, data = 512 bytes
+    f.write(data)
 
 with open('bin.b', 'rb') as f:
-  len = 27+6+8+20
+  len = 512  # 27+6+8+20
   fs = os.path.getsize('bin.b')
   chunk = fs // len
-  print('fs = ', fs)
-  print("chunks", fs // len)
+  print(f'size of the file: {fs} and number of chunks: {fs // len}')
   f.seek(len * 10, 0)
-
   data = f.read(len)
+  # Decrypt data
   pkh, name, age, h = data[0:27], data[27:47], data[47:53], data[53:61]
-  print('11th entry')
-  print(name)
-  print(int.from_bytes(age, 'big'))
-  print(struct.unpack('d', h)[0])
-  print(int.from_bytes(pkh, 'big'))
-
+  print(f'11th entry: {name} {int.from_bytes(age, 'big')} {struct.unpack('d', h)[0]} {int.from_bytes(pkh, 'big')}')
   print('Searching for age 42: ', end='')
   f.seek(0, 0)
-
   for i in range(fs // len):
     data = f.read(len)
     pkh, name, age, h = data[0:27], data[27:47], data[47:53], data[53:61]
@@ -207,6 +199,10 @@ with open('bin.b', 'rb') as f:
 #include <string.h>
 #include <stdlib.h>
 
+struct Data {
+  uint8_t encrypted[512];
+};
+
 struct Person {
   long long int packedheader;
   char name[20];
@@ -214,37 +210,49 @@ struct Person {
   float height;
 };
 
+void getperson(struct Person *p2, struct Data *dd) {
+  // TODO: decrypt binary data
+  memcpy(&p2->packedheader, dd->encrypted, sizeof(long long int));
+  memcpy(&p2->name, dd->encrypted + sizeof(long long int), 20 * sizeof(char));
+  memcpy(&p2->age, dd->encrypted + sizeof(long long int) + 20 * sizeof(char), sizeof(int));
+  memcpy(&p2->height, dd->encrypted + sizeof(long long int) + 20 * sizeof(char) + sizeof(int), sizeof(float));
+}
+
 int main(void) {
+  struct Data *dd = malloc(sizeof (struct Data)), d, d2;
+  struct Person person, p2;
   FILE *ptr, *write_ptr;
   write_ptr = fopen("cbin.b", "ab");
   for (int i = 0; i < 20; i++) {
-    struct Person person;// = {1234567890, ' ', 32, 6.0};
     strncpy(person.name, "John", 20);
     person.packedheader = 1234567890;
     person.age = 32 + i;
     person.height = 6.0;
-    // write binary struct to file
-    fwrite(&person, sizeof(struct Person), 1, write_ptr);
+    // "convert" Person to "binary" data
+    memcpy(d.encrypted, (uint8_t*)&person, sizeof(struct Person));
+    // TODO: encrypt binary data
+    // write encrypted binary data to file
+    fwrite(&d, sizeof(struct Data), 1, write_ptr);
   }
   fclose(write_ptr);
   // find size of file
   ptr = fopen("cbin.b", "rb");
   fseek(ptr, 0, SEEK_END);
   int size = ftell(ptr);
-  int chunk = size / sizeof(struct Person);
-  printf("size of the file: %d\n", size);
-  printf("number of chunks: %d\n", chunk);
+  int chunk = size / sizeof(struct Data);
+  printf("size of the file: %d and number of chunks: %d\n", size, chunk);
   // read 11th entry
-  struct Person p2;
   fseek(ptr, 0, SEEK_SET);
-  fseek(ptr, 0, sizeof(struct Person) * 10);
-  fread(&p2, sizeof(struct Person), 1, ptr);
+  fseek(ptr, 0, sizeof(struct Data) * 10);
+  fread(dd, sizeof(struct Data), 1, ptr);
+  getperson(&p2, dd);
   printf("Person 11: %llu %s %d %f\n", p2.packedheader, p2.name, p2.age, p2.height);
-
+  // TODO: only get headers in the future
   fseek(ptr, 0, SEEK_SET);
   printf("searching for age 42: ");
-  for (int i = 0; i < (size / sizeof(struct Person)); i++) {
-    fread(&p2, sizeof(struct Person), 1, ptr);
+  for (int i = 0; i < (size / sizeof(struct Data)); i++) {
+    fread(dd, sizeof(struct Data), 1, ptr);
+    getperson(&p2, dd);
     if (p2.age == 42) {
       printf("found\n");
       break;
