@@ -195,69 +195,79 @@ with open('bin.b', 'rb') as f:
 
 /*
 // C
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#define u64 unsigned long long int // because linux uint64_t is not same as on mac
+// Limit the length on how much to read, and separate into chunks
+#define LENGTH 1000000
 
 struct Data {
   uint8_t encrypted[512];
 };
 
 struct Person {
-  long long int packedheader;
+  u64 packedheader;
   char name[20];
   int age;
   float height;
 };
 
-void getperson(struct Person *p2, struct Data *dd) {
+void getperson(struct Person *person, struct Data *data) {
   // TODO: decrypt binary data
-  memcpy(&p2->packedheader, dd->encrypted, sizeof(long long int));
-  memcpy(&p2->name, dd->encrypted + sizeof(long long int), 20 * sizeof(char));
-  memcpy(&p2->age, dd->encrypted + sizeof(long long int) + 20 * sizeof(char), sizeof(int));
-  memcpy(&p2->height, dd->encrypted + sizeof(long long int) + 20 * sizeof(char) + sizeof(int), sizeof(float));
+  memcpy(&person->packedheader, data->encrypted, sizeof(u64));
+  memcpy(&person->name, data->encrypted + sizeof(u64), 20 * sizeof(char));
+  memcpy(&person->age, data->encrypted + sizeof(u64) + 20 * sizeof(char), sizeof(int));
+  memcpy(&person->height, data->encrypted + sizeof(u64) + 20 * sizeof(char) + sizeof(int), sizeof(float));
+}
+
+void getheaders(long long int *header, struct Data *data, u64 len) {
+  // TODO: decrypt encrypted data
+  for (u64 i = 0; i < len; i++) {
+    memcpy(&header[i], data[i].encrypted, sizeof(u64));
+  }
 }
 
 int main(void) {
-  struct Data *dd = malloc(sizeof (struct Data)), d, d2;
-  struct Person person, p2;
-  FILE *ptr, *write_ptr;
-  write_ptr = fopen("cbin.b", "ab");
-  for (int i = 0; i < 20; i++) {
+  struct Data *datatmp = malloc(sizeof(struct Data)), *dataall = malloc(sizeof(struct Data) * LENGTH);
+  u64 *header = malloc(sizeof(u64) * LENGTH);
+  FILE *ptr, *write_ptr = write_ptr = fopen("cbin.b", "ab");
+  struct Person person;
+  for (u64 i = 0; i < LENGTH; i++) {
     strncpy(person.name, "John", 20);
     person.packedheader = 1234567890;
     person.age = 32 + i;
     person.height = 6.0;
     // "convert" Person to "binary" data
-    memcpy(d.encrypted, (uint8_t*)&person, sizeof(struct Person));
+    memcpy(datatmp->encrypted, (uint8_t*)&person, sizeof(struct Person));
     // TODO: encrypt binary data
     // write encrypted binary data to file
-    fwrite(&d, sizeof(struct Data), 1, write_ptr);
+    fwrite(&datatmp, sizeof(struct Data), 1, write_ptr);
   }
   fclose(write_ptr);
   // find size of file
   ptr = fopen("cbin.b", "rb");
   fseek(ptr, 0, SEEK_END);
-  int size = ftell(ptr);
-  int chunk = size / sizeof(struct Data);
-  printf("size of the file: %d and number of chunks: %d\n", size, chunk);
-  // read 11th entry
+  u64 size = ftell(ptr), chunk = size / sizeof(struct Data);
+  printf("size of the file: %llu and number of chunks: %llu\n", size, chunk);
   fseek(ptr, 0, SEEK_SET);
-  fseek(ptr, 0, sizeof(struct Data) * 10);
-  fread(dd, sizeof(struct Data), 1, ptr);
-  getperson(&p2, dd);
-  printf("Person 11: %llu %s %d %f\n", p2.packedheader, p2.name, p2.age, p2.height);
-  // TODO: only get headers in the future
-  fseek(ptr, 0, SEEK_SET);
-  printf("searching for age 42: ");
-  for (int i = 0; i < (size / sizeof(struct Data)); i++) {
-    fread(dd, sizeof(struct Data), 1, ptr);
-    getperson(&p2, dd);
-    if (p2.age == 42) {
-      printf("found\n");
+  fread(dataall, sizeof(struct Data) * LENGTH, 1, ptr);
+  getheaders(header, dataall, LENGTH);
+  fclose(ptr);
+  // TODO: better search
+  printf("searching for age 666: ");
+  for (u64 i = 0; i < (size / sizeof(struct Data)); i++) {
+    memcpy(datatmp, dataall+i, sizeof(struct Data));
+    getperson(&person, datatmp);
+    if (person.age == 666) {
+      printf("found: %llu %s %d %f\n", person.packedheader, person.name, person.age, person.height);
       break;
     }
   }
-  fclose(ptr);
+  if (datatmp != NULL) free(datatmp);
+  if (dataall != NULL) free(dataall);
+  if (header != NULL) free(header);
 }
 */
