@@ -1,4 +1,5 @@
 #include <sys/socket.h>
+#include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -200,21 +201,23 @@ void table_tmp(void) {
   fread(datatmp, sizeof(struct Data), 1, ptr);
   getperson(&person, datatmp);
   printf("Person 11: %llu %s %d %f\n", person.packedheader, person.name, person.age, person.height);
-  // TODO: only get headers in the future
-  fseek(ptr, 0, SEEK_SET);
-  fread(dataall, sizeof(struct Data) * DBLENGTH, 1, ptr);
-  fclose(ptr);
-  getheaders(header, dataall);
-  printf("searching for age 42: ");
-  for (u64 i = 0; i < (size / sizeof(struct Data)); i++) {
+  bool found = false;
+  for (u64 j = 0; j < (size / sizeof(struct Data)) / DBLENGTH; j++) {
+    fseek(ptr, j*(DBLENGTH*sizeof(struct Data)+1), SEEK_SET);
+    fread(dataall, sizeof(struct Data) * DBLENGTH, 1, ptr);
+    printf("searching for age 666: ");
+    for (u64 i = 0; i < DBLENGTH; i++) {
     memcpy(datatmp, dataall+i, sizeof(struct Data));
     getperson(&person, datatmp);
-    printf("p %d\n", person.age);
-    if (person.age == 666) {
-      printf("found\n");
-      break;
+      if (person.age == 666) {
+        printf("found\n");
+        found = true;
+        break;
+      }
     }
+    if (found) break;
   }
+  fclose(ptr);
   if (datatmp != NULL) free(datatmp);
   if (dataall != NULL) free(dataall);
   if (header != NULL) free(header);
