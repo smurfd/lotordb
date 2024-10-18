@@ -46,7 +46,7 @@ void table_decrypt_indexfile(tbls *t);
 void table_encrypt_indexfile(tbls *t, uint8_t *index);
 void table_decrypt_datafile(tbls *t);
 void table_encrypt_datafile(tbls *t, uint8_t *data);
-void table_tmp(void);
+int table_tmp(void);
 #endif
 
 /*
