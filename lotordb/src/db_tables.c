@@ -63,7 +63,6 @@ int table_read_data(tbls *t) {
       for (ap = argv; (*ap = strsep(&line, "|")) != NULL;) {
         if (++ap >= &argv[2]) break;
       }
-      // printf("SEP data %s %s", argv[0], argv[1]);
     }
   }
   fclose(f);
@@ -156,6 +155,71 @@ void table_encrypt_datafile(tbls *t, uint8_t *data) {
   fclose(f);
 }
 
+static void getperson(struct Person *person, struct Data *datatmp) {
+  // TODO: decrypt binary data
+  memcpy(&person->packedheader, datatmp->encrypted, sizeof(u64));
+  memcpy(&person->name, datatmp->encrypted + sizeof(u64), 20 * sizeof(char));
+  memcpy(&person->age, datatmp->encrypted + sizeof(u64) + 20 * sizeof(char), sizeof(u64));
+  memcpy(&person->height, datatmp->encrypted + sizeof(u64) + 20 * sizeof(char) + sizeof(u64), sizeof(float));
+}
+
+static void getheaders(u64 *header, struct Data *data) {
+  // TODO: decrypt encrypted data
+  for (u64 i = 0; i < DBLENGTH; i++) {
+    memcpy(&header[i], data[i].encrypted, sizeof(u64));
+  }
+}
+
+void table_tmp(void) {
+  struct Data *datatmp = malloc(sizeof (struct Data)), *dataall = malloc(sizeof(struct Data) * DBLENGTH);
+  struct Person person;
+  u64 *header = malloc(sizeof(u64) * DBLENGTH);
+  char fn[] = {".build/cbin.b"};
+  FILE *ptr, *write_ptr = fopen(fn, "ab");
+  for (u64 i = 0; i < DBLENGTH; i++) {
+    strncpy(person.name, "John", 20);
+    person.packedheader = 1234567890;
+    person.age = 32 + i;
+    person.height = 6.0;
+    // "convert" Person to "binary" data
+    memcpy(datatmp->encrypted, (uint8_t*)&person, sizeof(struct Person));
+    // TODO: encrypt binary data
+    // write encrypted binary data to file
+    fwrite(datatmp, sizeof(struct Data), 1, write_ptr);
+  }
+  fclose(write_ptr);
+  // find size of file
+  ptr = fopen(fn, "rb");
+  fseek(ptr, 0, SEEK_END);
+  u64 size = ftell(ptr);
+  u64 chunk = size / sizeof(struct Data);
+  printf("size of the file: %llu and number of chunks: %llu\n", size, chunk);
+  // read 11th entry
+  fseek(ptr, 0, SEEK_SET);
+  fseek(ptr, 0, sizeof(struct Data) * 10);
+  fread(datatmp, sizeof(struct Data), 1, ptr);
+  getperson(&person, datatmp);
+  printf("Person 11: %llu %s %d %f\n", person.packedheader, person.name, person.age, person.height);
+  // TODO: only get headers in the future
+  fseek(ptr, 0, SEEK_SET);
+  fread(dataall, sizeof(struct Data) * DBLENGTH, 1, ptr);
+  fclose(ptr);
+  getheaders(header, dataall);
+  printf("searching for age 42: ");
+  for (u64 i = 0; i < (size / sizeof(struct Data)); i++) {
+    memcpy(datatmp, dataall+i, sizeof(struct Data));
+    getperson(&person, datatmp);
+    printf("p %d\n", person.age);
+    if (person.age == 666) {
+      printf("found\n");
+      break;
+    }
+  }
+  if (datatmp != NULL) free(datatmp);
+  if (dataall != NULL) free(dataall);
+  if (header != NULL) free(header);
+}
+
 // Write binary data to file
 // Read specific "struct" from file
 // TODO: For now, assume same size of data for each entry in the database
@@ -201,8 +265,7 @@ with open('bin.b', 'rb') as f:
 #include <stdio.h>
 
 #define u64 unsigned long long int // because linux uint64_t is not same as on mac
-// Limit the length on how much to read, and separate into chunks
-#define LENGTH 1000000
+#define DBLENGTH 1000000
 
 struct Data {
   uint8_t encrypted[512];
@@ -215,27 +278,27 @@ struct Person {
   float height;
 };
 
-void getperson(struct Person *person, struct Data *data) {
+void getperson(struct Person *person, struct Data *datatmp) {
   // TODO: decrypt binary data
-  memcpy(&person->packedheader, data->encrypted, sizeof(u64));
-  memcpy(&person->name, data->encrypted + sizeof(u64), 20 * sizeof(char));
-  memcpy(&person->age, data->encrypted + sizeof(u64) + 20 * sizeof(char), sizeof(int));
-  memcpy(&person->height, data->encrypted + sizeof(u64) + 20 * sizeof(char) + sizeof(int), sizeof(float));
+  memcpy(&person->packedheader, datatmp->encrypted, sizeof(u64));
+  memcpy(&person->name, datatmp->encrypted + sizeof(u64), 20 * sizeof(char));
+  memcpy(&person->age, datatmp->encrypted + sizeof(u64) + 20 * sizeof(char), sizeof(u64));
+  memcpy(&person->height, datatmp->encrypted + sizeof(u64) + 20 * sizeof(char) + sizeof(u64), sizeof(float));
 }
 
-void getheaders(long long int *header, struct Data *data, u64 len) {
+void getheaders(u64 *header, struct Data *data) {
   // TODO: decrypt encrypted data
-  for (u64 i = 0; i < len; i++) {
+  for (u64 i = 0; i < DBLENGTH; i++) {
     memcpy(&header[i], data[i].encrypted, sizeof(u64));
   }
 }
-
 int main(void) {
-  struct Data *datatmp = malloc(sizeof(struct Data)), *dataall = malloc(sizeof(struct Data) * LENGTH);
-  u64 *header = malloc(sizeof(u64) * LENGTH);
-  FILE *ptr, *write_ptr = write_ptr = fopen("cbin.b", "ab");
+  struct Data *datatmp = malloc(sizeof (struct Data)), *dataall = malloc(sizeof(struct Data) * DBLENGTH);
   struct Person person;
-  for (u64 i = 0; i < LENGTH; i++) {
+  u64 *header = malloc(sizeof(u64) * DBLENGTH);
+  char fn[] = {"cbin.b"};
+  FILE *ptr, *write_ptr = fopen(fn, "ab");
+  for (u64 i = 0; i < DBLENGTH; i++) {
     strncpy(person.name, "John", 20);
     person.packedheader = 1234567890;
     person.age = 32 + i;
@@ -244,25 +307,33 @@ int main(void) {
     memcpy(datatmp->encrypted, (uint8_t*)&person, sizeof(struct Person));
     // TODO: encrypt binary data
     // write encrypted binary data to file
-    fwrite(&datatmp, sizeof(struct Data), 1, write_ptr);
+    fwrite(datatmp, sizeof(struct Data), 1, write_ptr);
   }
   fclose(write_ptr);
   // find size of file
-  ptr = fopen("cbin.b", "rb");
+  ptr = fopen(fn, "rb");
   fseek(ptr, 0, SEEK_END);
-  u64 size = ftell(ptr), chunk = size / sizeof(struct Data);
+  u64 size = ftell(ptr);
+  u64 chunk = size / sizeof(struct Data);
   printf("size of the file: %llu and number of chunks: %llu\n", size, chunk);
+  // read 11th entry
   fseek(ptr, 0, SEEK_SET);
-  fread(dataall, sizeof(struct Data) * LENGTH, 1, ptr);
-  getheaders(header, dataall, LENGTH);
+  fseek(ptr, 0, sizeof(struct Data) * 10);
+  fread(datatmp, sizeof(struct Data), 1, ptr);
+  getperson(&person, datatmp);
+  printf("Person 11: %llu %s %llu %f\n", person.packedheader, person.name, person.age, person.height);
+  // TODO: only get headers in the future
+  fseek(ptr, 0, SEEK_SET);
+  fread(dataall, sizeof(struct Data) * DBLENGTH, 1, ptr);
   fclose(ptr);
-  // TODO: better search
-  printf("searching for age 666: ");
+  getheaders(header, dataall);
+  printf("searching for age 42: ");
   for (u64 i = 0; i < (size / sizeof(struct Data)); i++) {
     memcpy(datatmp, dataall+i, sizeof(struct Data));
     getperson(&person, datatmp);
+    printf("p %llu\n", person.age);
     if (person.age == 666) {
-      printf("found: %llu %s %d %f\n", person.packedheader, person.name, person.age, person.height);
+      printf("found\n");
       break;
     }
   }

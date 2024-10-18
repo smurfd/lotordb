@@ -61,6 +61,10 @@ void test_keys_verify(void) {
   printf(".");
 }
 
+void test_db_simple(void) {
+  table_tmp();
+}
+
 int main(int argc, char** argv) {
   if (argc == 1) {
     printf("\"[o.o]\"              testing ....              \"[o.o]\"\n\n");
@@ -69,6 +73,7 @@ int main(int argc, char** argv) {
     test_keys_verify();
     test_ciphers_aes_gcm_text32();
     test_ciphers_aes_gcm_text32loop();
+    test_db_simple();
     printf("\nOK\n");
   } else {
     if (strcmp(argv[1], "server") == 0) {

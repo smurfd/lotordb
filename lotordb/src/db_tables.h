@@ -4,6 +4,18 @@
 #include "ciphers.h"
 
 #define u64 unsigned long long int // because linux uint64_t is not same as on mac
+#define DBLENGTH 1000000
+
+struct Data {
+  uint8_t encrypted[512];
+};
+
+struct Person {
+  u64 packedheader;
+  char name[20];
+  int age;
+  float height;
+};
 
 typedef struct dbindex {
   u64 index;
@@ -31,11 +43,10 @@ void set_table_data(tbls *t, char unique_id[256], char data[4096]);
 void table_send(const int s, tbls *t);
 void table_recv(const int s, tbls *t);
 void table_decrypt_indexfile(tbls *t);
-
 void table_encrypt_indexfile(tbls *t, uint8_t *index);
 void table_decrypt_datafile(tbls *t);
-
 void table_encrypt_datafile(tbls *t, uint8_t *data);
+void table_tmp(void);
 #endif
 
 /*
