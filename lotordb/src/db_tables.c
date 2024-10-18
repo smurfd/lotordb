@@ -202,7 +202,7 @@ int table_tmp(void) {
     for (u64 i = 0; i < DBLENGTH; i++) {
       memcpy(datatmp, dataall+i, sizeof(struct Data));
       aes_gcm_decrypt(datatmp->encrypted, datatmp->encrypted, 512, key1, 32, iv1, 32);
-      getheaders(header, datatmp);
+      getheaders(header, dataall+i);
       getperson(&person, datatmp);
       if (person.age == 666) {
         printf("found\n");
