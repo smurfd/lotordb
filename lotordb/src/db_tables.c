@@ -118,16 +118,12 @@ void table_decrypt_indexfile(tbls *t) {
   fread(&index, sizeof(uint8_t), length, f);
   fclose(f);
   uint8_t outdec[256];
-  uint8_t iv1[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-  uint8_t key1[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
   aes_gcm_decrypt(outdec, index, sizeof(index), key1, 32, iv1, 32);
 }
 
 void table_encrypt_indexfile(tbls *t, uint8_t *index) {
   FILE *f = fopen((*t).i.path, "w");
   uint8_t outenc[256];
-  uint8_t iv1[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-  uint8_t key1[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
   aes_gcm_encrypt(outenc, index, 32, key1, 32, iv1, 32);
   fwrite(outenc, sizeof(uint8_t), sizeof(outenc), f);
   fclose(f);
@@ -141,16 +137,12 @@ void table_decrypt_datafile(tbls *t) {
   fread(&data, sizeof(uint8_t), length, f);
   fclose(f);
   uint8_t outdec[256];
-  uint8_t iv1[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-  uint8_t key1[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
   aes_gcm_decrypt(outdec, data, length, key1, 32, iv1, 32);
 }
 
 void table_encrypt_datafile(tbls *t, uint8_t *data) {
   FILE *f = fopen((*t).i.path, "w");
   uint8_t outenc[256];
-  uint8_t iv1[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-  uint8_t key1[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
   aes_gcm_encrypt(outenc, data, 32, key1, 32, iv1, 32);
   fwrite(outenc, sizeof(uint8_t), sizeof(outenc), f);
   fclose(f);
@@ -170,39 +162,37 @@ static void getheaders(u64 *header, struct Data *data) {
 }
 
 int table_tmp(void) {
-  uint8_t iv1[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-  uint8_t key1[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
   struct Data *datatmp = malloc(sizeof (struct Data)), *dataall = malloc(sizeof(struct Data) * DBLENGTH);
-  struct Person person;
   u64 *header = malloc(sizeof(u64) * DBLENGTH);
   char fn[] = {".build/cbin.b"};
-  bool found = false;
   FILE *ptr, *write_ptr = fopen(fn, "ab");
+  struct Person person;
+  bool found = false;
   for (u64 i = 0; i < DBLENGTH; i++) {
-    strncpy(person.name, "John", 20);  // TODO: do we need to pad this for encryption to look better?
-    person.packedheader = 1234567890;
+    strncpy(person.name, "John", 20);
+    person.packedheader = 1234567890 + i;
     person.age = 32 + i;
     person.height = 6.0;
     // "convert" Person to "binary" data
+    memset(datatmp->encrypted, (uint8_t)' ', 512); // "PAD" the data
     memcpy(datatmp->encrypted, (uint8_t*)&person, sizeof(struct Person));
-    aes_gcm_encrypt(datatmp->encrypted, datatmp->encrypted, 32, key1, 32, iv1, 32);
+    aes_gcm_encrypt(datatmp->encrypted, datatmp->encrypted, 512, key1, 32, iv1, 32);
     fwrite(datatmp->encrypted, sizeof(struct Data), 1, write_ptr);
   }
   fclose(write_ptr);
   // find size of file
   ptr = fopen(fn, "rb");
   fseek(ptr, 0, SEEK_END);
-  u64 size = ftell(ptr);
-  u64 chunk = size / sizeof(struct Data);
+  u64 size = ftell(ptr), chunk = size / sizeof(struct Data);
   printf("size of the file: %llu and number of chunks: %llu\n", size, chunk);
   for (u64 j = 0; j < (size / sizeof(struct Data)) / DBLENGTH; j++) {
-    fseek(ptr, j*(DBLENGTH*sizeof(struct Data)+1), SEEK_SET);
+    fseek(ptr, j * (DBLENGTH * sizeof(struct Data) + 1), SEEK_SET);
     fread(dataall, sizeof(struct Data) * DBLENGTH, 1, ptr);
     printf("searching for age 666: ");
     for (u64 i = 0; i < DBLENGTH; i++) {
-      memcpy(datatmp, dataall+i, sizeof(struct Data));
+      memcpy(datatmp, dataall + i, sizeof(struct Data));
       aes_gcm_decrypt(datatmp->encrypted, datatmp->encrypted, 512, key1, 32, iv1, 32);
-      getheaders(header, dataall+i);
+      getheaders(header, dataall + i);
       getperson(&person, datatmp);
       if (person.age == 666) {
         printf("found\n");
@@ -255,90 +245,4 @@ with open('bin.b', 'rb') as f:
     if int.from_bytes(age, 'big') == 42:
       print('found')
       exit()
-*/
-
-/*
-// C
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdio.h>
-
-#define u64 unsigned long long int // because linux uint64_t is not same as on mac
-#define DBLENGTH 1000000
-
-struct Data {
-  uint8_t encrypted[512];
-};
-
-struct Person {
-  u64 packedheader;
-  char name[20];
-  int age;
-  float height;
-};
-
-void getperson(struct Person *person, struct Data *datatmp) {
-  // TODO: decrypt binary data
-  memcpy(&person->packedheader, datatmp->encrypted, sizeof(u64));
-  memcpy(&person->name, datatmp->encrypted + sizeof(u64), 20 * sizeof(char));
-  memcpy(&person->age, datatmp->encrypted + sizeof(u64) + 20 * sizeof(char), sizeof(u64));
-  memcpy(&person->height, datatmp->encrypted + sizeof(u64) + 20 * sizeof(char) + sizeof(u64), sizeof(float));
-}
-
-void getheaders(u64 *header, struct Data *data) {
-  // TODO: decrypt encrypted data
-  for (u64 i = 0; i < DBLENGTH; i++) {
-    memcpy(&header[i], data[i].encrypted, sizeof(u64));
-  }
-}
-int main(void) {
-  struct Data *datatmp = malloc(sizeof (struct Data)), *dataall = malloc(sizeof(struct Data) * DBLENGTH);
-  struct Person person;
-  u64 *header = malloc(sizeof(u64) * DBLENGTH);
-  char fn[] = {"cbin.b"};
-  FILE *ptr, *write_ptr = fopen(fn, "ab");
-  for (u64 i = 0; i < DBLENGTH; i++) {
-    strncpy(person.name, "John", 20);
-    person.packedheader = 1234567890;
-    person.age = 32 + i;
-    person.height = 6.0;
-    // "convert" Person to "binary" data
-    memcpy(datatmp->encrypted, (uint8_t*)&person, sizeof(struct Person));
-    // TODO: encrypt binary data
-    // write encrypted binary data to file
-    fwrite(datatmp, sizeof(struct Data), 1, write_ptr);
-  }
-  fclose(write_ptr);
-  // find size of file
-  ptr = fopen(fn, "rb");
-  fseek(ptr, 0, SEEK_END);
-  u64 size = ftell(ptr);
-  u64 chunk = size / sizeof(struct Data);
-  printf("size of the file: %llu and number of chunks: %llu\n", size, chunk);
-  // read 11th entry
-  fseek(ptr, 0, SEEK_SET);
-  fseek(ptr, 0, sizeof(struct Data) * 10);
-  fread(datatmp, sizeof(struct Data), 1, ptr);
-  getperson(&person, datatmp);
-  printf("Person 11: %llu %s %llu %f\n", person.packedheader, person.name, person.age, person.height);
-  // TODO: only get headers in the future
-  fseek(ptr, 0, SEEK_SET);
-  fread(dataall, sizeof(struct Data) * DBLENGTH, 1, ptr);
-  fclose(ptr);
-  getheaders(header, dataall);
-  printf("searching for age 42: ");
-  for (u64 i = 0; i < (size / sizeof(struct Data)); i++) {
-    memcpy(datatmp, dataall+i, sizeof(struct Data));
-    getperson(&person, datatmp);
-    printf("p %llu\n", person.age);
-    if (person.age == 666) {
-      printf("found\n");
-      break;
-    }
-  }
-  if (datatmp != NULL) free(datatmp);
-  if (dataall != NULL) free(dataall);
-  if (header != NULL) free(header);
-}
 */
