@@ -62,7 +62,7 @@ void test_keys_verify(void) {
 }
 
 void test_db_simple(void) {
-  assert(table_tmp());
+  assert(table_find(31337));
 }
 
 int main(int argc, char** argv) {
