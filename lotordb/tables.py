@@ -163,7 +163,7 @@ class Tables(threading.Thread):  # Table store
     return self.decrypt_data(data)
 
   def table_temp(self):
-    with open('lotordb/src/.build/bin.b', 'ab') as f:
+    with open('.lib/bin.b', 'ab') as f:
       for i in range(20):
         packedheader = 123456789  # len = 27
         name = 'John'.ljust(20)[:20]  # len = 20
@@ -172,9 +172,9 @@ class Tables(threading.Thread):  # Table store
         data = packedheader.to_bytes(packedheader.bit_length() + 7 // 8) + name.encode() + age.to_bytes(age.bit_length() + 7 // 8) + bytes(struct.pack('d', height)) + b' ' * (512-(27+6+8+20))
         # TODO: encrypt data before write, data = 512 bytes
         f.write(data)
-    with open('lotordb/src/.build/bin.b', 'rb') as f:
+    with open('.lib/bin.b', 'rb') as f:
       len = 512  # 27+6+8+20
-      fs = os.path.getsize('lotordb/src/.build/bin.b')
+      fs = os.path.getsize('.lib/bin.b')
       chunk = fs // len
       print(f'size of the file: {fs} and number of chunks: {fs // len}')
       f.seek(len * 10, 0)
