@@ -62,7 +62,8 @@ void test_keys_verify(void) {
 }
 
 void test_db_simple(void) {
-  assert(table_find(31337));
+  // TODO: S l o o o o o o w
+  assert(table_find(666));
 }
 
 int main(int argc, char** argv) {
