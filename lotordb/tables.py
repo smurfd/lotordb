@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import struct, gzip, threading, mmap, socket, secrets, io
+import struct, gzip, threading, mmap, socket, secrets, io, os
 from typing import List, Union, BinaryIO, IO
 from lotordb.vars import DbIndex, DbData, Vars
 from lotordb.cipher import Cipher
@@ -161,3 +161,33 @@ class Tables(threading.Thread):  # Table store
 
   def decrypt_bytearray_to_data(self, data):
     return self.decrypt_data(data)
+
+  def table_temp(self):
+    with open('lotordb/src/.build/bin.b', 'ab') as f:
+      for i in range(20):
+        packedheader = 123456789  # len = 27
+        name = 'John'.ljust(20)[:20]  # len = 20
+        age = 32 + i  # len = 6
+        height = 6.0  # len = 8
+        data = packedheader.to_bytes(packedheader.bit_length() + 7 // 8) + name.encode() + age.to_bytes(age.bit_length() + 7 // 8) + bytes(struct.pack('d', height)) + b' ' * (512-(27+6+8+20))
+        # TODO: encrypt data before write, data = 512 bytes
+        f.write(data)
+    with open('lotordb/src/.build/bin.b', 'rb') as f:
+      len = 512  # 27+6+8+20
+      fs = os.path.getsize('lotordb/src/.build/bin.b')
+      chunk = fs // len
+      print(f'size of the file: {fs} and number of chunks: {fs // len}')
+      f.seek(len * 10, 0)
+      data = f.read(len)
+      # Decrypt data
+      pkh, name, age, h = data[0:27], data[27:47], data[47:53], data[53:61]
+      #print(f'11th entry: {name} {int.from_bytes(age, 'big')} {struct.unpack('d', h)[0]} {int.from_bytes(pkh, 'big')}')
+      print('Searching for age 42: ', end='')
+      f.seek(0, 0)
+      for i in range(fs // len):
+        data = f.read(len)
+        pkh, name, age, h = data[0:27], data[27:47], data[47:53], data[53:61]
+        if int.from_bytes(age, 'big') == 42:
+          print('found')
+          return 1
+    return 0

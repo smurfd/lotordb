@@ -109,6 +109,11 @@ def test_lotordb_table_encrypt_decrypt():
   tables.decrypt_bytearray_to_data_segmented(tables.data_to_bytearray_encrypt_segment(dad, ind))
   print('time {:.4f}'.format(time.perf_counter() - t))
 
+def test_lotordb_table():
+  t = time.perf_counter()
+  tables = Tables('.lib/db39')
+  tables.table_temp()
+  print('time {:.4f}'.format(time.perf_counter() - t))
 
 if __name__ == '__main__':
   print('OK')
