@@ -11,8 +11,8 @@
 
 // TODO: Randomize these to file for program to use
 static uint8_t iv1[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,\
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, key1[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b\
-  , 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
+  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, key1[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,\
+  0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
 
 int static table_check_unique_index(char path[256], char unique_id[256]) {
   FILE *f = fopen(path, "r");
@@ -115,7 +115,7 @@ void table_send(const int s, tbls *t) {
 void table_recv(const int s, tbls *t) {
   recv(s, t, sizeof(struct tbls), 0);
 }
-
+/*
 void table_decrypt_indexfile(tbls *t) {
   FILE *f = fopen((*t).i.path, "r");
   u64 length = fseek(f, 0, SEEK_END);
@@ -153,34 +153,45 @@ void table_encrypt_datafile(tbls *t, uint8_t *data) {
   fwrite(outenc, sizeof(uint8_t), sizeof(outenc), f);
   fclose(f);
 }
-
-static void getperson(struct Person *person, struct Data *datatmp) {
+*/
+static void table_getperson(struct Person *person, struct Data *datatmp) {
   memcpy(&person->packedheader, datatmp->encrypted, sizeof(u64));
   memcpy(&person->name, datatmp->encrypted + sizeof(u64), 20 * sizeof(char));
   memcpy(&person->age, datatmp->encrypted + sizeof(u64) + 20 * sizeof(char), sizeof(u64));
   memcpy(&person->height, datatmp->encrypted + sizeof(u64) + 20 * sizeof(char) + sizeof(u64), sizeof(float));
 }
 
-static void getheaders(u64 *header, struct Data *data) {
+static void table_getheaders(u64 *header, struct Data *data) {
   for (u64 i = 0; i < DBLENGTH; i++) {
     memcpy(&header[i], data[i].encrypted, sizeof(u64));
   }
 }
 
+static void table_getlastindex(void) {
+
+}
+// This can be slower than find
+static void table_addperson(struct Person *person, char *name, u64 pkhdr, u64 age, float h) {
+  strncpy(person->name, name, 20);
+  person->packedheader = pkhdr;
+  person->age = age;
+  person->height = h;
+}
+
+static void table_writeperson(struct Person *person, struct Data *datatmp, FILE *write_ptr) {
+  // "convert" Person to "binary" data
+  memset(datatmp->encrypted, (uint8_t)' ', 512); // "PAD" the data
+  memcpy(datatmp->encrypted, (uint8_t*)&person, sizeof(struct Person));
+  aes_gcm_encrypt(datatmp->encrypted, datatmp->encrypted, 512, key1, 32, iv1, 32);
+  fwrite(datatmp->encrypted, sizeof(struct Data), 1, write_ptr);
+}
+
 static void table_createdata(char fn[], struct Data *datatmp) {
   FILE *write_ptr = fopen(fn, "ab");
   struct Person person;
-  //bool found = false;
   for (u64 i = 0; i < DBLENGTH; i++) {
-    strncpy(person.name, "John", 20);
-    person.packedheader = 1234567890 + i;
-    person.age = 32 + i;
-    person.height = 6.0;
-    // "convert" Person to "binary" data
-    memset(datatmp->encrypted, (uint8_t)' ', 512); // "PAD" the data
-    memcpy(datatmp->encrypted, (uint8_t*)&person, sizeof(struct Person));
-    aes_gcm_encrypt(datatmp->encrypted, datatmp->encrypted, 512, key1, 32, iv1, 32);
-    fwrite(datatmp->encrypted, sizeof(struct Data), 1, write_ptr);
+    table_addperson(&person, "bob", 1234567890 + i, 32 + i, 6.6);
+    table_writeperson(&person, datatmp, write_ptr);
   }
   fclose(write_ptr);
 }
@@ -199,8 +210,8 @@ static bool table_bruteforcesearch(char fn[], struct Data *datatmp, struct Data 
     for (u64 i = 0; i < DBLENGTH; i++) {
       memcpy(datatmp, dataall + i, sizeof(struct Data));
       aes_gcm_decrypt(datatmp->encrypted, datatmp->encrypted, 512, key1, 32, iv1, 32);
-      getheaders(header, dataall + i);
-      getperson(&person, datatmp);
+      table_getheaders(header, dataall + i);
+      table_getperson(&person, datatmp);
       if (person.age == nr) {
         printf("found\n");
         fclose(ptr);
@@ -212,6 +223,8 @@ static bool table_bruteforcesearch(char fn[], struct Data *datatmp, struct Data 
   return false;
 }
 
+//
+// This needs to be fast
 int table_find(u64 nr) {
   struct Data *datatmp = malloc(sizeof (struct Data)), *dataall = malloc(sizeof(struct Data) * DBLENGTH);
   u64 *header = malloc(sizeof(u64) * DBLENGTH);
