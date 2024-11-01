@@ -6,17 +6,17 @@
 #define u64 unsigned long long int // because linux uint64_t is not same as on mac
 #define DBLENGTH 1000000
 
-struct Data {
+typedef struct Data {
   uint8_t encrypted[512];
-};
+} Data;
 
-struct Person {
+typedef struct Person {
   u64 packedheader;
   u64 index;
   char name[20];
   int age;
   float height;
-};
+} Person;
 
 typedef struct dbindex {
   u64 index;
@@ -33,6 +33,7 @@ typedef struct dbdata {
 typedef struct tbls {
   dbindex i;
   dbdata d;
+  Person p;
 } tbls;
 
 void table_read_index(tbls *t, char path[256], char unique_id[256]);
