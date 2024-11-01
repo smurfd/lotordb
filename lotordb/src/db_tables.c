@@ -185,10 +185,10 @@ static void table_addperson(struct Person *person, char *name, u64 pkhdr, u64 ag
   person->packedheader = pkhdr;
   person->age = age;
   person->height = h;
-  person->index = table_getlastindex() + 1;
+  //person->index = table_getlastindex() + 1;
 }
 
-static void table_writeperson(struct Person *person, struct Data *datatmp, FILE *write_ptr) {
+static void table_writeperson(struct Person person, struct Data *datatmp, FILE *write_ptr) {
   // "convert" Person to "binary" data
   memset(datatmp->encrypted, (uint8_t)' ', 512); // "PAD" the data
   memcpy(datatmp->encrypted, (uint8_t*)&person, sizeof(struct Person));
@@ -201,7 +201,7 @@ static void table_createdata(char fn[], struct Data *datatmp) {
   struct Person person;
   for (u64 i = 0; i < DBLENGTH; i++) {
     table_addperson(&person, "bob", 1234567890 + i, 32 + i, 6.6);
-    table_writeperson(&person, datatmp, write_ptr);
+    table_writeperson(person, datatmp, write_ptr);
   }
   fclose(write_ptr);
 }

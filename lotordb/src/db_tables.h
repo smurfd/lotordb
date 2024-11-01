@@ -12,7 +12,7 @@ struct Data {
 
 struct Person {
   u64 packedheader;
-  u64 index;
+  //u64 index;
   char name[20];
   int age;
   float height;
