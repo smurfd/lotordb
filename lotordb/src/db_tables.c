@@ -167,15 +167,25 @@ static void table_getheaders(u64 *header, struct Data *data) {
   }
 }
 
-static void table_getlastindex(void) {
-
+static u64 table_getdatasize(FILE *ptr) {
+  fseek(ptr, 0, SEEK_END);
+  return ftell(ptr);
 }
+
+static u64 table_getlastindex(void) {
+  FILE *ptr = fopen(".build/cbin.b", "rb");
+  u64 size = (table_getdatasize(ptr) / sizeof(struct Data)) / DBLENGTH;
+  fclose(ptr);
+  return size;
+}
+
 // This can be slower than find
 static void table_addperson(struct Person *person, char *name, u64 pkhdr, u64 age, float h) {
   strncpy(person->name, name, 20);
   person->packedheader = pkhdr;
   person->age = age;
   person->height = h;
+  person->index = table_getlastindex() + 1;
 }
 
 static void table_writeperson(struct Person *person, struct Data *datatmp, FILE *write_ptr) {
@@ -196,10 +206,6 @@ static void table_createdata(char fn[], struct Data *datatmp) {
   fclose(write_ptr);
 }
 
-static u64 table_getdatasize(FILE *ptr) {
-  fseek(ptr, 0, SEEK_END);
-  return ftell(ptr);
-}
 
 static bool table_bruteforcesearch(char fn[], struct Data *datatmp, struct Data *dataall, u64 *header, u64 nr) {
   struct Person person;
