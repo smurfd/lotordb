@@ -30,14 +30,20 @@ static void *server_connection_handler_ssl(void *conn) {
   } else if (((connection*)conn)->type == 2) { // tables
     tbls *t = (tbls*)malloc(sizeof(struct tbls));
     table_recv(sock, t);
-    if (table_write_index(t, "/tmp/dbindex1.db1") >= 0) { // Only write data if we can write to index
+    /*if (table_write_index(t, "/tmp/dbindex1.db1") >= 0) { // Only write data if we can write to index
       table_write_data(t);
-    }
+    }*/
+    FILE *write_ptr = fopen("/tmp/dbsrv1.db", "ab");
+    Data *datatmp = malloc(sizeof (Data));
+    table_writeperson((*t).p, datatmp, write_ptr);
+    free(datatmp);
+    fclose(write_ptr);
     // TODO: Verification steps, remove once fixed
+    /*
     table_read_index(t, "/tmp/dbindex1.db1", t->i.unique_id);
     if (table_read_data(t) >= 0) {
       printf("either ok or no file\n");
-    }
+    }*/
     free(t);
   }
   return 0;
@@ -118,12 +124,3 @@ void server_end(connection c) {
 void generate_shared_cryptokey_server(cryptokey *k1, cryptokey *k2, head *h) {
   (*k2).shar = (*h).p % (int64_t)pow((*k2).publ, (*k1).priv);
 }
-/*
-int main(int argc, char** argv) {
-  int type = usage(argv[1], argc, "server");
-  connection c = server_init("127.0.0.1", "9998", type);
-  server_handle(c);
-  server_end(c);
-  printf("OK\n");
-}
-*/

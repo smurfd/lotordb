@@ -18,6 +18,7 @@ typedef struct Person {
   float height;
 } Person;
 
+/*
 typedef struct dbindex {
   u64 index;
   char unique_id[256];
@@ -29,26 +30,28 @@ typedef struct dbdata {
   char unique_id[256];
   char data[4096];
 } dbdata;
-
+*/
 typedef struct tbls {
-  dbindex i;
-  dbdata d;
+  //dbindex i;
+  //dbdata d;
   Person p;
 } tbls;
-
+/*
 void table_read_index(tbls *t, char path[256], char unique_id[256]);
 int table_read_data(tbls *t);
 int table_write_index(tbls *t, char path[256]);
 int table_write_data(tbls *t);
 void set_table_index(tbls *t, u64 index, char unique_id[256], u64 length, char path[256]);
-void set_table_data(tbls *t, char unique_id[256], char data[4096]);
+void set_table_data(tbls *t, char unique_id[256], char data[4096]);*/
 void table_send(const int s, tbls *t);
 void table_recv(const int s, tbls *t);
-void table_decrypt_indexfile(tbls *t);
+/*void table_decrypt_indexfile(tbls *t);
 void table_encrypt_indexfile(tbls *t, uint8_t *index);
 void table_decrypt_datafile(tbls *t);
-void table_encrypt_datafile(tbls *t, uint8_t *data);
+void table_encrypt_datafile(tbls *t, uint8_t *data);*/
 int table_find(u64 nr);
+void table_setperson(tbls *t, Person person);
+void table_writeperson(Person person, Data *datatmp, FILE *write_ptr);
 #endif
 
 /*
