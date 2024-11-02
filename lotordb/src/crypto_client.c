@@ -20,8 +20,6 @@ static void *client_connection_handler_ssl(void *conn) {
   } else if (((connection*)conn)->type == 2) {
     Person p = {12345, 222, "smurfd1234", 66, 9.9};
     tbls *t = (tbls*)malloc(sizeof(struct tbls));
-    /*set_table_index(t, 1236, "smurfd3", 3333, "/tmp/dbdata.d3");
-    set_table_data(t, "smurfd3", "more data here");*/
     table_setperson(t, p);
     table_send(sock, t);
     free(t);
