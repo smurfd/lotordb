@@ -18,7 +18,7 @@ static void *client_connection_handler_ssl(void *conn) {
     key_send(sock, k);
     free(k);
   } else if (((connection*)conn)->type == 2) {
-    Person p = {12345, 222, "smurfd1234", 66, 9.9};
+    data p = {12345, 222, "smurfd1234", 66, 9.9};
     tbls *t = (tbls*)malloc(sizeof(struct tbls));
     table_setperson(t, p);
     table_send(sock, t);

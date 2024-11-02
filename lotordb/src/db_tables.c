@@ -19,7 +19,7 @@ void table_recv(const int s, tbls *t) {
   recv(s, t, sizeof(struct tbls), 0);
 }
 
-static void table_getperson(Person *person, Data *datatmp) {
+static void table_getperson(data *person, binary *datatmp) {
   memcpy(&person->packedheader, datatmp->encrypted, sizeof(u64));
   memcpy(&person->index, datatmp->encrypted + sizeof(u64), sizeof(u64));
   memcpy(&person->name, datatmp->encrypted + sizeof(u64) + sizeof(u64), 20 * sizeof(char));
@@ -27,7 +27,7 @@ static void table_getperson(Person *person, Data *datatmp) {
   memcpy(&person->height, datatmp->encrypted + sizeof(u64) + sizeof(u64) + 20 * sizeof(char) + sizeof(u64), sizeof(float));
 }
 
-static void table_getheaders(u64 *header, Data *data) {
+static void table_getheaders(u64 *header, binary *data) {
   for (u64 i = 0; i < DBLENGTH; i++) {
     memcpy(&header[i], data[i].encrypted, sizeof(u64));
   }
@@ -40,13 +40,13 @@ static u64 table_getdatasize(FILE *ptr) {
 
 static u64 table_getlastindex(void) {
   FILE *ptr = fopen(".build/cbin.b", "rb");
-  u64 size = (table_getdatasize(ptr) / sizeof(Data));
+  u64 size = (table_getdatasize(ptr) / sizeof(binary));
   fclose(ptr);
   return size;
 }
 
 // This can be slower than find
-static void table_addperson(Person *person, u64 index, char *name, u64 pkhdr, u64 age, float h) {
+static void table_addperson(data *person, u64 index, char *name, u64 pkhdr, u64 age, float h) {
   strncpy(person->name, name, 20);
   person->packedheader = pkhdr;
   person->age = age;
@@ -54,17 +54,17 @@ static void table_addperson(Person *person, u64 index, char *name, u64 pkhdr, u6
   person->index = index;
 }
 
-void table_writeperson(Person person, Data *datatmp, FILE *write_ptr) {
-  // "convert" Person to "binary" data
+void table_writeperson(data person, binary *datatmp, FILE *write_ptr) {
+  // "convert" data to "binary" data
   memset(datatmp->encrypted, (uint8_t)' ', 512); // "PAD" the data
-  memcpy(datatmp->encrypted, (uint8_t*)&person, sizeof(Person));
+  memcpy(datatmp->encrypted, (uint8_t*)&person, sizeof(data));
   aes_gcm_encrypt(datatmp->encrypted, datatmp->encrypted, 512, key1, 32, iv1, 32);
-  fwrite(datatmp->encrypted, sizeof(Data), 1, write_ptr);
+  fwrite(datatmp->encrypted, sizeof(binary), 1, write_ptr);
 }
 
-static void table_createdata(char fn[], Data *datatmp) {
+static void table_createdata(char fn[], binary *datatmp) {
   FILE *write_ptr = fopen(fn, "ab");
-  Person person;
+  data person;
   u64 index = table_getlastindex() + 1;
   for (u64 i = 0; i < DBLENGTH; i++) {
     table_addperson(&person, index++, "bob", 1234567890 + i, 32 + i, 6.6);
@@ -74,14 +74,14 @@ static void table_createdata(char fn[], Data *datatmp) {
 }
 
 // TODO: this is stupid now when we add everything in order
-static bool table_search(char fn[], Data *datatmp, Data *dataall, u64 *header, u64 nr) {
-  Person person;
+static bool table_search(char fn[], binary *datatmp, binary *dataall, u64 *header, u64 nr) {
+  data person;
   FILE *ptr = fopen(fn, "rb");
-  for (u64 j = 0; j < (table_getdatasize(ptr) / sizeof(Data)) / DBLENGTH; j++) {
-    fseek(ptr, j * (DBLENGTH * sizeof(Data) + 1), SEEK_SET);
-    fread(dataall, sizeof(Data) * DBLENGTH, 1, ptr);
+  for (u64 j = 0; j < (table_getdatasize(ptr) / sizeof(binary)) / DBLENGTH; j++) {
+    fseek(ptr, j * (DBLENGTH * sizeof(binary) + 1), SEEK_SET);
+    fread(dataall, sizeof(binary) * DBLENGTH, 1, ptr);
     for (u64 i = 0; i < DBLENGTH; i++) {
-      memcpy(datatmp, dataall + i, sizeof(Data));
+      memcpy(datatmp, dataall + i, sizeof(binary));
       aes_gcm_decrypt(datatmp->encrypted, datatmp->encrypted, 512, key1, 32, iv1, 32);
       table_getheaders(header, dataall + i);
       table_getperson(&person, datatmp);
@@ -96,14 +96,14 @@ static bool table_search(char fn[], Data *datatmp, Data *dataall, u64 *header, u
   return false;
 }
 
-void table_setperson(tbls *t, Person person) {
-  memcpy(&(*t).p, &person, sizeof(Person));
+void table_setperson(tbls *t, data person) {
+  memcpy(&(*t).p, &person, sizeof(data));
 }
 
 //
 // This needs to be fast
 int table_find(u64 nr) {
-  Data *datatmp = malloc(sizeof (Data)), *dataall = malloc(sizeof(Data) * DBLENGTH);
+  binary *datatmp = malloc(sizeof (binary)), *dataall = malloc(sizeof(binary) * DBLENGTH);
   u64 *header = malloc(sizeof(u64) * DBLENGTH);
   char fn[] = {".build/cbin.b"};
   table_createdata(fn, datatmp);

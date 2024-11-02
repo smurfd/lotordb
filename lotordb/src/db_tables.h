@@ -6,27 +6,27 @@
 #define u64 unsigned long long int // because linux uint64_t is not same as on mac
 #define DBLENGTH 1000000
 
-typedef struct Data {
+typedef struct binary {
   uint8_t encrypted[512];
-} Data;
+} binary;
 
-typedef struct Person {
+typedef struct data {
   u64 packedheader;
   u64 index;
   char name[20];
   int age;
   float height;
-} Person;
+} data;
 
 typedef struct tbls {
-  Person p;
+  data p;
 } tbls;
 
 void table_send(const int s, tbls *t);
 void table_recv(const int s, tbls *t);
 int table_find(u64 nr);
-void table_setperson(tbls *t, Person person);
-void table_writeperson(Person person, Data *datatmp, FILE *write_ptr);
+void table_setperson(tbls *t, data person);
+void table_writeperson(data person, binary *datatmp, FILE *write_ptr);
 #endif
 
 /*

@@ -31,7 +31,7 @@ static void *server_connection_handler_ssl(void *conn) {
     tbls *t = (tbls*)malloc(sizeof(struct tbls));
     table_recv(sock, t);
     FILE *write_ptr = fopen("/tmp/dbsrv1.db", "ab");
-    Data *datatmp = malloc(sizeof (Data));
+    binary *datatmp = malloc(sizeof (binary));
     table_writeperson((*t).p, datatmp, write_ptr);
     free(datatmp);
     fclose(write_ptr);
