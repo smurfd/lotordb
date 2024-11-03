@@ -17,33 +17,33 @@ static uint8_t iv1[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x
   0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, key1[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,\
   0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
 
-static void table_getctx(ctx *c, binary *bin, u64 ctxstructlen) {
+void table_getctx(ctx *c, binary *bin, u64 ctxstructlen) {
   memcpy(&c->packedheader, bin->encrypted, sizeof(u64));
   memcpy(&c->index, (bin->encrypted) + sizeof(u64), sizeof(u64));
   memcpy(c->structure, bin->encrypted + sizeof(u64) + sizeof(u64), ctxstructlen);
   memcpy(&c->structurelen, bin->encrypted + sizeof(u64) + sizeof(u64) + ctxstructlen, sizeof(u64));
 }
 
-static void table_getheaders(u64 *header, binary *bin) {
+void table_getheaders(u64 *header, binary *bin) {
   for (u64 i = 0; i < DBLENGTH; i++) {
     memcpy(&header[i], bin[i].encrypted, sizeof(u64));
   }
 }
 
-static u64 table_getctxsize(FILE *ptr) {
+u64 table_getctxsize(FILE *ptr) {
   fseek(ptr, 0, SEEK_END);
-  return ftell(ptr);
+  return ftell(ptr) / sizeof(binary);
 }
 
 static u64 table_getlastindex(void) {
   FILE *ptr = fopen(".build/cbin.b", "rb");
-  u64 size = (table_getctxsize(ptr) / sizeof(binary));
+  u64 size = table_getctxsize(ptr);
   fclose(ptr);
   return size;
 }
 
 // This can be slower than find
-static void table_addctx(ctx *c, u64 index, u64 pkhdr, void *p, u64 ctxstructlen) {
+void table_addctx(ctx *c, u64 index, u64 pkhdr, void *p, u64 ctxstructlen) {
   c->packedheader = pkhdr;
   c->index = index;
   memcpy(((struct prs*)(c->structure)), ((struct prs*)p), ctxstructlen);
@@ -80,7 +80,7 @@ static bool table_search(char fn[], binary *bin, binary *dataall, u64 *header, u
   struct prs *pp = (void*)malloc(sizeof(struct prs));
   person->structure = (void*)malloc(sizeof(struct prs));
   FILE *ptr = fopen(fn, "rb");
-  for (u64 j = 0; j < (table_getctxsize(ptr) / sizeof(binary)) / DBLENGTH; j++) {
+  for (u64 j = 0; j < table_getctxsize(ptr) / DBLENGTH; j++) {
     fseek(ptr, j * (DBLENGTH * sizeof(binary) + 1), SEEK_SET);
     fread(dataall, sizeof(binary) * DBLENGTH, 1, ptr);
     for (u64 i = 0; i < DBLENGTH; i++) {
