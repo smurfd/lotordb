@@ -6,6 +6,12 @@
 #include "db_tables.h"
 #include "ciphers.h"
 
+struct prs {
+  u64 age;
+  float height;
+  char name[20];
+};
+
 // TODO: Randomize these to file for program to use
 static uint8_t iv1[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,\
   0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, key1[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,\
@@ -19,12 +25,10 @@ void table_recv(const int s, tbls *t) {
   recv(s, t, sizeof(struct tbls), 0);
 }
 
-static void table_getperson(data *person, binary *datatmp) {
+static void table_getperson(data *person, binary *datatmp, void *p) {
   memcpy(&person->packedheader, datatmp->encrypted, sizeof(u64));
-  memcpy(&person->index, datatmp->encrypted + sizeof(u64), sizeof(u64));
-  memcpy(&person->name, datatmp->encrypted + sizeof(u64) + sizeof(u64), 20 * sizeof(char));
-  memcpy(&person->age, datatmp->encrypted + sizeof(u64) + sizeof(u64) + 20 * sizeof(char), sizeof(u64));
-  memcpy(&person->height, datatmp->encrypted + sizeof(u64) + sizeof(u64) + 20 * sizeof(char) + sizeof(u64), sizeof(float));
+  memcpy(&person->index, (datatmp->encrypted)+ sizeof(u64), sizeof(u64));
+  memcpy(person->structure, datatmp->encrypted + sizeof(u64) + sizeof(u64), sizeof(struct prs));
 }
 
 static void table_getheaders(u64 *header, binary *data) {
@@ -46,18 +50,17 @@ static u64 table_getlastindex(void) {
 }
 
 // This can be slower than find
-static void table_addperson(data *person, u64 index, char *name, u64 pkhdr, u64 age, float h) {
-  strncpy(person->name, name, 20);
+static void table_adddata(data *person, u64 index, u64 pkhdr, void *p) {
   person->packedheader = pkhdr;
-  person->age = age;
-  person->height = h;
   person->index = index;
+  memcpy(((struct prs*)(person->structure)), ((struct prs*)p), sizeof(struct prs));
 }
 
-void table_writeperson(data person, binary *datatmp, FILE *write_ptr) {
+void table_writeperson(data *person, binary *datatmp, FILE *write_ptr) {
   // "convert" data to "binary" data
   memset(datatmp->encrypted, (uint8_t)' ', 512); // "PAD" the data
-  memcpy(datatmp->encrypted, (uint8_t*)&person, sizeof(data));
+  memcpy(datatmp->encrypted, (uint8_t*)person, sizeof(u64) + sizeof(u64));
+  memcpy(datatmp->encrypted + sizeof(u64) + sizeof(u64), (uint8_t*)person->structure, sizeof(struct prs));
   aes_gcm_encrypt(datatmp->encrypted, datatmp->encrypted, 512, key1, 32, iv1, 32);
   fwrite(datatmp->encrypted, sizeof(binary), 1, write_ptr);
 }
@@ -65,17 +68,22 @@ void table_writeperson(data person, binary *datatmp, FILE *write_ptr) {
 static void table_createdata(char fn[], binary *datatmp) {
   FILE *write_ptr = fopen(fn, "ab");
   data person;
+  person.structure = malloc(sizeof(struct prs));
   u64 index = table_getlastindex() + 1;
   for (u64 i = 0; i < DBLENGTH; i++) {
-    table_addperson(&person, index++, "bob", 1234567890 + i, 32 + i, 6.6);
-    table_writeperson(person, datatmp, write_ptr);
+    struct prs p = {(int)(33+i), 6.8, "smurfan"};
+    table_adddata(&person, index++, 1234567890 + i, (struct prs*)&p);
+    table_writeperson(&person, datatmp, write_ptr);
   }
+  free(person.structure);
   fclose(write_ptr);
 }
 
 // TODO: this is stupid now when we add everything in order
 static bool table_search(char fn[], binary *datatmp, binary *dataall, u64 *header, u64 nr) {
-  data person;
+  data *person = (void*)malloc(sizeof(data));
+  struct prs *pp = (void*)malloc(sizeof(struct prs));
+  person->structure = (void*)malloc(sizeof(struct prs));
   FILE *ptr = fopen(fn, "rb");
   for (u64 j = 0; j < (table_getdatasize(ptr) / sizeof(binary)) / DBLENGTH; j++) {
     fseek(ptr, j * (DBLENGTH * sizeof(binary) + 1), SEEK_SET);
@@ -84,20 +92,23 @@ static bool table_search(char fn[], binary *datatmp, binary *dataall, u64 *heade
       memcpy(datatmp, dataall + i, sizeof(binary));
       aes_gcm_decrypt(datatmp->encrypted, datatmp->encrypted, 512, key1, 32, iv1, 32);
       table_getheaders(header, dataall + i);
-      table_getperson(&person, datatmp);
-      if (person.age == nr) {
+      table_getperson(person, datatmp, &pp);
+      if (((struct prs*)((struct data*)person)->structure)->age == nr) {
         printf("found\n");
+        free(pp);
         fclose(ptr);
         return true;
       }
     }
   }
+  free(pp);
+  free(person);
   fclose(ptr);
   return false;
 }
 
 void table_setperson(tbls *t, data person) {
-  memcpy(&(*t).p, &person, sizeof(data));
+  memcpy(&(*t).p, &person, sizeof(u64) + sizeof(u64) + sizeof(struct prs));
 }
 
 //
