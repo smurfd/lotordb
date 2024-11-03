@@ -10,21 +10,22 @@ typedef struct binary {
   uint8_t encrypted[512];
 } binary;
 
-typedef struct data {
+typedef struct ctx {
   u64 packedheader;
   u64 index;
   void *structure;
-} data;
+  u64 structurelen;
+} ctx;
 
 typedef struct tbls {
-  data p;
+  ctx p;
 } tbls;
 
 void table_send(const int s, tbls *t);
 void table_recv(const int s, tbls *t);
 int table_find(u64 nr);
-void table_setperson(tbls *t, data person);
-void table_writeperson(data *person, binary *datatmp, FILE *write_ptr);
+void table_setctx(tbls *t, ctx c);
+void table_writectx(ctx *c, binary *bin, FILE *write_ptr);
 #endif
 
 /*
