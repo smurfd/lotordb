@@ -113,5 +113,5 @@ void server_end(connection c) {
 //
 // Generate the server shared key
 void generate_shared_cryptokey_server(cryptokey *k1, cryptokey *k2, head *h) {
-  (*k2).shar = (*h).p % (int64_t)pow((*k2).publ, (*k1).priv);
+  (*k2).shar = (*h).p % (long long int)pow((*k2).publ, (*k1).priv);
 }

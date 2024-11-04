@@ -80,7 +80,7 @@ int client_handle(connection conn) {
     perror("Could not create thread");
     return 1;
   }
-  pthread_join(thread , NULL);
+  pthread_join(thread, NULL);
   return conn.socket;
 }
 
@@ -101,5 +101,5 @@ void client_end(connection c) {
 //
 // Generate the client shared key
 void generate_shared_cryptokey_client(cryptokey *k1, cryptokey *k2, head *h) {
-  (*k1).shar = (*h).p % (int64_t)pow((*k1).publ, (*k2).priv);
+  (*k1).shar = (*h).p % (long long int)pow((*k1).publ, (*k2).priv);
 }

@@ -106,7 +106,7 @@ cryptokey generate_cryptokeys(head *h) {
   cryptokey k;
 
   k.priv = u64rnd();
-  k.publ = (int64_t)pow((*h).g, k.priv) % (*h).p;
+  k.publ = (long long int)pow((*h).g, k.priv) % (*h).p;
   return k;
 }
 
