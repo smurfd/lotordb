@@ -24,14 +24,17 @@ static void *client_connection_handler_ssl(void *conn) {
       char name[20];
     };
     struct prs pp = {33, 6.8, "smurfan"};
-    ctx p;
-    p.packedheader = 123456;
-    p.index = 2233;
-    memcpy(p.structure, &pp, sizeof(struct prs));
+    ctx *c = (void*)malloc(sizeof(ctx));
+    c->structure = malloc(sizeof(struct prs));
+    c->packedheader = 123456;
+    c->index = 2233;
+    memcpy(c->structure, &pp, sizeof(struct prs));
     tbls *t = (tbls*)malloc(sizeof(struct tbls));
-    table_setctx(t, p);
+    table_setctx(t, *c, sizeof(struct prs));
     table_send(sock, t);
-    free(t);
+    if (c->structure != NULL) free(c->structure);
+    if (c != NULL) free(c);
+    if (t != NULL) free(t);
   }
   return 0;
 }

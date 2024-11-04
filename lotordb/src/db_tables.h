@@ -21,15 +21,16 @@ typedef struct tbls {
   ctx p;
 } tbls;
 
+int table_find(u64 nr);
+u64 table_getctxsize(FILE *ptr);
 void table_send(const int s, tbls *t);
 void table_recv(const int s, tbls *t);
-int table_find(u64 nr);
-void table_setctx(tbls *t, ctx c);
-u64 table_getctxsize(FILE *ptr);
+void table_setctx(tbls *t, ctx c, u64 len);
 void table_getheaders(u64 *header, binary *bin);
-void table_getctx(ctx *c, binary *bin, u64 ctxstructlen);
 void table_writectx(ctx *c, binary *bin, FILE *write_ptr);
+void table_readctx(binary *dataall, FILE *read_ptr, u64 j);
 void table_addctx(ctx *c, u64 index, u64 pkhdr, void *p, u64 ctxstructlen);
+void table_getctx(ctx *c, u64 *header, binary *bin, binary *dataall, u64 len);
 #endif
 
 /*
