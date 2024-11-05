@@ -33,9 +33,9 @@ static void *server_connection_handler_ssl(void *conn) {
     FILE *write_ptr = fopen("/tmp/dbsrv1.db", "ab");
     binary *datatmp = malloc(sizeof (binary));
     table_writectx(&(*t).p, datatmp, write_ptr);
-    free(datatmp);
     fclose(write_ptr);
-    free(t);
+    if (datatmp != NULL) free(datatmp);
+    if (t != NULL) free(t);
   }
   return 0;
 }

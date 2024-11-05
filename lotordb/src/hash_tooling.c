@@ -60,8 +60,9 @@ void bit_hex_str(char hs[], const uint8_t *d, const int len) {
 void bit_pack(u64 big[], const uint8_t byte[]) {
   for(uint32_t i = 0; i < 6; ++i) {
     const uint8_t *dig = byte + 8 * (6 - 1 - i); big[i] = 0;
-    for (int j = 7; j >= 0; j--)
+    for (int j = 7; j >= 0; j--) {
       big[i] |= ((u64)dig[7 - j] << (j * 8));
+    }
   }
 }
 
@@ -78,8 +79,9 @@ void bit_pack(u64 big[], const uint8_t byte[]) {
 void bit_unpack(uint8_t byte[], const u64 big[]) {
   for(uint32_t i = 0; i < 6; ++i) {
     uint8_t *dig = byte + 8 * (6 - 1 - i);
-    for (int j = 7; j >= 0; j--)
+    for (int j = 7; j >= 0; j--) {
       dig[7 - j] = big[i] >> (j * 8);
+    }
   }
 }
 
@@ -87,14 +89,15 @@ void bit_unpack(uint8_t byte[], const u64 big[]) {
 // Base64 encoder
 int base64enc(char ed[], const uint8_t *data, int inl) {
   int tab[] = {0, 2, 1}, ol = 4 * ((inl + 2) / 3);
-
   for (int i = 0, j = 0; i < inl;) {
     uint32_t a = oct(i++, inl, data), b = oct(i++, inl, data), c = oct(i++, inl, data),tri = (a << 0x10)+(b << 0x08) + c;
-    for (int k = 3; k >=0; k--)
+    for (int k = 3; k >=0; k--) {
       ed[j++] = enc[(tri >> k * 6) & 0x3f];
+    }
   }
-  for (int i = 0; i < tab[inl % 3]; i++)
+  for (int i = 0; i < tab[inl % 3]; i++) {
     ed[ol - 1 - i] = '=';
+  }
   ed[ol] = '\0';
   return ol;
 }
@@ -109,9 +112,11 @@ int base64dec(uint8_t dd[], const char *data, int inl) {
   for (int i = 0, j = 0; i < inl;) {
     uint32_t a = sex(data, dec, i++), b = sex(data, dec, i++), c = sex(data, dec, i++), d = sex(data, dec, i++);
     uint32_t tri = (a << 3 * 6) + (b << 2 * 6) + (c << 1 * 6) + (d << 0 * 6);
-    if (j < ol)
-      for (int k = 2; k >= 0; k--)
+    if (j < ol) {
+      for (int k = 2; k >= 0; k--) {
         dd[j++] = (tri >> k * 8) & 0xff;
+      }
+    }
   }
   return ol;
 }

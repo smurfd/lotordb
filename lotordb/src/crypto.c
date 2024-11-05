@@ -95,7 +95,6 @@ void send_cryptokey(connection c, head *h, cryptokey *k) {
 // Receive key from client/server
 void receive_cryptokey(connection c, head *h, cryptokey *k) {
   int sock = *((connection*)&c)->clisocket;
-
   // Just receive the public key
   recv(sock, h, sizeof(head), 0);
   recv(sock, &k->publ, sizeof(u64), 0);
@@ -105,7 +104,6 @@ void receive_cryptokey(connection c, head *h, cryptokey *k) {
 // Generate a public and private keypair
 cryptokey generate_cryptokeys(head *h) {
   cryptokey k;
-
   k.priv = u64rnd();
   k.publ = (long long int)pow((*h).g, k.priv) % (*h).p;
   return k;

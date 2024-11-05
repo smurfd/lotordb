@@ -16,7 +16,7 @@ static void *client_connection_handler_ssl(void *conn) {
     key_write(k);
     key_del(k);
     key_send(sock, k);
-    free(k);
+    if (k != NULL) free(k);
   } else if (((connection*)conn)->type == 2) {
     struct prs {
       u64 age;
