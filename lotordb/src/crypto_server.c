@@ -70,8 +70,8 @@ static void *server_connection_handler(void *conn) {
 static int server_run(const char *host, const char *port) {
   sockets sock = communication_init(host, port);
   if (bind(sock.descriptor, (struct sockaddr*)&(sock.addr), sizeof(sock.addr)) < 0) {
-    perror("Bind error");
-    return 1;
+    perror("\"[o.o]\" \t Bind error");
+    exit(0);
   }
   listen(sock.descriptor, 3);
   return sock.descriptor;
@@ -80,7 +80,7 @@ static int server_run(const char *host, const char *port) {
 int server_handle(connection conn) {
   int client_sock, c = sizeof(struct sockaddr_in);
   struct sockaddr_in client;
-  while ((client_sock = accept(conn.socket, (struct sockaddr *)&client, (socklen_t*)&c))) {
+  while ((client_sock = accept(conn.socket, (struct sockaddr*)&client, (socklen_t*)&c))) {
     pthread_t thread;
     conn.clisocket = &client_sock;
     if (pthread_create(&thread, NULL, server_connection_handler, (void*)&conn) < 0) {
@@ -100,7 +100,7 @@ int server_handle(connection conn) {
 // Initialize server
 connection server_init(const char *host, const char *port, int type) {
   int socket_desc = server_run(host, port);
-  printf("\"[o.o]\" eating food...\n");
+  printf("\"[o.o]\" \t eating food...\n");
   return connection_init(socket_desc, type);
 }
 

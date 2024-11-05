@@ -87,7 +87,7 @@ int client_handle(connection conn) {
 //
 // Initialize client
 connection client_init(const char *host, const char *port, int type) {
-  printf("\"[o.o]\" finding food...\n");
+  printf("\"[o.o]\" \t finding food...\n");
   int socket_desc = client_run(host, port);
   return connection_init(socket_desc, type);
 }

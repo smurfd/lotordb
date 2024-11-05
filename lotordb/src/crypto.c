@@ -22,7 +22,8 @@ sockets communication_init(const char *host, const char *port) {
   sockets sock;
   sock.descriptor = socket(AF_INET , SOCK_STREAM , 0);
   if (sock.descriptor == -1) {
-    printf("Could not create socket\n");
+    perror("Could not create socket\n");
+    exit(0);
   }
   memset(&(sock.addr), '\0', sizeof(sock.addr));
   sock.addr.sin_family = AF_INET;
