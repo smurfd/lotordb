@@ -11,9 +11,13 @@ crypto:
 	${CL} -c crypto.c -o ${BUILD}/crypto.o
 
 crypto_server:
+	${CL} -c examples/tables_example_server.c -o ${BUILD}/tables_server.o
+	${CL} -c examples/keys_example_server.c -o ${BUILD}/keys_server.o
 	${CL} -c crypto_server.c -o ${BUILD}/crypto_server.o
 
 crypto_client:
+	${CL} -c examples/tables_example_client.c -o ${BUILD}/tables_client.o
+	${CL} -c examples/keys_example_client.c -o ${BUILD}/keys_client.o
 	${CL} -c crypto_client.c -o ${BUILD}/crypto_client.o
 
 db_keystore:
@@ -37,6 +41,6 @@ test:
 	${BUILD}/tests
 
 clean:
-	rm ${BUILD}/crypto.o ${BUILD}/db_keystore.o ${BUILD}/db_tables.o\
-	  ${BUILD}/hash.o ${BUILD}/hash_tooling.o ${BUILD}/keys.o ${BUILD}/ciphers.o\
-	  ${BUILD}/crypto_client.o ${BUILD}/crypto_server.o ${BUILD}/tests
+	rm ${BUILD}/crypto.o ${BUILD}/keys_client.o ${BUILD}/tables_client.o ${BUILD}/tests ${BUILD}/ciphers_aes_gcm.o \
+${BUILD}/crypto_client.o ${BUILD}/tables_server.o ${BUILD}/keys_server.o ${BUILD}/crypto_server.o ${BUILD}/db_keystore.o \
+${BUILD}/hash.o ${BUILD}/hash_tooling.o ${BUILD}/db_tables.o ${BUILD}/ciphers.o ${BUILD}/keys.o ${BUILD}/*bin.b

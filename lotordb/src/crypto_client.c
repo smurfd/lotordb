@@ -4,37 +4,21 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/socket.h>
+#include "examples/tables_example_client.h"
+#include "examples/keys_example_client.h"
 #include "crypto_client.h"
 #include "db_tables.h"
 #include "crypto.h"
 
+//
+// See examples/*_example_client.c to modify the clients functionallity
+// Recompile after change
 static void *client_connection_handler_ssl(void *conn) {
   int sock = *((connection*)conn)->clisocket;
   if (((connection*)conn)->type == 1) {
-    kvsh *k = (kvsh*)malloc(sizeof(struct kvsh));
-    set_key_value_store(k, "0002", "testvalue", "/tmp");
-    key_write(k);
-    key_del(k);
-    key_send(sock, k);
-    if (k != NULL) free(k);
+    key_client(sock);
   } else if (((connection*)conn)->type == 2) {
-    struct prs {
-      u64 age;
-      float height;
-      char name[20];
-    };
-    struct prs pp = {33, 6.8, "smurfan"};
-    ctx *c = (void*)malloc(sizeof(ctx));
-    c->structure = malloc(sizeof(struct prs));
-    c->packedheader = 123456;
-    c->index = 2233;
-    memcpy(c->structure, &pp, sizeof(struct prs));
-    tbls *t = (tbls*)malloc(sizeof(struct tbls));
-    table_setctx(t, *c, sizeof(struct prs));
-    table_send(sock, t);
-    if (c->structure != NULL) free(c->structure);
-    if (c != NULL) free(c);
-    if (t != NULL) free(t);
+    table_client(sock);
   }
   return 0;
 }

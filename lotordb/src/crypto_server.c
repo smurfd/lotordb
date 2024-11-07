@@ -5,6 +5,8 @@
 #include <assert.h>
 #include <pthread.h>
 #include <sys/socket.h>
+#include "examples/tables_example_server.h"
+#include "examples/keys_example_server.h"
 #include "crypto_server.h"
 #include "db_tables.h"
 #include "crypto.h"
@@ -22,20 +24,15 @@ static head *set_header(head *h, u64 a, u64 b) {
   return h;
 }
 
+//
+// See examples/*_example_server.c to modify the servers functionallity
+// Recompile after change
 static void *server_connection_handler_ssl(void *conn) {
   int sock = *((connection*)conn)->clisocket;
   if (((connection*)conn)->type == 1) { // keystore
-    kvsh k;
-    key_recv(sock, &k);
+    key_server(sock);
   } else if (((connection*)conn)->type == 2) { // tables
-    tbls *t = (tbls*)malloc(sizeof(struct tbls));
-    table_recv(sock, t);
-    FILE *write_ptr = fopen("/tmp/dbsrv1.db", "ab");
-    binary *datatmp = malloc(sizeof (binary));
-    table_writectx(&(*t).p, datatmp, write_ptr);
-    fclose(write_ptr);
-    if (datatmp != NULL) free(datatmp);
-    if (t != NULL) free(t);
+    table_server(sock);
   }
   return 0;
 }
