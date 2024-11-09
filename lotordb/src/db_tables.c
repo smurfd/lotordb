@@ -70,3 +70,20 @@ void table_writectx(ctx *c, binary *bin, FILE *write_ptr) {
   aes_gcm_encrypt(bin->encrypted, bin->encrypted, 512, key1, 32, iv1, 32);
   fwrite(bin->encrypted, sizeof(binary), 1, write_ptr);
 }
+
+void table_malloc(binary **bin, binary **dataall, u64 **header, ctx **c, u64 len) {
+  (*bin) = malloc(sizeof(binary));
+  (*dataall) = malloc(sizeof(binary) * DBLENGTH);
+  (*header) = malloc(sizeof(u64) * DBLENGTH);
+  (*c) = (void*)malloc(sizeof(ctx));
+  (*c)->structure = malloc(len);
+}
+
+void table_free(binary **bin, binary **dataall, u64 **header, ctx **c, FILE *read_ptr) {
+  if ((*bin) != NULL) free((*bin));
+  if ((*dataall) != NULL) free((*dataall));
+  if ((*header) != NULL) free((*header));
+  if ((*c) != NULL) free((*c));
+  if ((*c)->structure != NULL) free((*c)->structure);
+  if (read_ptr != NULL) fclose(read_ptr);
+}

@@ -10,6 +10,7 @@
 #include "../crypto.h"
 #include "../db_tables.h"
 #include "../db_keystore.h"
+#include "../examples/tables_example_struct.h"
 
 static uint8_t iv1[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 static uint8_t key1[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
@@ -60,58 +61,43 @@ uint8_t test_keys_verify(void) {
   return 1;
 }
 
-// TODO: this needs to be wayyy simpler. More helper functions
+static void table_filltestdata(ctx **c, binary **bin, FILE *write_ptr) {
+  for (u64 i = 0; i < DBLENGTH; i++) {
+    struct tabletest p = {i, 6.8, "testsmurfan", 666, 1};
+    table_addctx(*c, i, 12345678901111 + i, &p, sizeof(p));
+    table_writectx(*c, *bin, write_ptr);
+  }
+  if (write_ptr != NULL) fclose(write_ptr);
+}
+
 uint8_t test_db_table(void) {
-  // Define database table structure
-  struct prstest {
-    u64 age;
-    float height;
-    char name[20];
-    u64 nr;
-    int test;
-  };
+  binary *bin, *dataall;
+  u64 *header;
+  ctx *c;
   // Open database file for writing
   FILE *write_ptr = fopen("/tmp/dbtest1.db", "ab");
-  // Allocate memory
-  binary *bin = malloc(sizeof(binary)), *dataall = malloc(sizeof(binary) * DBLENGTH);
-  u64 *header = malloc(sizeof(u64) * DBLENGTH);
-  ctx *c = (void*)malloc(sizeof(ctx));
-  c->structure = malloc(sizeof(struct prstest));
-  // Create context for database & write to file
-  for (u64 i = 0; i < DBLENGTH; i++) {
-    struct prstest p = {i, 6.8, "testsmurfan", 666, 1};
-    table_addctx(c, i, 12345678901111 + i, (struct prstest*)&p, sizeof(struct prstest));
-    table_writectx(c, bin, write_ptr);
-  }
-  fclose(write_ptr);
+  // Malloc memory for variables used
+  table_malloc(&bin, &dataall, &header, &c, sizeof(struct tabletest));
+  // Create context for database, write to file & close file
+  table_filltestdata(&c, &bin, write_ptr);
   // Open database file for reading
   FILE *read_ptr = fopen("/tmp/dbtest1.db", "rb");
-  for (u64 j = 0; j < table_getctxsize(read_ptr) / DBLENGTH; j++) {
-    // Loop the whole database, in chunks of DBLENGTH
+  for (u64 j = 0; j < table_getctxsize(read_ptr) / DBLENGTH; j++) { // Loop the whole database, in chunks of DBLENGTH
     // Read binary chunks DBLENGTH
     table_readctx(dataall, read_ptr, j);
     for (u64 i = 0; i < DBLENGTH; i++) {
-      // For each chunk, copy data & decrypt
-      table_getctx(c, header, bin, dataall + i, sizeof(struct prstest));
-      // Search for age == 666
-      if (((struct prstest*)((struct ctx*)c)->structure)->age == 666) {
+      // For each chunk, copy data & decrypt. tabletest defined in ../examples/tables_example_struct.h
+      table_getctx(c, header, bin, dataall + i, sizeof(struct tabletest)); 
+      if (((struct tabletest*)((struct ctx*)c)->structure)->age == 666) { // Search for age == 666
         printf("found\n");
-        // Free memory
-        if (c->structure != NULL) free(c->structure);
-        if (header != NULL) free(header);
-        if (bin != NULL) free(bin);
-        if (c != NULL) free(c);
-        fclose(read_ptr);
+        // Free memory & close filepointer
+        table_free(&bin, &dataall, &header, &c, read_ptr);
         return 1;
       }
     }
   }
-  // Free memory
-  if (c->structure != NULL) free(c->structure);
-  if (header != NULL) free(header);
-  if (bin != NULL) free(bin);
-  if (c != NULL) free(c);
-  fclose(read_ptr);
+  // Free memory & close filepointer
+  table_free(&bin, &dataall, &header, &c, read_ptr);
   return 0;
 }
 

@@ -31,6 +31,8 @@ void table_writectx(ctx *c, binary *bin, FILE *write_ptr);
 void table_readctx(binary *dataall, FILE *read_ptr, u64 j);
 void table_addctx(ctx *c, u64 index, u64 pkhdr, void *p, u64 ctxstructlen);
 void table_getctx(ctx *c, u64 *header, binary *bin, binary *dataall, u64 len);
+void table_malloc(binary **bin, binary **dataall, u64 **header, ctx **c, u64 len);
+void table_free(binary **bin, binary **dataall, u64 **header, ctx **c, FILE *read_ptr);
 #endif
 
 /*
