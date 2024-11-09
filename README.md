@@ -34,4 +34,4 @@ make -Clotordb/src  # Builds and runs test suite
 ./lotordb/src/.build/tests server tables  # Run in one terminal, table server
 ./lotordb/src/.build/tests client tables  # Run in one terminal, table client
 ```
-                                                                            "[o.o]"
+"[o.o]"
