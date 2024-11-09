@@ -59,7 +59,7 @@ class Client(threading.Thread):
 
 if __name__ == '__main__':
   print('Client')
-  if sys.argv[1] == 'table':
+  if sys.argv[1] == 'tables':
     Client().client_table('localhost', 7332, DbIndex(1, 1, 1, 1, 1, 1, 1, 0, '.lib/db9.dbindex'), DbData(1, 1, 1, 1, 1, 1, [1234] * 1234))
-  elif sys.argv[1] == 'key':
+  elif sys.argv[1] == 'keys':
     Client().client_key('localhost', 7331)

@@ -98,7 +98,7 @@ class Server(threading.Thread):
 
 if __name__ == '__main__':
   print('Server')
-  if sys.argv[1] == 'table':
+  if sys.argv[1] == 'tables':
     Server.Listener('localhost', 7332, Handler.HandlerTable, test=False)
-  elif sys.argv[1] == 'key':
+  elif sys.argv[1] == 'keys':
     Server.Listener('localhost', 7331, Handler.HandlerKey, test=False)
