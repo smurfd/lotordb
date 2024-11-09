@@ -87,7 +87,7 @@ uint8_t test_db_table(void) {
     table_readctx(dataall, read_ptr, j);
     for (u64 i = 0; i < DBLENGTH; i++) {
       // For each chunk, copy data & decrypt. tabletest defined in ../examples/tables_example_struct.h
-      table_getctx(c, header, bin, dataall + i, sizeof(struct tabletest)); 
+      table_getctx(c, header, bin, dataall + i, sizeof(struct tabletest));
       if (((struct tabletest*)((struct ctx*)c)->structure)->age == 666) { // Search for age == 666
         printf("found\n");
         // Free memory & close filepointer
