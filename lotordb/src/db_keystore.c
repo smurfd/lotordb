@@ -8,7 +8,7 @@
 #include "db_keystore.h"
 #include "hash.h"
 
-void set_key_value_store(kvsh *k, char key[256], char value[256], char store[256]) {
+void key_set(kvsh *k, char key[256], char value[256], char store[256]) {
   strncpy((*k).key, key, 255);
   strncpy((*k).value, value, 255);
   strncpy((*k).store, store, 255);
@@ -20,21 +20,20 @@ void key_del(kvsh *k) {
   char s[512];
   strncpy(s, (*k).store, 512);
   strncat(s, "/", 2);
-  strncat(s, (*k).key, 512-strlen((*k).store) - 1);
+  strncat(s, (*k).key, 512 - strlen((*k).store) - 1);
   unlink(s);
 }
 
 void key_write(kvsh *k) {
   struct stat st = {0};
-  FILE *f;
   if (stat((*k).store, &st) == -1) {
     mkdir((*k).store, 0700);
   }
   char s[512];
   strncpy(s, (*k).store, 512);
   strncat(s, "/", 2);
-  strncat(s, (*k).key, 512-strlen((*k).store)-1);
-  f = fopen(s, "w");
+  strncat(s, (*k).key, 512 - strlen((*k).store) - 1);
+  FILE *f = fopen(s, "w");
   fprintf(f, "%s\n", (*k).value);
   fclose(f);
 }

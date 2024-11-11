@@ -57,7 +57,7 @@ static void *server_connection_handler(void *conn) {
       assert((u64)dat[i] == (u64)i);
     }
     if (pthread_create(&ssl_thread, NULL, server_connection_handler_ssl, (void*)conn) < 0) {
-      perror("Could not create thread");
+      perror("\"[o.o]\" \t Could not create thread");
     }
     pthread_join(ssl_thread, NULL);
   }
@@ -81,13 +81,13 @@ int server_handle(connection conn) {
     pthread_t thread;
     conn.clisocket = &client_sock;
     if (pthread_create(&thread, NULL, server_connection_handler, (void*)&conn) < 0) {
-      perror("Could not create thread");
+      perror("\"[o.o]\" \t Could not create thread");
       return 1;
     }
     pthread_join(thread, NULL);
   }
   if (client_sock < 0) {
-    perror("No clients connected");
+    perror("\"[o.o]\" \t No clients connected");
     return 1;
   }
   return client_sock;

@@ -22,7 +22,7 @@ sockets communication_init(const char *host, const char *port) {
   sockets sock;
   sock.descriptor = socket(AF_INET , SOCK_STREAM , 0);
   if (sock.descriptor == -1) {
-    perror("Could not create socket\n");
+    perror("\"[o.o]\" \t Could not create a socket\n");
     exit(0);
   }
   memset(&(sock.addr), '\0', sizeof(sock.addr));
@@ -45,7 +45,7 @@ connection connection_init(int8_t descriptor, int type) {
 // Print usage information
 int usage(char *arg, int count, char *clisrv) {
   if (count != 3) {
-    printf("Usage:\n");
+    printf("\"[o.o]\" \t Usage:\n");
     printf("  %s keys   # for keyvaluestore %s\n", clisrv, clisrv);
     printf("  %s tables # for table database %s\n", clisrv, clisrv);
     exit(0);
@@ -54,7 +54,7 @@ int usage(char *arg, int count, char *clisrv) {
   if (strcmp(arg, "keys")==0) type = 1;
   else if (strcmp(arg, "tables")==0) type = 2;
   else {
-    printf("wrong %s type\n", clisrv);
+    printf("\"[o.o]\" \t Wrong %s type\n", clisrv);
     exit(0);
   }
   return type;

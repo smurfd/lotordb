@@ -70,6 +70,7 @@ static void table_filltestdata(ctx **c, binary **bin, FILE *write_ptr) {
   if (write_ptr != NULL) fclose(write_ptr);
 }
 
+// Create a local database and search for the age 666
 uint8_t test_db_table(void) {
   binary *bin, *dataall;
   u64 *header;
@@ -89,7 +90,7 @@ uint8_t test_db_table(void) {
       // For each chunk, copy data & decrypt. tabletest defined in ../examples/tables_example_struct.h
       table_getctx(c, header, bin, dataall + i, sizeof(struct tabletest));
       if (((struct tabletest*)((struct ctx*)c)->structure)->age == 666) { // Search for age == 666
-        printf("found\n");
+        printf("Found\n");
         // Free memory & close filepointer
         table_free(&bin, &dataall, &header, &c, read_ptr);
         return 1;
@@ -103,8 +104,8 @@ uint8_t test_db_table(void) {
 
 int main(int argc, char** argv) {
   int ret = 1;
-  if (argc == 1) {
-    printf("\"[o.o]\"              testing ....              \"[o.o]\"\n\n");
+  if (argc == 1) { // When run without arguments
+    printf("\"[o.o]\" \t testing .... \t \"[o.o]\"\n\n");
     ret &= test_genkeys();
     ret &= test_keys_verify();
     ret &= test_ciphers_aes_gcm_text32();
@@ -113,11 +114,11 @@ int main(int argc, char** argv) {
     if (ret) printf("\nOK\n");
     else printf("\nNot OK\n");
   } else {
-    if (strcmp(argv[1], "server") == 0) {
+    if (strcmp(argv[1], "server") == 0) { // When run with server arguments and either keys or tables
       connection c = server_init("127.0.0.1", "9998", usage(argv[2], argc, "server"));
       server_handle(c);
       server_end(c);
-    } else if (strcmp(argv[1], "client") == 0) {
+    } else if (strcmp(argv[1], "client") == 0) { // When run with client arguments and either keys or tables
       connection c = client_init("127.0.0.1", "9998", usage(argv[2], argc, "client"));
       if (client_handle(c) < 0) {
         printf("Cant connect to server\n");

@@ -5,7 +5,7 @@
 
 void key_client(int sock) {
   kvsh *k = (kvsh*)malloc(sizeof(struct kvsh));
-  set_key_value_store(k, "0002", "testvalue", "/tmp");
+  key_set(k, "0002", "testvalue", "/tmp");
   key_write(k);
   key_del(k);
   key_send(sock, k);

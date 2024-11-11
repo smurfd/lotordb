@@ -24,7 +24,7 @@ static void *client_connection_handler_ssl(void *conn) {
 }
 
 static void *client_connection_handler(void *conn) {
-  u64 dat[BLOCK], cd[BLOCK];
+  u64 cd[BLOCK]; // dat[BLOCK]
   cryptokey k1, k2;
   head h;
   receive_cryptokey(*(connection*)conn, &h, &k1);                               // Handshake vvv
@@ -33,15 +33,17 @@ static void *client_connection_handler(void *conn) {
   generate_shared_cryptokey_client(&k1, &k2, &h);                               //
   printf("share : 0x%.20llx\n", k1.shar);                                       //
   for (u64 i = 0; i < 12; i++) {                                                //
-    dat[i] = (u64)i;                                                            //
-    handler_cryptography(dat[i], k1, &cd[i]);                                   //
+    //dat[i] = (u64)i;                                                          //
+    //handler_cryptography(dat[i], k1, &cd[i]);                                 //
+    handler_cryptography((u64)i, k1, &cd[i]);                                   //
   }                                                                             //
   if (send_cryptodata(*(connection*)conn, cd, &h, 12) > 0) {                    // Handshake ^^^
     // TODO: send less data
     // TODO: If we are not communicating using SSL, Abort!
     pthread_t ssl_thread;
     if (pthread_create(&ssl_thread, NULL, client_connection_handler_ssl, (void*)conn) < 0) {
-      perror("could not create thread");
+      perror("\"[o.o]\" \t Could not create a thread");
+      return (void*)1;
     }
     pthread_join(ssl_thread, NULL);
   }
@@ -51,7 +53,7 @@ static void *client_connection_handler(void *conn) {
 static int client_run(const char *host, const char *port) {
   sockets sock = communication_init(host, port);
   if (connect(sock.descriptor , (struct sockaddr*)&(sock.addr) , sizeof(sock.addr)) < 0) {
-    perror("Connection error");
+    perror("\"[o.o]\" \t Connection error");
     return 1;
   }
   return sock.descriptor;
@@ -61,7 +63,7 @@ int client_handle(connection conn) {
   pthread_t thread;
   conn.clisocket = &(conn.socket);
   if (pthread_create(&thread, NULL, client_connection_handler, (void*)&conn) < 0) {
-    perror("Could not create thread");
+    perror("\"[o.o]\" \t Could not create a thread");
     return 1;
   }
   pthread_join(thread, NULL);
