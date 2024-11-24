@@ -36,7 +36,7 @@ int main(void) {
   printing("after modreduce: ", r);
   for (int i = 0; i < 32; i++) st(r[i]);
   printing("after st: ", r);
-  double time_taken = ((double)clock() - t) / CLOCKS_PER_SEC; // in seconds 
-  printf("took %f seconds to execute\n\n", time_taken); 
+  double time_taken = ((double)clock() - t) / CLOCKS_PER_SEC; // in seconds
+  printf("took %f seconds to execute\n\n", time_taken);
   printf("OK\n");
 }
