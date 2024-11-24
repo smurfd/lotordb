@@ -7,3 +7,4 @@
 .lib/
 lotordb/src/.build
 .python-version
+lotordb/src/rewrite/lotordb/src/.build
