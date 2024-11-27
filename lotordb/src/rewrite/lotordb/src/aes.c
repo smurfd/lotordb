@@ -13,107 +13,6 @@ static inline unsigned long long to_bin(const char *s) {
 }
 
 /*
-// Pseudo code from NIST.FIPS.197.pdf
-
-Cipher(byte in[4*Nb], byte out[4*Nb], word w[Nb*(Nr+1)])
-begin
-byte state[4,Nb]
-state = in
-AddRoundKey(state, w[0, Nb-1]) // See Sec. 5.1.4
-for round = 1 step 1 to Nr–1
-SubBytes(state) // See Sec. 5.1.1
-ShiftRows(state) // See Sec. 5.1.2
-MixColumns(state) // See Sec. 5.1.3
-AddRoundKey(state, w[round*Nb, (round+1)*Nb-1])
-end for
-SubBytes(state)
-ShiftRows(state)
-AddRoundKey(state, w[Nr*Nb, (Nr+1)*Nb-1])
-out = state
-end
-
-
-KeyExpansion(byte key[4*Nk], word w[Nb*(Nr+1)], Nk)
-begin
-word temp
-i = 0
-while (i < Nk)
-i = i+1
-end while
-w[i] = word(key[4*i], key[4*i+1], key[4*i+2], key[4*i+3])
-i = Nk
-while (i < Nb * (Nr+1)]
-temp = w[i-1]
-if (i mod Nk = 0)
-temp = SubWord(RotWord(temp)) xor Rcon[i/Nk]
-else if (Nk > 6 and i mod Nk = 4)
-temp = SubWord(temp)
-end if
-w[i] = w[i-Nk] xor temp
-i = i + 1
-end while
-end
-Note that Nk=4, 6, and 8 do not all have to be implemented;
-they are all included in the conditional statement above for
-conciseness. Specific implementation requirements for the
-Cipher Key are presented in Sec. 6.1.
-
-
-
-InvCipher(byte in[4*Nb], byte out[4*Nb], word w[Nb*(Nr+1)])
-begin
-byte state[4,Nb]
-state = in
-AddRoundKey(state, w[Nr*Nb, (Nr+1)*Nb-1]) // See Sec. 5.1.4
-for round = Nr-1 step -1 downto 1
-InvShiftRows(state) // See Sec. 5.3.1
-InvSubBytes(state) // See Sec. 5.3.2
-AddRoundKey(state, w[round*Nb, (round+1)*Nb-1])
-InvMixColumns(state) // See Sec. 5.3.3
-end for
-InvShiftRows(state)
-InvSubBytes(state)
-AddRoundKey(state, w[0, Nb-1])
-out = state
-end
-
-
-EqInvCipher(byte in[4*Nb], byte out[4*Nb], word dw[Nb*(Nr+1)])
-begin
-byte state[4,Nb]
-state = in
-AddRoundKey(state, dw[Nr*Nb, (Nr+1)*Nb-1])
-for round = Nr-1 step -1 downto 1
-InvSubBytes(state)
-InvShiftRows(state)
-InvMixColumns(state)
-AddRoundKey(state, dw[round*Nb, (round+1)*Nb-1])
-end for
-InvSubBytes(state)
-InvShiftRows(state)
-AddRoundKey(state, dw[0, Nb-1])
-out = state
-end
-For the Equivalent Inverse Cipher, the following pseudo code is added at
-the end of the Key Expansion routine (Sec. 5.2):
-for i = 0 step 1 to (Nr+1)*Nb-1
-dw[i] = w[i]
-end for
-for round = 1 step 1 to Nr-1
-InvMixColumns(dw[round*Nb, (round+1)*Nb-1]) // note change of
-type
-end for
-Note that, since InvMixColumns operates on a two-dimensional array of bytes
-while the Round Keys are held in an array of words, the call to
-InvMixColumns in this code sequence involves a change of type (i.e. the
-input to InvMixColumns() is normally the State array, which is considered
-to be a two-dimensional array of bytes, whereas the input here is a Round
-Key computed as a one-dimensional array of words).
-
-
-*/
-
-/*
 // https://www.rfc-editor.org/rfc/rfc8452.html
 // pseudocode
 
@@ -260,11 +159,18 @@ uint8_t *right_pad_to_multiple_of_16_bytes(uint8_t *input, int len) {
   return input;
 }
 
-#define AES(x, y) 0 // TODO: fix
+#define AES(x, y) 0 // TODO: fix : https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf // also return length
+#define POLYVAL(x, y) 0 // TODO: fix
 
 uint32_t little_endian_uint32(uint8_t x) {
   x = ((x << 8) & 0xFF00FF00) | ((x >> 8) & 0xFF00FF);
   return (x << 16) | (x >> 16);
+}
+
+u64 little_endian_uint64(u64 x) {
+  x = ((x << 8) & 0xFF00FF00FF00FF00ULL) | ((x >> 8) & 0x00FF00FF00FF00FFULL);
+  x = ((x << 16) & 0xFFFF0000FFFF0000ULL) | ((x >> 16) & 0x0000FFFF0000FFFFULL);
+  return (x << 32) | (x >> 32);
 }
 
 uint32_t read_little_endian_uint32(uint8_t *x) {
@@ -290,7 +196,7 @@ void derive_keys(uint8_t *key_generating_key, uint8_t *nonce, uint8_t **message_
   //}
 }
 
-uint8_t *AES_CTR(uint8_t *key, uint8_t* initial_counter_block, uint8_t *in, u64 inlen) {
+uint8_t *AES_CTR(uint8_t *key, uint8_t *initial_counter_block, uint8_t *in, u64 inlen) {
   //block = initial_counter_block;
   uint8_t *block = malloc(32);
   memcpy(block, initial_counter_block, 32);
@@ -307,7 +213,7 @@ uint8_t *AES_CTR(uint8_t *key, uint8_t* initial_counter_block, uint8_t *in, u64 
     block[2] = little_endian_uint32(*(&block[2]+1));
     block[3] = little_endian_uint32(*(&block[3]+1));
 
-    u64 todo = inlen;//min(bytelen(in), bytelen(keystream_block));
+    u64 todo = inlen;//min(inlen, key_generating_key);//min(bytelen(in), bytelen(keystream_block));
     for (int j = 0; j < todo; j++) {
       output = output + (keystream_block[j] ^ in[j]);
     }
@@ -317,9 +223,70 @@ uint8_t *AES_CTR(uint8_t *key, uint8_t* initial_counter_block, uint8_t *in, u64 
   return output;
 }
 
+uint8_t *encrypt(uint8_t *key_generating_key, uint8_t *nonce, uint8_t *plaintext, u64 plaintextlen, uint8_t *additional_data, u64 additional_datalen) {
+  if (plaintextlen > 68719476736 || additional_datalen > 68719476736) { // 2 ^ 36 == 68719476736
+    printf("Input text / data to long, exiting\n");
+    exit(0);
+  }
+  uint8_t **message_authentication_key, **message_encryption_key;
+  derive_keys(key_generating_key, nonce, &message_encryption_key, &message_authentication_key);
+  u64 length_block = little_endian_uint64(additional_datalen * 8) + little_endian_uint64(plaintextlen * 8);
+  uint8_t *padded_plaintext = right_pad_to_multiple_of_16_bytes(plaintext, plaintextlen);
+  uint8_t *padded_ad = right_pad_to_multiple_of_16_bytes(additional_data, additional_datalen);
+  u64 *S_s = POLYVAL(message_authentication_key, padded_ad + padded_plaintext + length_block);
+  for (int i = 0; i < 12; i++) {
+    S_s[i] ^= nonce[i];
+  }
+  S_s[15] &= 0x7f;
+  uint8_t *tag, *counter_block;
+  memcpy(tag, AES(message_encryption_key, S_s), 16); // TODO: fix correct length
+  //ounter_block = tag;
+  counter_block[15] |= 0x80;
+  uint8_t *ret;
+  memcpy(ret, AES_CTR(message_encryption_key, counter_block, plaintext, plaintextlen), 32); // TODO: fix correct length
+  memcpy(ret + 32, tag, 16); // TODO: fix correct length
+  return ret;
+  //return AES_CTR(message_encryption_key, counter_block, plaintext, plaintextlen) + tag;
+}
+
+uint8_t *decrypt(uint8_t *key_generating_key,uint8_t *nonce, uint8_t *ciphertext, u64 ciphertextlen, uint8_t *additional_data, u64 additional_datalen) {
+  if (ciphertextlen < 16 || ciphertextlen > (68719476736 + 16) || additional_datalen > 68719476736) { // 2 ^ 36 == 68719476736
+    printf("Cipher text / data to long, exiting\n");
+    exit(0);
+  }
+  uint8_t **message_authentication_key, **message_encryption_key;
+  derive_keys(key_generating_key, nonce, &message_encryption_key, &message_authentication_key);
+  //uint8_t *tag = ciphertext[bytelen(ciphertext)-16:];
+  uint8_t *tag = NULL, *counter_block, *ct;
+  memcpy(tag, ciphertext, ciphertextlen-16);
+  //counter_block = tag;
+  memcpy(counter_block, tag, sizeof(tag));
+  counter_block[15] |= 0x80;
+  memcpy(ct, ciphertext, ciphertextlen-16); // take end of ciphertext, from ciphertextlen - 16
+  uint8_t *plaintext = AES_CTR(message_encryption_key, counter_block, ct, ciphertextlen - 16);//ciphertext[:bytelen(ciphertext)-16]);
+  u64 plaintextlen = ciphertextlen; // TODO: incorrect
+  u64 length_block = little_endian_uint64(additional_datalen * 8) + little_endian_uint64(plaintextlen * 8);
+  uint8_t *padded_plaintext = right_pad_to_multiple_of_16_bytes(plaintext, plaintextlen);
+  uint8_t *padded_ad = right_pad_to_multiple_of_16_bytes(additional_data, additional_datalen);
+  u64 *S_s = POLYVAL(message_authentication_key, padded_ad + padded_plaintext + length_block);
+  for (int i = 0; i < 12; i++) {
+    S_s[i] ^= nonce[i];
+  }
+  S_s[15] &= 0x7f;
+  uint8_t *expected_tag = AES(message_encryption_key, S_s);
+  u64 expected_taglen = 32; // TOOD: fix
+  u64 xor_sum = 0;
+  for (int i = 0; i < expected_taglen; i++) {
+    xor_sum |= expected_tag[i] ^ tag[i];
+  }
+  if (xor_sum != 0) {
+    exit(0);
+  }
+  return plaintext;
+}
+
 //
 // hmm where did i get these from? what paper?!?!
-// translated from asm
 void multiply(u64 R[]) {
   R[25] = 0x06;
   for (int i = 7; i >= 0; --i) {
@@ -352,6 +319,7 @@ void modreduce(u64 K[]) {
   }
 }
 
+// translated from asm
 void st(u64 Z) {
   u64 K0=0, K1=0, K2=0, K3=0, K4=0, K5=0, K6=0, K7=0; //
   u64 C4=0, C5=0, C6=0, C7=0; //
