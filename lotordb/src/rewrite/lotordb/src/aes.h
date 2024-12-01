@@ -3,7 +3,9 @@
 #define AES_H 1
 #include <stdint.h>
 
-#define BIN(x) to_bin(#x)
+#define BIN(x) str_to_bin(#x) // TODO: maby not needed?
+#define LONG2BIN(x, y) long_to_bin(x, y)
+#define BIN2LONG(x) bin_to_long(x)
 #define EOR(x, y) (y ^ x)
 #define u64 unsigned long long int // because linux uint64_t is not same as on mac
 void multiply(u64 R[]);

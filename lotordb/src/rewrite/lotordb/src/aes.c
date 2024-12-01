@@ -3,7 +3,8 @@
 #include <stdio.h>
 #include "aes.h"
 
-static inline unsigned long long to_bin(const char *s) {
+// TODO: Fix always have 1st argument as return value if needed
+static inline unsigned long long str_to_bin(const char *s) {
   unsigned long long i = 0;
   while (*s) {
     i <<= 1;
@@ -11,6 +12,47 @@ static inline unsigned long long to_bin(const char *s) {
   }
   return i;
 }
+
+static inline void long_to_bin(u64 num, uint8_t *ret) {
+  uint8_t i = 0;
+  while (num != 0) {
+    ret[i++] = num % 2;
+    num /= 2;
+  }
+}
+
+inline static u64 bin_to_long(uint8_t *bin) {
+  uint8_t num[128] = {0};
+  u64 dec = 0, base = 1;
+  memcpy(num, bin, 128 * sizeof(uint8_t));
+  for (int i = 127; i >= 0; i--) {
+    if (num[i] == 1) dec += base;
+    base = base * 2;
+  }
+  return dec;
+}
+
+/*
+static inline void long_to_bin(unsigned long long num, uint8_t *ret) {
+  uint8_t i = 0;
+  while (num != 0) {
+    ret[i++] = num % 2;
+    num /= 2;
+  }
+}
+
+inline static unsigned long long bin_to_long(uint8_t *bin) {
+  uint8_t num[128] = {0};
+  unsigned long long dec = 0, base = 1;
+  memcpy(num, bin, 128 * sizeof(uint8_t));
+  for (int i = 127; i >= 0; i--) {
+    if (num[i] == 1) dec += base;
+    base = base * 2;
+  }
+  return dec;
+}
+
+*/
 
 /*
 // https://www.rfc-editor.org/rfc/rfc8452.html
@@ -161,6 +203,54 @@ uint8_t *right_pad_to_multiple_of_16_bytes(uint8_t *input, int len) {
 
 #define AES(x, y) 0 // TODO: fix : https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf // also return length
 #define POLYVAL(x, y) 0 // TODO: fix
+//#define POLYVAL() ByteReverse(GHASH(ByteReverse(H) * x, ByteReverse(X_1), ByteReverse(X_2), ...))
+//  returns Its result is S_s, where S is defined by the iteration S_0 = 0; S_j = dot(S_{j-1} + X_j, H), for j = 1..s.
+//  POLYVAL takes a field element, H, and a series of field elements X_1, ..., X_s.  Its result is S_s, where S is defined by the iteration S_0 = 0; S_j = dot(S_{j-1} + X_j, H), for j = 1..s.
+// https://csrc.nist.gov/csrc/media/Events/2023/third-workshop-on-block-cipher-modes-of-operation/documents/accepted-papers/Galois%20Counter%20Mode%20with%20Secure%20Short%20Tags.pdf
+// https://medium.com/codex/aes-how-the-most-advanced-encryption-actually-works-b6341c44edb9
+// https://networkbuilders.intel.com/docs/networkbuilders/advanced-encryption-standard-galois-counter-mode-optimized-ghash-function-technology-guide-1693300747.pdf
+
+// https://datatracker.ietf.org/doc/html/rfc8452#appendix-A
+
+// https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
+// 6.3 multiply
+uint8_t *mul(uint8_t *BITX, uint8_t *BITY) {
+  uint8_t Z[128] = {0}, V[128], R[128] = {0}, BITV[128];//, BITX[128], BITY[128];
+  u64 RDEC = 0;
+  //LONG2BIN(X, BITX);
+  //LONG2BIN(Y, BITY);
+  R[0] = 1; R[1] = 1; R[2] = 1; R[7] = 1; // TODO: fix nicer
+  //V[0] = Y;
+  memcpy(V, BITY, 128);
+  RDEC = BIN2LONG(R); // R = 11100001 || 0^120
+  for (int i = 0; i < 128; i++) {
+    if (BITX[i] == 0) Z[i+1] = Z[i];
+    if (BITX[i] == 1) Z[i+1] = Z[i] ^ V[i];
+    LONG2BIN(V[i], BITV); // Take LSB1 of V[i] below
+    if (BITV[127] == 0) V[i+1] = V[i] >> 1;
+    if (BITV[127] == 1) V[i+1] = (V[i] >> 1) ^ RDEC;
+  }
+  return Z;
+}
+
+void xorarr(uint8_t *X, uint8_t *Y, uint8_t *r) {
+  for (int i = 1; i < 128; i++) {
+    r[i] = X[i] ^ Y[i];
+  }
+}
+
+// 6.4 for GHASH
+// In effect, the GHASH function calculates: (X1*Hm) ^ (X2*Hm-1) ^ ... ^ (Xm-1*H2) ^ (Xm*H)
+uint8_t **ghash(uint8_t **X, uint8_t **H, int m) { // X must be 128*m length
+  uint8_t Y[128][128] = {0}, RET[128][128];
+  for (int i = 1; i < m; i++) {
+    memcpy(&RET[i], mul(X[i], H[m-(i-1)]), 128);
+  }
+  for (int i = 1; i < m; i++) {
+    xorarr(RET[i], RET[i+1], &Y[i]);
+  }
+  return Y;
+}
 
 uint32_t little_endian_uint32(uint8_t x) {
   x = ((x << 8) & 0xFF00FF00) | ((x >> 8) & 0xFF00FF);
@@ -181,24 +271,27 @@ uint32_t read_little_endian_uint32(uint8_t *x) {
 
 // return message_authentication_key, message_encryption_key
 void derive_keys(uint8_t *key_generating_key, uint8_t *nonce, uint8_t **message_authentication_key, uint8_t **message_encryption_key) {
-  message_authentication_key =
-    AES(key_generating_key, little_endian_uint32(0) + nonce) +   // take first 8
-    AES(key_generating_key, little_endian_uint32(1) + nonce);    // take first 8
-  message_encryption_key =
-    AES(key_generating_key, little_endian_uint32(2) + nonce) +   // take first 8
-    AES(key_generating_key, little_endian_uint32(3) + nonce);    // take first 8
+  uint8_t *tmp1, *tmp2, AESSIZE = 8;
+  memcpy(tmp1, AES(key_generating_key, little_endian_uint32(0) + nonce), 8 * AESSIZE);
+  memcpy(tmp2, AES(key_generating_key, little_endian_uint32(1) + nonce), 8 * AESSIZE);
+  memcpy(message_authentication_key + (0 * AESSIZE), tmp1, 8 * AESSIZE);
+  memcpy(message_authentication_key + (8 * AESSIZE), tmp2, 8 * AESSIZE);
 
-  //if bytelen(key_generating_key) == 32 {
-  // always assume keylength == 32
-  message_encryption_key +=
-    AES(key_generating_key, little_endian_uint32(4) + nonce) + // take first 8
-    AES(key_generating_key, little_endian_uint32(5) + nonce);  // take first 8
-  //}
+  memcpy(tmp1, AES(key_generating_key, little_endian_uint32(2) + nonce), 8 * AESSIZE);
+  memcpy(tmp2, AES(key_generating_key, little_endian_uint32(3) + nonce), 8 * AESSIZE);
+  memcpy(message_encryption_key + (0 * AESSIZE), tmp1, 8 * AESSIZE);
+  memcpy(message_encryption_key + (8 * AESSIZE), tmp2, 8 * AESSIZE);
+
+  // always assume keylength == 32, if not, check length of key_generating_key == 32
+  memcpy(tmp1, AES(key_generating_key, little_endian_uint32(4) + nonce), 8 * AESSIZE);
+  memcpy(tmp2, AES(key_generating_key, little_endian_uint32(5) + nonce), 8 * AESSIZE);
+  memcpy(message_encryption_key + (16 * AESSIZE), tmp1, 8 * AESSIZE);
+  memcpy(message_encryption_key + (24 * AESSIZE), tmp2, 8 * AESSIZE);
 }
 
 uint8_t *AES_CTR(uint8_t *key, uint8_t *initial_counter_block, uint8_t *in, u64 inlen) {
   //block = initial_counter_block;
-  uint8_t *block = malloc(32);
+  uint8_t todo, *block = malloc(32);
   memcpy(block, initial_counter_block, 32);
   uint8_t *output = NULL;
   while (inlen > 0) {
@@ -213,7 +306,9 @@ uint8_t *AES_CTR(uint8_t *key, uint8_t *initial_counter_block, uint8_t *in, u64 
     block[2] = little_endian_uint32(*(&block[2]+1));
     block[3] = little_endian_uint32(*(&block[3]+1));
 
-    u64 todo = inlen;//min(inlen, key_generating_key);//min(bytelen(in), bytelen(keystream_block));
+    u64 keystream_blocklen = 16; // TODO: fix
+    if (inlen < keystream_blocklen) todo = inlen;
+    else todo = keystream_blocklen;//min(inlen, key_generating_key);//min(bytelen(in), bytelen(keystream_block));
     for (int j = 0; j < todo; j++) {
       output = output + (keystream_block[j] ^ in[j]);
     }
