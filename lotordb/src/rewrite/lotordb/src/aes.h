@@ -3,6 +3,11 @@
 #define AES_H 1
 #include <stdint.h>
 
+typedef struct state_t {
+  uint8_t **state;
+  uint8_t Nk;
+} state_t;
+
 #define BIN(x) str_to_bin(#x) // TODO: maby not needed?
 #define LONG2BIN(x, y) long_to_bin(x, y)
 #define BIN2LONG(x) bin_to_long(x)

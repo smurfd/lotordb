@@ -39,7 +39,7 @@ static const uint8_t reverse_sbox[256] = {
   0x60, 0x51, 0x7f, 0xa9, 0x19, 0xb5, 0x4a, 0x0d, 0x2d, 0xe5, 0x7a, 0x9f, 0x93, 0xc9, 0x9c, 0xef,
   0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
   0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d};
-uint8_t state[4][4] = {0};
+//uint8_t state[4][4] = {0};
 
 // TODO: Fix always have 1st argument as return value if needed
 static inline unsigned long long str_to_bin(const char *s) {
@@ -480,17 +480,206 @@ uint8_t *right_pad_to_multiple_of_16_bytes(uint8_t *input, int len) {
 
 // https://datatracker.ietf.org/doc/html/rfc8452#appendix-A
 
+
+// AES https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf
+
+
+void ADDROUNDKEY(uint8_t **state, uint8_t *key) {
+  // memcpy to key so it contains right frame of key
+  for (uint8_t i = 0; i < 4; i++)
+    for (uint8_t j = 0; j < 4; j++)
+      state[j][i] ^= key[(i * 4) + j];
+}
+
+void SUBBYTES(uint8_t **state) {
+  for (uint8_t i = 0; i < 4; i++)
+    for (uint8_t j = 0; j < 4; j++)
+      state[j][i] = sbox[state[j][i]];
+}
+
+void INVSUBBYTES(uint8_t **state) {
+  for (uint8_t i = 0; i < 4; i++)
+    for (uint8_t j = 0; j < 4; j++)
+      state[j][i] = reverse_sbox[state[j][i]];
+}
+
+void SHIFTROWS(uint8_t **state) {
+  // skip first row
+  // rotate rows to left, number of steps = row
+  uint8_t temp = state[0][1];
+  state[0][1] = state[1][1];
+  state[1][1] = state[2][1];
+  state[2][1] = state[3][1];
+  state[3][1] = temp;
+
+  temp = state[0][2];
+  state[0][2] = state[2][2];
+  state[2][2] = temp;
+  temp = state[1][2];
+  state[1][2] = state[3][2];
+  state[3][2] = temp;
+
+  temp = state[0][3];
+  state[0][3] = state[3][3];
+  state[3][3] = state[2][3];
+  state[2][3] = state[1][3];
+  state[1][3] = temp;
+}
+
+void INVSHIFTROWS(uint8_t **state) {
+  // skip first row
+  // rotate rows to right, number of steps = row
+  uint8_t temp = state[3][1];
+  state[3][1] = state[2][1];
+  state[2][1] = state[1][1];
+  state[1][1] = state[0][1];
+  state[0][1] = temp;
+
+  temp = state[0][2];
+  state[0][2] = state[2][2];
+  state[2][2] = temp;
+  temp = state[1][2];
+  state[1][2] = state[3][2];
+  state[3][2] = temp;
+
+  temp = state[0][3];
+  state[0][3] = state[1][3];
+  state[1][3] = state[2][3];
+  state[2][3] = state[3][3];
+  state[3][3] = temp;
+}
+
+uint8_t times(uint8_t x) {
+  return ((x<<1) ^ (((x>>7) & 1) * 0x1b));
+}
+
+void MIXCOLUMNS(uint8_t **state) {
+  for (uint8_t i = 0; i < 4; i++) {
+    uint8_t state0 = state[i][0];
+    uint8_t statecol = state[i][0] ^ state[i][1] ^ state[i][2] ^ state[i][3];
+    uint8_t statesav = times(state[i][0] ^ state[i][1]);
+    state[i][0] ^= statesav ^ statecol;
+
+    statesav = times(state[i][1] ^ state[i][2]);
+    state[i][1] ^= statesav ^ statecol;
+
+    statesav = times(state[i][2] ^ state[i][3]);
+    state[i][2] ^= statesav ^ statecol;
+
+    statesav = times(state[i][3] ^ state0);
+    state[i][3] ^= statesav ^ statecol;
+  }
+}
+
+void KEYEXPANSION(uint32_t *w, uint32_t *key, uint8_t *Nk) {
+  int i = 0;
+  while (i <= Nk - 1) {
+    memcpy(&w[i], key + (4 * i), 4);
+    i += 1;
+  }
+/*  while (i <= 4 * Nr + 3) {
+    uint32_t temp = w[i - 1];
+    if (i % Nk) == 0 {
+      ROTWORD(temp);
+      temp = SUBWORD(temp ^ Rcon[i/Nk]);
+    } else if Nk > 6 and i mod Nk == 4 {
+      temp = SUBWORD(temp)
+    }
+    w[i] = w[i - Nk] ^ temp
+    i += 1
+  }
+*/
+}
+
+void INVCIPHER(uint8_t **state, uint8_t **in, uint8_t Nr, uint8_t *w) {
+  uint8_t *wtmp;
+  memcpy(state, in, 4 * 4 * sizeof(uint8_t));
+  //state = in
+  memcpy(wtmp, w + (4 * Nr), 4);
+  ADDROUNDKEY(state, wtmp);
+  for (uint8_t round = Nr - 1; round >= 1; round--) {
+    INVSHIFTROWS(state);
+    INVSUBBYTES(state);
+    memcpy(wtmp, w + (4 * round), 4);
+    ADDROUNDKEY(state, wtmp);
+    //INVMIXCOLUMNS(state); // TODO: fix
+  }
+  INVSHIFTROWS(state);
+  INVSUBBYTES(state);
+  memcpy(wtmp, w, 4);
+  ADDROUNDKEY(state, wtmp);
+}
+
+void EQINVCIPHER(uint8_t **state, uint8_t **in, uint8_t Nr, uint8_t *dw) {
+  uint8_t *wtmp;
+  memcpy(state, in, 4 * 4 * sizeof(uint8_t));
+  memcpy(wtmp, dw + (4 * Nr), 4);
+  ADDROUNDKEY(state, wtmp);
+  for (uint8_t round = Nr - 1; round >= 1; round--) {
+    INVSUBBYTES(state);
+    INVSHIFTROWS(state);
+    //INVMIXCOLUMNS(state); // TODO: fix
+    memcpy(wtmp, dw + (4 * round), 4);
+    ADDROUNDKEY(state, wtmp);
+  }
+  INVSUBBYTES(state);
+  INVSHIFTROWS(state);
+  memcpy(wtmp, dw, 4);
+  ADDROUNDKEY(state, wtmp);
+}
+
+void KEYEXPANSIONEIC(uint8_t *key) {
+/*  i = 0
+  while i <= Nk - 1 do
+    w[i] = key[4*i..4*i+3]
+    dw[i] = w[i]
+    i += 1
+  end while
+  while i <= 4 * Nr + 3 do
+    temp = w[i - 1]
+    if i mod Nk == 0 {
+      temp = SUBWORD(ROTWORD(temp)) ^ Rcon[i/Nk]
+    } else if Nk > 6 and i mod Nk == 4 {
+      temp = SUBWORD(temp)
+    }
+    w[i] = w[i - Nk] ^ temp
+    dw[i] = w[i]
+    i += 1
+  end while
+  for round = 1 <= Nr - 1 {
+    i = 4 * round
+    dw[i..i+3] = INVMIXCOLUMNS(dw[i..i+3])
+  }
+  return dw*/
+}
+
+
+// 128, 192, 256 (Nk = 4, 6, 8), assume 256: Nk = 8
+void CIPHER(uint8_t **state, uint8_t **in, uint8_t Nr, uint8_t w) {
+  uint8_t *wtmp;
+  memcpy(state, &in, 4 * 4 * sizeof(uint8_t));
+  memcpy(wtmp, &w, 4 * sizeof(uint8_t));
+  ADDROUNDKEY(state, wtmp);
+  for (uint8_t round = 1; round < Nr - 1; round++) {
+    SUBBYTES(state);
+    SHIFTROWS(state);
+    MIXCOLUMNS(state);
+    memcpy(wtmp, &w + (4 * round), 4 * sizeof(uint8_t));
+    ADDROUNDKEY(state, wtmp);
+  }
+  SUBBYTES(state);
+  SHIFTROWS(state);
+  memcpy(wtmp, &w + (4 * Nr), 4 * sizeof(uint8_t));
+  ADDROUNDKEY(state, wtmp);
+}
+
 // https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 // 6.3 multiply
 uint8_t *mul(uint8_t *BITX, uint8_t *BITY) {
-  uint8_t Z[128] = {0}, V[128], R[128] = {0}, BITV[128];//, BITX[128], BITY[128];
+  uint8_t Z[128] = {0}, V[128], R[128] = {1, 1, 1, 0, 0, 0, 0, 1}, BITV[128]; // R = 11100001 || 0 ^ 120
   u64 RDEC = 0;
-  //LONG2BIN(X, BITX);
-  //LONG2BIN(Y, BITY);
-  R[0] = 1; R[1] = 1; R[2] = 1; R[7] = 1; // TODO: fix nicer
-  //V[0] = Y;
   memcpy(V, BITY, 128);
-  RDEC = BIN2LONG(R); // R = 11100001 || 0^120
+  RDEC = BIN2LONG(R);
   for (int i = 0; i < 128; i++) {
     if (BITX[i] == 0) Z[i+1] = Z[i];
     if (BITX[i] == 1) Z[i+1] = Z[i] ^ V[i];
@@ -507,13 +696,14 @@ void xorarr(uint8_t *X, uint8_t *Y, uint8_t *r) {
   }
 }
 
+
+
 // 6.4 for GHASH
 // In effect, the GHASH function calculates: (X1*Hm) ^ (X2*Hm-1) ^ ... ^ (Xm-1*H2) ^ (Xm*H)
 uint8_t **ghash(uint8_t **X, uint8_t **H, int m) { // X must be 128*m length
   uint8_t Y[128][128] = {0}, RET[128][128]; // TODO: we assume m=128
   for (int i = 1; i < m; i++) {
-    // LONG2BIN(X[i])? LONG2BIN(H[m-(i-i)])?
-    memcpy(&RET[i], mul(X[i], H[m-(i-1)]), 128);
+    memcpy(&RET[i], mul(X[i], H[m-(i-1)]), 128); // LONG2BIN(X[i])? LONG2BIN(H[m-(i-i)])?
   }
   for (int i = 1; i < m; i++) {
     xorarr(RET[i-1], RET[i], &Y[i]);
@@ -559,7 +749,6 @@ void derive_keys(uint8_t *key_generating_key, uint8_t *nonce, uint8_t **message_
 }
 
 uint8_t *AES_CTR(uint8_t *key, uint8_t *initial_counter_block, uint8_t *in, u64 inlen) {
-  //block = initial_counter_block;
   uint8_t todo, *block = malloc(32);
   memcpy(block, initial_counter_block, 32);
   uint8_t *output = NULL;
@@ -577,7 +766,7 @@ uint8_t *AES_CTR(uint8_t *key, uint8_t *initial_counter_block, uint8_t *in, u64 
 
     u64 keystream_blocklen = 16; // TODO: fix correct length
     if (inlen < keystream_blocklen) todo = inlen;
-    else todo = keystream_blocklen;//min(inlen, key_generating_key);//min(bytelen(in), bytelen(keystream_block));
+    else todo = keystream_blocklen;
     for (int j = 0; j < todo; j++) {
       output = output + (keystream_block[j] ^ in[j]);
     }
@@ -604,13 +793,11 @@ uint8_t *encrypt(uint8_t *key_generating_key, uint8_t *nonce, uint8_t *plaintext
   S_s[15] &= 0x7f;
   uint8_t *tag, *counter_block;
   memcpy(tag, AES(message_encryption_key, S_s), 16); // TODO: fix correct length
-  //ounter_block = tag;
   counter_block[15] |= 0x80;
   uint8_t *ret;
   memcpy(ret, AES_CTR(message_encryption_key, counter_block, plaintext, plaintextlen), 32); // TODO: fix correct length
   memcpy(ret + 32, tag, 16); // TODO: fix correct length
   return ret;
-  //return AES_CTR(message_encryption_key, counter_block, plaintext, plaintextlen) + tag;
 }
 
 uint8_t *decrypt(uint8_t *key_generating_key,uint8_t *nonce, uint8_t *ciphertext, u64 ciphertextlen, uint8_t *additional_data, u64 additional_datalen) {
@@ -620,14 +807,12 @@ uint8_t *decrypt(uint8_t *key_generating_key,uint8_t *nonce, uint8_t *ciphertext
   }
   uint8_t **message_authentication_key, **message_encryption_key;
   derive_keys(key_generating_key, nonce, &message_encryption_key, &message_authentication_key);
-  //uint8_t *tag = ciphertext[bytelen(ciphertext)-16:];
   uint8_t *tag = NULL, *counter_block, *ct;
   memcpy(tag, ciphertext, ciphertextlen-16);
-  //counter_block = tag;
   memcpy(counter_block, tag, sizeof(tag));
   counter_block[15] |= 0x80;
-  memcpy(ct, ciphertext, ciphertextlen-16); // take end of ciphertext, from ciphertextlen - 16
-  uint8_t *plaintext = AES_CTR(message_encryption_key, counter_block, ct, ciphertextlen - 16);//ciphertext[:bytelen(ciphertext)-16]);
+  memcpy(ct, ciphertext, ciphertextlen - 16); // take end of ciphertext, from ciphertextlen - 16
+  uint8_t *plaintext = AES_CTR(message_encryption_key, counter_block, ct, ciphertextlen - 16);
   u64 plaintextlen = ciphertextlen; // TODO: incorrect
   u64 length_block = little_endian_uint64(additional_datalen * 8) + little_endian_uint64(plaintextlen * 8);
   uint8_t *padded_plaintext = right_pad_to_multiple_of_16_bytes(plaintext, plaintextlen);
