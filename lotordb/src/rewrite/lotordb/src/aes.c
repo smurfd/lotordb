@@ -39,7 +39,7 @@ static const uint8_t reverse_sbox[256] = {
   0x60, 0x51, 0x7f, 0xa9, 0x19, 0xb5, 0x4a, 0x0d, 0x2d, 0xe5, 0x7a, 0x9f, 0x93, 0xc9, 0x9c, 0xef,
   0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
   0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d};
-//uint8_t state[4][4] = {0};
+static const uint8_t rcon[11] = {0x87, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36};
 
 // TODO: Fix always have 1st argument as return value if needed
 static inline unsigned long long str_to_bin(const char *s) {
@@ -486,15 +486,19 @@ uint8_t *right_pad_to_multiple_of_16_bytes(uint8_t *input, int len) {
 
 void ADDROUNDKEY(uint8_t **state, uint8_t *key) {
   // memcpy to key so it contains right frame of key
-  for (uint8_t i = 0; i < 4; i++)
-    for (uint8_t j = 0; j < 4; j++)
+  for (uint8_t i = 0; i < 4; i++) {
+    for (uint8_t j = 0; j < 4; j++) {
       state[j][i] ^= key[(i * 4) + j];
+    }
+  }
 }
 
 void SUBBYTES(uint8_t **state) {
-  for (uint8_t i = 0; i < 4; i++)
-    for (uint8_t j = 0; j < 4; j++)
+  for (uint8_t i = 0; i < 4; i++) {
+    for (uint8_t j = 0; j < 4; j++) {
       state[j][i] = sbox[state[j][i]];
+    }
+  }
 }
 
 void INVSUBBYTES(uint8_t **state) {
@@ -571,30 +575,70 @@ void MIXCOLUMNS(uint8_t **state) {
   }
 }
 
-void KEYEXPANSION(uint32_t *w, uint32_t *key, uint8_t *Nk) {
-  int i = 0;
+void INVMIXCOLUMNS(uint8_t **state) {
+  for (uint8_t i = 0; i < 4; i++) {
+    uint8_t *statecol = NULL;
+    statecol[0] = (0x0e * state[i][0]) ^ (0x0b * state[i][1]) ^ (0x0d * state[i][2]) ^ (0x09 * state[i][3]);
+    statecol[1] = (0x09 * state[i][0]) ^ (0x0e * state[i][1]) ^ (0x0b * state[i][2]) ^ (0x0d * state[i][3]);
+    statecol[2] = (0x0d * state[i][0]) ^ (0x09 * state[i][1]) ^ (0x0e * state[i][2]) ^ (0x0b * state[i][3]);
+    statecol[3] = (0x0b * state[i][0]) ^ (0x0d * state[i][1]) ^ (0x09 * state[i][2]) ^ (0x0e * state[i][3]);
+    state[i][0] = statecol[0];
+    state[i][1] = statecol[1];
+    state[i][2] = statecol[2];
+    state[i][3] = statecol[3];
+  }
+}
+
+void SUBWORD(uint32_t word) {
+  uint8_t *bytes = NULL;
+  bytes[0] = (word >> 24) & 0xFF;
+  bytes[1] = (word >> 16) & 0xFF;
+  bytes[2] = (word >> 8) & 0xFF;
+  bytes[3] = word & 0xFF;
+  bytes[0] = sbox[bytes[0]];
+  bytes[1] = sbox[bytes[1]];
+  bytes[2] = sbox[bytes[2]];
+  bytes[3] = sbox[bytes[3]];
+  word = (uint32_t)bytes[3] | ((uint32_t)bytes[2] << 8) | ((uint32_t)bytes[1] << 16) | ((uint32_t)bytes[0] << 24);
+}
+
+void ROTWORD(uint32_t word) {
+  uint8_t *bytes = NULL;
+  bytes[0] = (word >> 24) & 0xFF;
+  bytes[1] = (word >> 16) & 0xFF;
+  bytes[2] = (word >> 8) & 0xFF;
+  bytes[3] = word & 0xFF;
+  uint32_t temp = bytes[0];
+  bytes[0] = bytes[1];
+  bytes[1] = bytes[2];
+  bytes[2] = bytes[3];
+  bytes[3] = temp;
+  word = (uint32_t)bytes[3] | ((uint32_t)bytes[2] << 8) | ((uint32_t)bytes[1] << 16) | ((uint32_t)bytes[0] << 24);
+}
+
+void KEYEXPANSION(uint32_t *w, uint32_t *key) {
+  int i = 0, Nr = 4, Nk = 8;
   while (i <= Nk - 1) {
     memcpy(&w[i], key + (4 * i), 4);
     i += 1;
   }
-/*  while (i <= 4 * Nr + 3) {
+  while (i <= 4 * Nr + 3) {
     uint32_t temp = w[i - 1];
-    if (i % Nk) == 0 {
+    if (i % Nk == 0) {
       ROTWORD(temp);
-      temp = SUBWORD(temp ^ Rcon[i/Nk]);
-    } else if Nk > 6 and i mod Nk == 4 {
-      temp = SUBWORD(temp)
+      SUBWORD(temp);
+      temp = temp ^ rcon[i/Nk];
+    } else if (Nk > 6 && i % Nk == 4) {
+      SUBWORD(temp);
     }
-    w[i] = w[i - Nk] ^ temp
-    i += 1
+    w[i] = w[i - Nk] ^ temp;
+    i += 1;
   }
-*/
 }
 
-void INVCIPHER(uint8_t **state, uint8_t **in, uint8_t Nr, uint8_t *w) {
-  uint8_t *wtmp;
+void INVCIPHER(uint8_t **state, uint8_t **in, uint8_t *w) {
+  uint8_t *wtmp = NULL, Nr = 4;
   memcpy(state, in, 4 * 4 * sizeof(uint8_t));
-  //state = in
   memcpy(wtmp, w + (4 * Nr), 4);
   ADDROUNDKEY(state, wtmp);
   for (uint8_t round = Nr - 1; round >= 1; round--) {
@@ -602,7 +646,7 @@ void INVCIPHER(uint8_t **state, uint8_t **in, uint8_t Nr, uint8_t *w) {
     INVSUBBYTES(state);
     memcpy(wtmp, w + (4 * round), 4);
     ADDROUNDKEY(state, wtmp);
-    //INVMIXCOLUMNS(state); // TODO: fix
+    INVMIXCOLUMNS(state);
   }
   INVSHIFTROWS(state);
   INVSUBBYTES(state);
@@ -610,15 +654,15 @@ void INVCIPHER(uint8_t **state, uint8_t **in, uint8_t Nr, uint8_t *w) {
   ADDROUNDKEY(state, wtmp);
 }
 
-void EQINVCIPHER(uint8_t **state, uint8_t **in, uint8_t Nr, uint8_t *dw) {
-  uint8_t *wtmp;
+void EQINVCIPHER(uint8_t **state, uint8_t **in, uint8_t *dw) {
+  uint8_t *wtmp = NULL, Nr = 4;
   memcpy(state, in, 4 * 4 * sizeof(uint8_t));
   memcpy(wtmp, dw + (4 * Nr), 4);
   ADDROUNDKEY(state, wtmp);
   for (uint8_t round = Nr - 1; round >= 1; round--) {
     INVSUBBYTES(state);
     INVSHIFTROWS(state);
-    //INVMIXCOLUMNS(state); // TODO: fix
+    INVMIXCOLUMNS(state);
     memcpy(wtmp, dw + (4 * round), 4);
     ADDROUNDKEY(state, wtmp);
   }
@@ -628,35 +672,40 @@ void EQINVCIPHER(uint8_t **state, uint8_t **in, uint8_t Nr, uint8_t *dw) {
   ADDROUNDKEY(state, wtmp);
 }
 
-void KEYEXPANSIONEIC(uint8_t *key) {
-/*  i = 0
-  while i <= Nk - 1 do
-    w[i] = key[4*i..4*i+3]
-    dw[i] = w[i]
-    i += 1
-  end while
-  while i <= 4 * Nr + 3 do
-    temp = w[i - 1]
-    if i mod Nk == 0 {
-      temp = SUBWORD(ROTWORD(temp)) ^ Rcon[i/Nk]
-    } else if Nk > 6 and i mod Nk == 4 {
-      temp = SUBWORD(temp)
-    }
-    w[i] = w[i - Nk] ^ temp
-    dw[i] = w[i]
-    i += 1
-  end while
-  for round = 1 <= Nr - 1 {
-    i = 4 * round
-    dw[i..i+3] = INVMIXCOLUMNS(dw[i..i+3])
+// EIC = EQINVCIPHER
+void KEYEXPANSIONEIC(uint32_t *dw, uint32_t *key) {
+  int i = 0, Nr = 4, Nk = 8;
+  uint32_t *w = NULL;
+  while (i <= Nk - 1) {
+    memcpy(&w[i], key + (4 * i), 4);
+    memcpy(&dw[i], &w[i], 4);
+    i += 1;
   }
-  return dw*/
+  while (i <= 4 * Nr + 3) {
+    uint32_t temp = w[i - 1];
+    if (i % Nk == 0) {
+      ROTWORD(temp);
+      SUBWORD(temp);
+      temp = temp ^ rcon[i / Nk];
+    } else if (Nk > 6 && i % Nk == 4) {
+      SUBWORD(temp);
+    }
+    w[i] = w[i - Nk] ^ temp;
+    dw[i] = w[i];
+    i += 1;
+  }
+  for (uint8_t round = 1; round <= Nr - 1; round++) {
+    i = 4 * round;
+    uint32_t *tmp = NULL;
+    memcpy(tmp, dw+i, 4 * sizeof(uint32_t));
+    INVMIXCOLUMNS(tmp);
+    memcpy(dw+i, tmp, 4 * sizeof(uint32_t));
+  }
 }
 
-
 // 128, 192, 256 (Nk = 4, 6, 8), assume 256: Nk = 8
-void CIPHER(uint8_t **state, uint8_t **in, uint8_t Nr, uint8_t w) {
-  uint8_t *wtmp;
+void CIPHER(uint8_t **state, uint8_t **in, uint8_t w) {
+  uint8_t *wtmp = NULL, Nr = 4;
   memcpy(state, &in, 4 * 4 * sizeof(uint8_t));
   memcpy(wtmp, &w, 4 * sizeof(uint8_t));
   ADDROUNDKEY(state, wtmp);
@@ -730,7 +779,7 @@ uint32_t read_little_endian_uint32(uint8_t *x) {
 
 // return message_authentication_key, message_encryption_key
 void derive_keys(uint8_t *key_generating_key, uint8_t *nonce, uint8_t **message_authentication_key, uint8_t **message_encryption_key) {
-  uint8_t *tmp1, *tmp2, AESSIZE = 8;
+  uint8_t *tmp1 = NULL, *tmp2 = NULL, AESSIZE = 8;
   memcpy(tmp1, AES(key_generating_key, little_endian_uint32(0) + nonce), 8 * AESSIZE);
   memcpy(tmp2, AES(key_generating_key, little_endian_uint32(1) + nonce), 8 * AESSIZE);
   memcpy(message_authentication_key + (0 * AESSIZE), tmp1, 8 * AESSIZE);
@@ -781,7 +830,7 @@ uint8_t *encrypt(uint8_t *key_generating_key, uint8_t *nonce, uint8_t *plaintext
     printf("Input text / data to long, exiting\n");
     exit(0);
   }
-  uint8_t **message_authentication_key, **message_encryption_key;
+  uint8_t **message_authentication_key = NULL, **message_encryption_key = NULL;
   derive_keys(key_generating_key, nonce, &message_encryption_key, &message_authentication_key);
   u64 length_block = little_endian_uint64(additional_datalen * 8) + little_endian_uint64(plaintextlen * 8);
   uint8_t *padded_plaintext = right_pad_to_multiple_of_16_bytes(plaintext, plaintextlen);
@@ -791,10 +840,10 @@ uint8_t *encrypt(uint8_t *key_generating_key, uint8_t *nonce, uint8_t *plaintext
     S_s[i] ^= nonce[i];
   }
   S_s[15] &= 0x7f;
-  uint8_t *tag, *counter_block;
+  uint8_t *tag = NULL, *counter_block = NULL;
   memcpy(tag, AES(message_encryption_key, S_s), 16); // TODO: fix correct length
   counter_block[15] |= 0x80;
-  uint8_t *ret;
+  uint8_t *ret = NULL;
   memcpy(ret, AES_CTR(message_encryption_key, counter_block, plaintext, plaintextlen), 32); // TODO: fix correct length
   memcpy(ret + 32, tag, 16); // TODO: fix correct length
   return ret;
@@ -805,9 +854,9 @@ uint8_t *decrypt(uint8_t *key_generating_key,uint8_t *nonce, uint8_t *ciphertext
     printf("Cipher text / data to long, exiting\n");
     exit(0);
   }
-  uint8_t **message_authentication_key, **message_encryption_key;
+  uint8_t **message_authentication_key = NULL, **message_encryption_key = NULL;
   derive_keys(key_generating_key, nonce, &message_encryption_key, &message_authentication_key);
-  uint8_t *tag = NULL, *counter_block, *ct;
+  uint8_t *tag = NULL, *counter_block = NULL, *ct = NULL;
   memcpy(tag, ciphertext, ciphertextlen-16);
   memcpy(counter_block, tag, sizeof(tag));
   counter_block[15] |= 0x80;
