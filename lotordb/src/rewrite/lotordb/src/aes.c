@@ -480,10 +480,7 @@ uint8_t *right_pad_to_multiple_of_16_bytes(uint8_t *input, int len) {
 
 // https://datatracker.ietf.org/doc/html/rfc8452#appendix-A
 
-
 // AES https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf
-
-
 void ADDROUNDKEY(uint8_t **state, uint8_t *key) {
   // memcpy to key so it contains right frame of key
   for (uint8_t i = 0; i < 4; i++) {
@@ -502,9 +499,11 @@ void SUBBYTES(uint8_t **state) {
 }
 
 void INVSUBBYTES(uint8_t **state) {
-  for (uint8_t i = 0; i < 4; i++)
-    for (uint8_t j = 0; j < 4; j++)
+  for (uint8_t i = 0; i < 4; i++) {
+    for (uint8_t j = 0; j < 4; j++) {
       state[j][i] = reverse_sbox[state[j][i]];
+    }
+  }
 }
 
 void SHIFTROWS(uint8_t **state) {
@@ -697,9 +696,9 @@ void KEYEXPANSIONEIC(uint32_t *dw, uint32_t *key) {
   for (uint8_t round = 1; round <= Nr - 1; round++) {
     i = 4 * round;
     uint32_t *tmp = NULL;
-    memcpy(tmp, dw+i, 4 * sizeof(uint32_t));
+    memcpy(tmp, dw + i, 4 * sizeof(uint32_t));
     INVMIXCOLUMNS(tmp);
-    memcpy(dw+i, tmp, 4 * sizeof(uint32_t));
+    memcpy(dw + i, tmp, 4 * sizeof(uint32_t));
   }
 }
 
