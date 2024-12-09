@@ -723,8 +723,8 @@ void CIPHER(state_t state, uint8_t **in, uint8_t *w) {
 
 // https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 // 6.3 multiply
-uint8_t *mul(uint8_t *BITX, uint8_t *BITY) {
-  uint8_t Z[128] = {0}, V[128], R[128] = {1, 1, 1, 0, 0, 0, 0, 1}, BITV[128]; // R = 11100001 || 0 ^ 120
+void mul(uint8_t *Z, uint8_t *BITX, uint8_t *BITY) {
+  uint8_t V[128], R[128] = {1, 1, 1, 0, 0, 0, 0, 1}, BITV[128]; // R = 11100001 || 0 ^ 120
   u64 RDEC = 0;
   memcpy(V, BITY, 128);
   RDEC = BIN2LONG(R);
@@ -735,7 +735,7 @@ uint8_t *mul(uint8_t *BITX, uint8_t *BITY) {
     if (BITV[127] == 0) V[i+1] = V[i] >> 1;
     if (BITV[127] == 1) V[i+1] = (V[i] >> 1) ^ RDEC;
   }
-  return Z;
+  //return Z;
 }
 
 void xorarr(uint8_t *X, uint8_t *Y, uint8_t *r) {
@@ -746,15 +746,16 @@ void xorarr(uint8_t *X, uint8_t *Y, uint8_t *r) {
 
 // 6.4 for GHASH
 // In effect, the GHASH function calculates: (X1*Hm) ^ (X2*Hm-1) ^ ... ^ (Xm-1*H2) ^ (Xm*H)
-uint8_t **ghash(uint8_t **X, uint8_t **H, int m) { // X must be 128*m length
-  uint8_t Y[128][128] = {0}, RET[128][128]; // TODO: we assume m=128
+void ghash(uint8_t **Y, uint8_t **X, uint8_t **H, int m) { // X must be 128*m length
+  uint8_t RET[128][128]; // TODO: we assume m=128
   for (int i = 1; i < m; i++) {
-    memcpy(&RET[i], mul(X[i], H[m-(i-1)]), 128); // LONG2BIN(X[i])? LONG2BIN(H[m-(i-i)])?
+    mul(RET[i], X[i], H[m-(i-1)]);
+    //memcpy(&RET[i], mul(X[i], H[m-(i-1)]), 128); // LONG2BIN(X[i])? LONG2BIN(H[m-(i-i)])?
   }
   for (int i = 1; i < m; i++) {
-    xorarr(RET[i-1], RET[i], &Y[i]);
+    xorarr(RET[i-1], RET[i], Y[i]);
   }
-  return Y;
+  //return Y;
 }
 
 uint32_t little_endian_uint32(uint8_t x) {
@@ -828,11 +829,11 @@ uint8_t *encrypt(uint8_t *key_generating_key, uint8_t *nonce, uint8_t *plaintext
     exit(0);
   }
   uint8_t **message_authentication_key = NULL, **message_encryption_key = NULL;
-  derive_keys(key_generating_key, nonce, &message_encryption_key, &message_authentication_key);
-  u64 length_block = little_endian_uint64(additional_datalen * 8) + little_endian_uint64(plaintextlen * 8);
-  uint8_t *padded_plaintext = right_pad_to_multiple_of_16_bytes(plaintext, plaintextlen);
-  uint8_t *padded_ad = right_pad_to_multiple_of_16_bytes(additional_data, additional_datalen);
-  u64 *S_s = POLYVAL(message_authentication_key, padded_ad + padded_plaintext + length_block);
+  derive_keys(key_generating_key, nonce, message_encryption_key, message_authentication_key);
+  //u64 length_block = little_endian_uint64(additional_datalen * 8) + little_endian_uint64(plaintextlen * 8);
+  //uint8_t *padded_plaintext = right_pad_to_multiple_of_16_bytes(plaintext, plaintextlen);
+  //uint8_t *padded_ad = right_pad_to_multiple_of_16_bytes(additional_data, additional_datalen);
+  u64 *S_s = POLYVAL(message_authentication_key, right_pad_to_multiple_of_16_bytes(additional_data, additional_datalen) + right_pad_to_multiple_of_16_bytes(plaintext, plaintextlen) + (little_endian_uint64(additional_datalen * 8) + little_endian_uint64(plaintextlen * 8)));//padded_ad + padded_plaintext + length_block);
   for (int i = 0; i < 12; i++) {
     S_s[i] ^= nonce[i];
   }
@@ -841,7 +842,7 @@ uint8_t *encrypt(uint8_t *key_generating_key, uint8_t *nonce, uint8_t *plaintext
   memcpy(tag, AES(message_encryption_key, S_s), 16); // TODO: fix correct length
   counter_block[15] |= 0x80;
   uint8_t *ret = NULL;
-  memcpy(ret, AES_CTR(message_encryption_key, counter_block, plaintext, plaintextlen), 32); // TODO: fix correct length
+  memcpy(ret, AES_CTR(*message_encryption_key, counter_block, plaintext, plaintextlen), 32); // TODO: fix correct length
   memcpy(ret + 32, tag, 16); // TODO: fix correct length
   return ret;
 }
@@ -852,18 +853,18 @@ uint8_t *decrypt(uint8_t *key_generating_key,uint8_t *nonce, uint8_t *ciphertext
     exit(0);
   }
   uint8_t **message_authentication_key = NULL, **message_encryption_key = NULL;
-  derive_keys(key_generating_key, nonce, &message_encryption_key, &message_authentication_key);
+  derive_keys(key_generating_key, nonce, message_encryption_key, message_authentication_key);
   uint8_t *tag = NULL, *counter_block = NULL, *ct = NULL;
-  memcpy(tag, ciphertext, ciphertextlen-16);
-  memcpy(counter_block, tag, sizeof(tag));
+  memcpy(tag, ciphertext, ciphertextlen - 16);
+  memcpy(counter_block, tag, ciphertextlen - 16);
   counter_block[15] |= 0x80;
   memcpy(ct, ciphertext, ciphertextlen - 16); // take end of ciphertext, from ciphertextlen - 16
-  uint8_t *plaintext = AES_CTR(message_encryption_key, counter_block, ct, ciphertextlen - 16);
-  u64 plaintextlen = ciphertextlen; // TODO: incorrect
-  u64 length_block = little_endian_uint64(additional_datalen * 8) + little_endian_uint64(plaintextlen * 8);
-  uint8_t *padded_plaintext = right_pad_to_multiple_of_16_bytes(plaintext, plaintextlen);
-  uint8_t *padded_ad = right_pad_to_multiple_of_16_bytes(additional_data, additional_datalen);
-  u64 *S_s = POLYVAL(message_authentication_key, padded_ad + padded_plaintext + length_block);
+  uint8_t *plaintext = AES_CTR(*message_encryption_key, counter_block, ct, ciphertextlen - 16);
+  //u64 plaintextlen = ciphertextlen; // TODO: incorrect
+  //u64 length_block = little_endian_uint64(additional_datalen * 8) + little_endian_uint64(plaintextlen * 8);
+  //uint8_t *padded_plaintext = right_pad_to_multiple_of_16_bytes(plaintext, plaintextlen);
+  //uint8_t *padded_ad = right_pad_to_multiple_of_16_bytes(additional_data, additional_datalen);
+  u64 *S_s = POLYVAL(message_authentication_key, right_pad_to_multiple_of_16_bytes(additional_data, additional_datalen) + right_pad_to_multiple_of_16_bytes(plaintext, ciphertextlen) + (little_endian_uint64(additional_datalen * 8) + little_endian_uint64(ciphertextlen * 8)));//padded_ad + padded_plaintext + length_block);
   for (int i = 0; i < 12; i++) {
     S_s[i] ^= nonce[i];
   }

@@ -43,6 +43,6 @@ int main(void) {
   right_pad_to_multiple_of_16_bytes(xxx, 18);
   for (int i = 0; i < 32; i++) printf("after %d\n", xxx[i]);
   printf("OK\n");
-  printf("::: %llu\n", little_endian_uint32(32));
+  printf("::: %u\n", little_endian_uint32(32));
   free(xxx);
 }
