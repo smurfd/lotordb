@@ -51,7 +51,7 @@ static inline unsigned long long str_to_bin(const char *s) {
   return i;
 }
 
-static inline void long_to_bin(u64 num, uint8_t *ret) {
+static inline void long_to_bin(uint8_t *ret, u64 num) {
   uint8_t i = 0;
   while (num != 0) {
     ret[i++] = num % 2;
@@ -59,178 +59,20 @@ static inline void long_to_bin(u64 num, uint8_t *ret) {
   }
 }
 
-inline static u64 bin_to_long(uint8_t *bin) {
+static inline u64 bin_to_long(uint8_t *bin) {
   uint8_t num[128] = {0};
   u64 dec = 0, base = 1;
   memcpy(num, bin, 128 * sizeof(uint8_t));
   for (int i = 127; i >= 0; i--) {
     if (num[i] == 1) dec += base;
-    base = base * 2;
+    base *= 2;
   }
   return dec;
 }
 
-/*
-static inline void long_to_bin(unsigned long long num, uint8_t *ret) {
-  uint8_t i = 0;
-  while (num != 0) {
-    ret[i++] = num % 2;
-    num /= 2;
-  }
+static inline uint8_t times(uint8_t x) {
+  return ((x << 1) ^ (((x >> 7) & 1) * 0x1b));
 }
-
-inline static unsigned long long bin_to_long(uint8_t *bin) {
-  uint8_t num[128] = {0};
-  unsigned long long dec = 0, base = 1;
-  memcpy(num, bin, 128 * sizeof(uint8_t));
-  for (int i = 127; i >= 0; i--) {
-    if (num[i] == 1) dec += base;
-    base = base * 2;
-  }
-  return dec;
-}
-
-*/
-
-/*
-// https://www.rfc-editor.org/rfc/rfc8452.html
-// pseudocode
-
-   func derive_keys(key_generating_key, nonce) {
-     message_authentication_key =
-         AES(key = key_generating_key,
-             block = little_endian_uint32(0) ++ nonce)[:8] ++
-         AES(key = key_generating_key,
-             block = little_endian_uint32(1) ++ nonce)[:8]
-     message_encryption_key =
-         AES(key = key_generating_key,
-             block = little_endian_uint32(2) ++ nonce)[:8] ++
-         AES(key = key_generating_key,
-             block = little_endian_uint32(3) ++ nonce)[:8]
-
-     if bytelen(key_generating_key) == 32 {
-       message_encryption_key ++=
-           AES(key = key_generating_key,
-               block = little_endian_uint32(4) ++ nonce)[:8] ++
-           AES(key = key_generating_key,
-               block = little_endian_uint32(5) ++ nonce)[:8]
-     }
-
-     return message_authentication_key, message_encryption_key
-   }
-
-   func right_pad_to_multiple_of_16_bytes(input) {
-     while (bytelen(input) % 16 != 0) {
-       input = input ++ "\x00"
-     }
-     return input
-   }
-
-   func AES_CTR(key, initial_counter_block, in) {
-     block = initial_counter_block
-
-     output = ""
-     while bytelen(in) > 0 {
-       keystream_block = AES(key = key, block = block)
-       block[0:4] = little_endian_uint32(
-           read_little_endian_uint32(block[0:4]) + 1)
-
-       todo = min(bytelen(in), bytelen(keystream_block)
-       for j = 0; j < todo; j++ {
-         output = output ++ (keystream_block[j] ^ in[j])
-       }
-
-       in = in[todo:]
-     }
-
-     return output
-   }
-
-   func encrypt(key_generating_key,
-                nonce,
-                plaintext,
-                additional_data) {
-     if bytelen(plaintext) > 2^36 {
-       fail()
-     }
-     if bytelen(additional_data) > 2^36 {
-       fail()
-     }
-
-     message_encryption_key, message_authentication_key =
-         derive_keys(key_generating_key, nonce)
-
-
-     length_block =
-         little_endian_uint64(bytelen(additional_data) * 8) ++
-         little_endian_uint64(bytelen(plaintext) * 8)
-     padded_plaintext = right_pad_to_multiple_of_16_bytes(plaintext)
-     padded_ad = right_pad_to_multiple_of_16_bytes(additional_data)
-     S_s = POLYVAL(key = message_authentication_key,
-                   input = padded_ad ++ padded_plaintext ++
-                           length_block)
-     for i = 0; i < 12; i++ {
-       S_s[i] ^= nonce[i]
-     }
-     S_s[15] &= 0x7f
-     tag = AES(key = message_encryption_key, block = S_s)
-
-     counter_block = tag
-     counter_block[15] |= 0x80
-     return AES_CTR(key = message_encryption_key,
-                    initial_counter_block = counter_block,
-                    in = plaintext) ++
-            tag
-   }
-
-   func decrypt(key_generating_key,
-                nonce,
-                ciphertext,
-                additional_data) {
-     if bytelen(ciphertext) < 16 || bytelen(ciphertext) > 2^36 + 16 {
-       fail()
-     }
-     if bytelen(additional_data) > 2^36 {
-       fail()
-     }
-
-     message_encryption_key, message_authentication_key =
-         derive_keys(key_generating_key, nonce)
-
-     tag = ciphertext[bytelen(ciphertext)-16:]
-
-     counter_block = tag
-     counter_block[15] |= 0x80
-     plaintext = AES_CTR(key = message_encryption_key,
-                         initial_counter_block = counter_block,
-                         in = ciphertext[:bytelen(ciphertext)-16])
-
-     length_block =
-         little_endian_uint64(bytelen(additional_data) * 8) ++
-         little_endian_uint64(bytelen(plaintext) * 8)
-     padded_plaintext = right_pad_to_multiple_of_16_bytes(plaintext)
-     padded_ad = right_pad_to_multiple_of_16_bytes(additional_data)
-     S_s = POLYVAL(key = message_authentication_key,
-                   input = padded_ad ++ padded_plaintext ++
-                           length_block)
-     for i = 0; i < 12; i++ {
-       S_s[i] ^= nonce[i]
-     }
-     S_s[15] &= 0x7f
-     expected_tag = AES(key = message_encryption_key, block = S_s)
-
-     xor_sum = 0
-     for i := 0; i < bytelen(expected_tag); i++ {
-       xor_sum |= expected_tag[i] ^ tag[i]
-     }
-
-     if xor_sum != 0 {
-       fail()
-     }
-
-     return plaintext
-   }
-*/
 
 /*
 // good read:
@@ -238,184 +80,6 @@ inline static unsigned long long bin_to_long(uint8_t *bin) {
 //   https://www.cse.wustl.edu/~jain/cse571-11/ftp/l_05aes.pdf
 //   https://ie.u-ryukyu.ac.jp/~wada/design04/spec_e.html
 //   https://blog.0x7d0.dev/education/how-aes-is-implemented/
-
-
-// AES Pseudocode https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf
-// 128, 192, 256 (Nk = 4, 6, 8)
-func CIPHER(in, Nr, w) {
-  state = in
-  state = ADDROUNDKEY(state, w[0..3])
-  for round from 1 to Nr - 1 do
-    state = SUBBYTES(state)
-    state = SHIFTROWS(state)
-    state = MIXCOLUMNS(state)
-    satet = ADDROUNDKEY(state, w[4*round..4*round+3])
-  end for
-  state = SUBBYTES(state)
-  state = SHIFTROWS(state)
-  state = ADDROUNDKEY(state, w[4*Nr..4*Nr+3])
-  return state
-}
-
-func ADDROUNDKEY(state, key) {
-  // memcpy to key so it contains right frame of key
-  for i from 0 to 4 do
-    for j from 0 to 4 do
-      state[j][i] ^= key[(i * 4) + j] 
-}
-
-func SUBBYTES(state) {
-  for i from 0 to 4 do
-    for j from 0 to 4 do
-      state[j][i] = SBOX[state[j][i]]
-}
-
-func INVSUBBYTES(state) {
-  for i from 0 to 4 do
-    for j from 0 to 4 do
-      state[j][i] = SBOXINV[state[j][i]]
-}
-
-func SHIFTROWS(state) {
-  // skip first row
-  // rotate rows to left, number of steps = row
-  temp = state[0][1]
-  state[0][1] = state[1][1]
-  state[1][1] = state[2][1]
-  state[2][1] = state[3][1]
-  state[3][1] = temp
-
-  temp = state[0][2]
-  state[0][2] = state[2][2]
-  state[2][2] = temp
-  temp = state[1][2]
-  state[1][2] = state[3][2]
-  state[3][2] = temp
-
-  temp = state[0][3]
-  state[0][3] = state[3][3]
-  state[3][3] = state[2][3]
-  state[2][3] = state[1][3]
-  state[1][3] = temp
-}
-
-func INVSHIFTROWS(state) {
-  // skip first row
-  // rotate rows to right, number of steps = row
-  temp = state[3][1]
-  state[3][1] = state[2][1]
-  state[2][1] = state[1][1]
-  state[1][1] = state[0][1]
-  state[0][1] = temp
-
-  temp = state[0][2]
-  state[0][2] = state[2][2]
-  state[2][2] = temp
-  temp = state[1][2]
-  state[1][2] = state[3][2]
-  state[3][2] = temp
-
-  temp = state[0][3]
-  state[0][3] = state[1][3]
-  state[1][3] = state[2][3]
-  state[2][3] = state[3][3]
-  state[3][3] = temp
-}
-
-func times(x) {
-  return ((x<<1) ^ (((x>>7) & 1) * 0x1b))
-}
-
-func MIXCOLUMNS(state) {
-  for i from 0 to 4 do
-    state0   = state[i][0];
-    statecol = state[i][0] ^ state[i][1] ^ state[i][2] ^ state[i][3]
-    statesav = times(state[i][0] ^ state[i][1])
-    state[i][0] ^= statesav ^ statecol
-
-    statesav = times(state[i][1] ^ state[i][2])
-    state[i][1] ^= statesav ^ statecol
-
-    statesav = times(state[i][2] ^ state[i][3])
-    state[i][2] ^= statesav ^ statecol
-
-    statesav = times(state[i][3] ^ state0)
-    state[i][3] ^= statesav ^ statecol
-}
-
-func KEYEXPANSION(key) {
-  i = 0
-  while i <= Nk - 1 do
-    w[i] = key[4*i..4*i+3]
-    i += 1
-  end while
-  while i <= 4 * Nr + 3 do
-    temp = w[i - 1]
-    if i mod Nk == 0 {
-      temp = SUBWORD(ROTWORD(temp)) ^ Rcon[i/Nk]
-    } else if Nk > 6 and i mod Nk == 4 {
-      temp = SUBWORD(temp)
-    }
-    w[i] = w[i - Nk] ^ temp
-    i += 1
-  end while
-  return w
-}
-
-func INVCIPHER(in, Nr, w) {
-  state = in
-  state = ADDROUNDKEY(state, w[4*Nr..4*Nr+3])
-  for round = Nr - 1 d >= 1 {
-    state = INVSHIFTROWS(state)
-    state = INVSUBBYTES(state)
-    state = ADDROUNDKEY(state, w[4*round..4*round+3])
-    state = INVMIXCOLUMNS(state)
-  }
-  state = INVSHIFTROWS(state)
-  state = INVSUBBYTES(state)
-  state = ADDROUNDKEY(state, w[0..3])
-  return state
-}
-
-func EQINVCIPHER(in, Nr, dw) {
-  state = in
-  state = ADDROUNDKEY(state, dw[4*Nr..4*Nr+3])
-  for round = Nr - 1 d >= 1 {
-    state = INVSUBBYTES(state)
-    state = INVSHIFTROWS(state)
-    state = INVMIXCOLUMNS(state)
-    state = ADDROUNDKEY(state, dw[4*round..4*round+3])
-  }
-  state = INVSUBBYTES(state)
-  state = INVSHIFTROWS(state)
-  state = ADDROUNDKEY(state, dw[0..3])
-  return state
-}
-
-func KEYEXPANSIONEIC(key) {
-  i = 0
-  while i <= Nk - 1 do
-    w[i] = key[4*i..4*i+3]
-    dw[i] = w[i]
-    i += 1
-  end while
-  while i <= 4 * Nr + 3 do
-    temp = w[i - 1]
-    if i mod Nk == 0 {
-      temp = SUBWORD(ROTWORD(temp)) ^ Rcon[i/Nk]
-    } else if Nk > 6 and i mod Nk == 4 {
-      temp = SUBWORD(temp)
-    }
-    w[i] = w[i - Nk] ^ temp
-    dw[i] = w[i]
-    i += 1
-  end while
-  for round = 1 <= Nr - 1 {
-    i = 4 * round
-    dw[i..i+3] = INVMIXCOLUMNS(dw[i..i+3])
-  }
-  return dw
-}
 
 // https://github.com/m3y54m/aes-in-c?tab=readme-ov-file#the-rijndael-key-schedule
 // https://en.wikipedia.org/wiki/Rijndael_S-box
@@ -445,7 +109,6 @@ void initialize_aes_sbox(uint8_t sbox[256]) {
   sbox[0] = 0x63;
 }
 
-
 static void ShiftRows(AES_BYTE *b, int Nb, char *t)
 {
   AES_BYTE *temp = alloca(AES_WS*Nb);
@@ -459,7 +122,6 @@ static void ShiftRows(AES_BYTE *b, int Nb, char *t)
     }
   }
 }
-
 */
 
 uint8_t *right_pad_to_multiple_of_16_bytes(uint8_t *input, int len) {
@@ -479,6 +141,9 @@ uint8_t *right_pad_to_multiple_of_16_bytes(uint8_t *input, int len) {
 // https://networkbuilders.intel.com/docs/networkbuilders/advanced-encryption-standard-galois-counter-mode-optimized-ghash-function-technology-guide-1693300747.pdf
 
 // https://datatracker.ietf.org/doc/html/rfc8452#appendix-A
+
+// https://blog.0x7d0.dev/education/how-aes-is-implemented/
+// https://github.com/m3y54m/aes-in-c?tab=readme-ov-file#the-rijndael-key-schedule
 
 // AES https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf
 void ADDROUNDKEY(state_t state, uint8_t *key) {
@@ -507,8 +172,7 @@ void INVSUBBYTES(state_t state) {
 }
 
 void SHIFTROWS(state_t state) {
-  // skip first row
-  // rotate rows to left, number of steps = row
+  // skip first row // rotate rows to left, number of steps = row
   uint8_t temp = state.state[0][1];
   state.state[0][1] = state.state[1][1];
   state.state[1][1] = state.state[2][1];
@@ -530,8 +194,7 @@ void SHIFTROWS(state_t state) {
 }
 
 void INVSHIFTROWS(state_t state) {
-  // skip first row
-  // rotate rows to right, number of steps = row
+  // skip first row // rotate rows to right, number of steps = row
   uint8_t temp = state.state[3][1];
   state.state[3][1] = state.state[2][1];
   state.state[2][1] = state.state[1][1];
@@ -552,9 +215,7 @@ void INVSHIFTROWS(state_t state) {
   state.state[3][3] = temp;
 }
 
-uint8_t times(uint8_t x) {
-  return ((x<<1) ^ (((x>>7) & 1) * 0x1b));
-}
+
 
 void MIXCOLUMNS(state_t state) {
   for (uint8_t i = 0; i < 4; i++) {
@@ -696,15 +357,19 @@ void KEYEXPANSIONEIC(uint32_t *dw, uint32_t *key) {
   for (uint8_t round = 1; round <= Nr - 1; round++) {
     i = 4 * round;
     uint32_t *tmp = NULL;
+    state_t state;
     memcpy(tmp, dw + i, 4 * sizeof(uint32_t));
-    //INVMIXCOLUMNS(tmp); // TODO: fix, should use state
+    memcpy(state.state[i], tmp, 4 * sizeof(uint32_t));
+    INVMIXCOLUMNS(state);
+    memcpy(tmp, state.state[i], 4 * sizeof(uint32_t));
     memcpy(dw + i, tmp, 4 * sizeof(uint32_t));
   }
 }
 
-// 128, 192, 256 (Nk = 4, 6, 8), assume 256: Nk = 8
+// AES256(in, key) = CIPHER(in, KEYEXPANSION(key))
+// 128, 192, 256 (Nk = 4, 6, 8: Nr = 10, 12, 14), assume 256: Nk = 8, Nr = 14
 void CIPHER(state_t state, uint8_t **in, uint8_t *w) {
-  uint8_t *wtmp = NULL, Nr = 4;
+  uint8_t *wtmp = NULL, Nr = 14;
   memcpy(state.state, &in, 4 * 4 * sizeof(uint8_t));
   memcpy(wtmp, w, 4 * sizeof(uint8_t));
   ADDROUNDKEY(state, wtmp);
@@ -731,11 +396,10 @@ void mul(uint8_t *Z, uint8_t *BITX, uint8_t *BITY) {
   for (int i = 0; i < 128; i++) {
     if (BITX[i] == 0) Z[i+1] = Z[i];
     if (BITX[i] == 1) Z[i+1] = Z[i] ^ V[i];
-    LONG2BIN(V[i], BITV); // Take LSB1 of V[i] below
+    LONG2BIN(BITV, V[i]); // Take LSB1 of V[i] below
     if (BITV[127] == 0) V[i+1] = V[i] >> 1;
     if (BITV[127] == 1) V[i+1] = (V[i] >> 1) ^ RDEC;
   }
-  //return Z;
 }
 
 void xorarr(uint8_t *X, uint8_t *Y, uint8_t *r) {
@@ -749,13 +413,11 @@ void xorarr(uint8_t *X, uint8_t *Y, uint8_t *r) {
 void ghash(uint8_t **Y, uint8_t **X, uint8_t **H, int m) { // X must be 128*m length
   uint8_t RET[128][128]; // TODO: we assume m=128
   for (int i = 1; i < m; i++) {
-    mul(RET[i], X[i], H[m-(i-1)]);
-    //memcpy(&RET[i], mul(X[i], H[m-(i-1)]), 128); // LONG2BIN(X[i])? LONG2BIN(H[m-(i-i)])?
+    mul(RET[i], X[i], H[m-(i-1)]); // LONG2BIN(X[i])? LONG2BIN(H[m-(i-i)])?
   }
   for (int i = 1; i < m; i++) {
     xorarr(RET[i-1], RET[i], Y[i]);
   }
-  //return Y;
 }
 
 uint32_t little_endian_uint32(uint8_t x) {
@@ -775,6 +437,7 @@ uint32_t read_little_endian_uint32(uint8_t *x) {
   return result;
 }
 
+// // https://www.rfc-editor.org/rfc/rfc8452.html
 // return message_authentication_key, message_encryption_key
 void derive_keys(uint8_t *key_generating_key, uint8_t *nonce, uint8_t **message_authentication_key, uint8_t **message_encryption_key) {
   uint8_t *tmp1 = NULL, *tmp2 = NULL, AESSIZE = 8;
