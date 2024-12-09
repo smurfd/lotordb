@@ -481,110 +481,110 @@ uint8_t *right_pad_to_multiple_of_16_bytes(uint8_t *input, int len) {
 // https://datatracker.ietf.org/doc/html/rfc8452#appendix-A
 
 // AES https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf
-void ADDROUNDKEY(uint8_t **state, uint8_t *key) {
+void ADDROUNDKEY(state_t state, uint8_t *key) {
   // memcpy to key so it contains right frame of key
   for (uint8_t i = 0; i < 4; i++) {
     for (uint8_t j = 0; j < 4; j++) {
-      state[j][i] ^= key[(i * 4) + j];
+      state.state[j][i] ^= key[(i * 4) + j];
     }
   }
 }
 
-void SUBBYTES(uint8_t **state) {
+void SUBBYTES(state_t state) {
   for (uint8_t i = 0; i < 4; i++) {
     for (uint8_t j = 0; j < 4; j++) {
-      state[j][i] = sbox[state[j][i]];
+      state.state[j][i] = sbox[state.state[j][i]];
     }
   }
 }
 
-void INVSUBBYTES(uint8_t **state) {
+void INVSUBBYTES(state_t state) {
   for (uint8_t i = 0; i < 4; i++) {
     for (uint8_t j = 0; j < 4; j++) {
-      state[j][i] = reverse_sbox[state[j][i]];
+      state.state[j][i] = reverse_sbox[state.state[j][i]];
     }
   }
 }
 
-void SHIFTROWS(uint8_t **state) {
+void SHIFTROWS(state_t state) {
   // skip first row
   // rotate rows to left, number of steps = row
-  uint8_t temp = state[0][1];
-  state[0][1] = state[1][1];
-  state[1][1] = state[2][1];
-  state[2][1] = state[3][1];
-  state[3][1] = temp;
+  uint8_t temp = state.state[0][1];
+  state.state[0][1] = state.state[1][1];
+  state.state[1][1] = state.state[2][1];
+  state.state[2][1] = state.state[3][1];
+  state.state[3][1] = temp;
 
-  temp = state[0][2];
-  state[0][2] = state[2][2];
-  state[2][2] = temp;
-  temp = state[1][2];
-  state[1][2] = state[3][2];
-  state[3][2] = temp;
+  temp = state.state[0][2];
+  state.state[0][2] = state.state[2][2];
+  state.state[2][2] = temp;
+  temp = state.state[1][2];
+  state.state[1][2] = state.state[3][2];
+  state.state[3][2] = temp;
 
-  temp = state[0][3];
-  state[0][3] = state[3][3];
-  state[3][3] = state[2][3];
-  state[2][3] = state[1][3];
-  state[1][3] = temp;
+  temp = state.state[0][3];
+  state.state[0][3] = state.state[3][3];
+  state.state[3][3] = state.state[2][3];
+  state.state[2][3] = state.state[1][3];
+  state.state[1][3] = temp;
 }
 
-void INVSHIFTROWS(uint8_t **state) {
+void INVSHIFTROWS(state_t state) {
   // skip first row
   // rotate rows to right, number of steps = row
-  uint8_t temp = state[3][1];
-  state[3][1] = state[2][1];
-  state[2][1] = state[1][1];
-  state[1][1] = state[0][1];
-  state[0][1] = temp;
+  uint8_t temp = state.state[3][1];
+  state.state[3][1] = state.state[2][1];
+  state.state[2][1] = state.state[1][1];
+  state.state[1][1] = state.state[0][1];
+  state.state[0][1] = temp;
 
-  temp = state[0][2];
-  state[0][2] = state[2][2];
-  state[2][2] = temp;
-  temp = state[1][2];
-  state[1][2] = state[3][2];
-  state[3][2] = temp;
+  temp = state.state[0][2];
+  state.state[0][2] = state.state[2][2];
+  state.state[2][2] = temp;
+  temp = state.state[1][2];
+  state.state[1][2] = state.state[3][2];
+  state.state[3][2] = temp;
 
-  temp = state[0][3];
-  state[0][3] = state[1][3];
-  state[1][3] = state[2][3];
-  state[2][3] = state[3][3];
-  state[3][3] = temp;
+  temp = state.state[0][3];
+  state.state[0][3] = state.state[1][3];
+  state.state[1][3] = state.state[2][3];
+  state.state[2][3] = state.state[3][3];
+  state.state[3][3] = temp;
 }
 
 uint8_t times(uint8_t x) {
   return ((x<<1) ^ (((x>>7) & 1) * 0x1b));
 }
 
-void MIXCOLUMNS(uint8_t **state) {
+void MIXCOLUMNS(state_t state) {
   for (uint8_t i = 0; i < 4; i++) {
-    uint8_t state0 = state[i][0];
-    uint8_t statecol = state[i][0] ^ state[i][1] ^ state[i][2] ^ state[i][3];
-    uint8_t statesav = times(state[i][0] ^ state[i][1]);
-    state[i][0] ^= statesav ^ statecol;
+    uint8_t state0 = state.state[i][0];
+    uint8_t statecol = state.state[i][0] ^ state.state[i][1] ^ state.state[i][2] ^ state.state[i][3];
+    uint8_t statesav = times(state.state[i][0] ^ state.state[i][1]);
+    state.state[i][0] ^= statesav ^ statecol;
 
-    statesav = times(state[i][1] ^ state[i][2]);
-    state[i][1] ^= statesav ^ statecol;
+    statesav = times(state.state[i][1] ^ state.state[i][2]);
+    state.state[i][1] ^= statesav ^ statecol;
 
-    statesav = times(state[i][2] ^ state[i][3]);
-    state[i][2] ^= statesav ^ statecol;
+    statesav = times(state.state[i][2] ^ state.state[i][3]);
+    state.state[i][2] ^= statesav ^ statecol;
 
-    statesav = times(state[i][3] ^ state0);
-    state[i][3] ^= statesav ^ statecol;
+    statesav = times(state.state[i][3] ^ state0);
+    state.state[i][3] ^= statesav ^ statecol;
   }
 }
 
-void INVMIXCOLUMNS(uint8_t **state) {
+void INVMIXCOLUMNS(state_t state) {
   for (uint8_t i = 0; i < 4; i++) {
     uint8_t *statecol = NULL;
-    statecol[0] = (0x0e * state[i][0]) ^ (0x0b * state[i][1]) ^ (0x0d * state[i][2]) ^ (0x09 * state[i][3]);
-    statecol[1] = (0x09 * state[i][0]) ^ (0x0e * state[i][1]) ^ (0x0b * state[i][2]) ^ (0x0d * state[i][3]);
-    statecol[2] = (0x0d * state[i][0]) ^ (0x09 * state[i][1]) ^ (0x0e * state[i][2]) ^ (0x0b * state[i][3]);
-    statecol[3] = (0x0b * state[i][0]) ^ (0x0d * state[i][1]) ^ (0x09 * state[i][2]) ^ (0x0e * state[i][3]);
-    state[i][0] = statecol[0];
-    state[i][1] = statecol[1];
-    state[i][2] = statecol[2];
-    state[i][3] = statecol[3];
+    statecol[0] = (0x0e * state.state[i][0]) ^ (0x0b * state.state[i][1]) ^ (0x0d * state.state[i][2]) ^ (0x09 * state.state[i][3]);
+    statecol[1] = (0x09 * state.state[i][0]) ^ (0x0e * state.state[i][1]) ^ (0x0b * state.state[i][2]) ^ (0x0d * state.state[i][3]);
+    statecol[2] = (0x0d * state.state[i][0]) ^ (0x09 * state.state[i][1]) ^ (0x0e * state.state[i][2]) ^ (0x0b * state.state[i][3]);
+    statecol[3] = (0x0b * state.state[i][0]) ^ (0x0d * state.state[i][1]) ^ (0x09 * state.state[i][2]) ^ (0x0e * state.state[i][3]);
+    state.state[i][0] = statecol[0];
+    state.state[i][1] = statecol[1];
+    state.state[i][2] = statecol[2];
+    state.state[i][3] = statecol[3];
   }
 }
 
@@ -635,9 +635,9 @@ void KEYEXPANSION(uint32_t *w, uint32_t *key) {
   }
 }
 
-void INVCIPHER(uint8_t **state, uint8_t **in, uint8_t *w) {
+void INVCIPHER(state_t state, uint8_t **in, uint8_t *w) {
   uint8_t *wtmp = NULL, Nr = 4;
-  memcpy(state, in, 4 * 4 * sizeof(uint8_t));
+  memcpy(state.state, in, 4 * 4 * sizeof(uint8_t));
   memcpy(wtmp, w + (4 * Nr), 4);
   ADDROUNDKEY(state, wtmp);
   for (uint8_t round = Nr - 1; round >= 1; round--) {
@@ -653,9 +653,9 @@ void INVCIPHER(uint8_t **state, uint8_t **in, uint8_t *w) {
   ADDROUNDKEY(state, wtmp);
 }
 
-void EQINVCIPHER(uint8_t **state, uint8_t **in, uint8_t *dw) {
+void EQINVCIPHER(state_t state, uint8_t **in, uint8_t *dw) {
   uint8_t *wtmp = NULL, Nr = 4;
-  memcpy(state, in, 4 * 4 * sizeof(uint8_t));
+  memcpy(state.state, in, 4 * 4 * sizeof(uint8_t));
   memcpy(wtmp, dw + (4 * Nr), 4);
   ADDROUNDKEY(state, wtmp);
   for (uint8_t round = Nr - 1; round >= 1; round--) {
@@ -697,27 +697,27 @@ void KEYEXPANSIONEIC(uint32_t *dw, uint32_t *key) {
     i = 4 * round;
     uint32_t *tmp = NULL;
     memcpy(tmp, dw + i, 4 * sizeof(uint32_t));
-    INVMIXCOLUMNS(tmp);
+    //INVMIXCOLUMNS(tmp); // TODO: fix, should use state
     memcpy(dw + i, tmp, 4 * sizeof(uint32_t));
   }
 }
 
 // 128, 192, 256 (Nk = 4, 6, 8), assume 256: Nk = 8
-void CIPHER(uint8_t **state, uint8_t **in, uint8_t w) {
+void CIPHER(state_t state, uint8_t **in, uint8_t *w) {
   uint8_t *wtmp = NULL, Nr = 4;
-  memcpy(state, &in, 4 * 4 * sizeof(uint8_t));
-  memcpy(wtmp, &w, 4 * sizeof(uint8_t));
+  memcpy(state.state, &in, 4 * 4 * sizeof(uint8_t));
+  memcpy(wtmp, w, 4 * sizeof(uint8_t));
   ADDROUNDKEY(state, wtmp);
   for (uint8_t round = 1; round < Nr - 1; round++) {
     SUBBYTES(state);
     SHIFTROWS(state);
     MIXCOLUMNS(state);
-    memcpy(wtmp, &w + (4 * round), 4 * sizeof(uint8_t));
+    memcpy(wtmp, w + (4 * round), 4 * sizeof(uint8_t));
     ADDROUNDKEY(state, wtmp);
   }
   SUBBYTES(state);
   SHIFTROWS(state);
-  memcpy(wtmp, &w + (4 * Nr), 4 * sizeof(uint8_t));
+  memcpy(wtmp, w + (4 * Nr), 4 * sizeof(uint8_t));
   ADDROUNDKEY(state, wtmp);
 }
 
@@ -743,8 +743,6 @@ void xorarr(uint8_t *X, uint8_t *Y, uint8_t *r) {
     r[i] = X[i] ^ Y[i];
   }
 }
-
-
 
 // 6.4 for GHASH
 // In effect, the GHASH function calculates: (X1*Hm) ^ (X2*Hm-1) ^ ... ^ (Xm-1*H2) ^ (Xm*H)
