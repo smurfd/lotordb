@@ -1,4 +1,4 @@
-// Auth: smurfd, 2023 More reading & Borrow/Stolen parts read at the bottom of the file; 2 spacs indent; 150 width                                  //
+// Auth: smurfd, 2023 More reading at the bottom of the file; 2 spacs indent; 150 width                                                             //
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -371,7 +371,7 @@ static void keccak_squeezeblocks(uint8_t *out, uint32_t nblocks, u64 s[25], uint
 
 // Thus, given an input bit string N and an output length d,
 // KECCAK[c] (N, d) = SPONGE[KECCAK-p[1600, 24], pad10*1, 1600 – c] (N, d).
-void hash_new(char s[], const uint8_t n[]) {
+void hash_new(char *s, const uint8_t *n) {
   uint8_t z1[] = {2}, mmm[512] = {0}, ss[512] = {0};
   u64 d = strlen((char*)n) * 8;
   cat(mmm, n, d, z1, 2);

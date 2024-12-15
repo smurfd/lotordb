@@ -46,13 +46,11 @@ void test_aes2(void) {
 }
 
 int main(void) {
-/*
+  uint8_t *xxx = malloc(32), hash[256];
   u64 r[32];
-  char hash[256];
-  uint8_t *xxx = malloc(32);
   clock_t t = clock();
-  hash_new(hash, (uint8_t*)"some string to hash");
-  printf("hash: %s\n", hash);
+  hash_new((char*)hash, (uint8_t*)"some string to hash");
+  printf("hash: %s\n", (char*)hash);
   for (int i = 0; i < 32; i++) r[i] = i;
   printing_1matrix("A", 19, 16, r);
   printing_1matrix("B", 23, 20, r);
@@ -72,7 +70,7 @@ int main(void) {
   printf("OK\n");
   printf("::: %u\n", little_endian_uint32(32));
   free(xxx);
-*/
+
   //test_aes0();
   //test_aes1();
   test_aes2();

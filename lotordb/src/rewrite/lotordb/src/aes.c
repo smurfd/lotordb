@@ -1,3 +1,4 @@
+// Auth: smurfd, 2024 More reading at the bottom of the file; 2 spacs indent; 150 width                                                             //
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -81,14 +82,7 @@ uint8_t *right_pad_to_multiple_of_16_bytes(uint8_t *input, int len) {
 }
 
 /*
-// good read:
-//   https://engineering.purdue.edu/kak/compsec/NewLectures/Lecture8.pdf
-//   https://www.cse.wustl.edu/~jain/cse571-11/ftp/l_05aes.pdf
-//   https://ie.u-ryukyu.ac.jp/~wada/design04/spec_e.html
-//   https://blog.0x7d0.dev/education/how-aes-is-implemented/
 
-// https://github.com/m3y54m/aes-in-c?tab=readme-ov-file#the-rijndael-key-schedule
-// https://en.wikipedia.org/wiki/Rijndael_S-box
 #define ROTL8(x,shift) ((uint8_t) ((x) << (shift)) | ((x) >> (8 - (shift))))
 
 void initialize_aes_sbox(uint8_t sbox[256]) {
@@ -712,3 +706,23 @@ void st(u64 Z) {
   C6 = Z + 10; // 46
   C7 = Z + 11; // 47
 }
+
+// good read:
+//   https://engineering.purdue.edu/kak/compsec/NewLectures/Lecture8.pdf
+//   https://www.cse.wustl.edu/~jain/cse571-11/ftp/l_05aes.pdf
+//   https://ie.u-ryukyu.ac.jp/~wada/design04/spec_e.html
+//   https://blog.0x7d0.dev/education/how-aes-is-implemented/
+
+// https://github.com/m3y54m/aes-in-c?tab=readme-ov-file#the-rijndael-key-schedule
+// https://en.wikipedia.org/wiki/Rijndael_S-box
+// https://csrc.nist.gov/csrc/media/Events/2023/third-workshop-on-block-cipher-modes-of-operation/documents/accepted-papers/Galois%20Counter%20Mode%20with%20Secure%20Short%20Tags.pdf
+// https://medium.com/codex/aes-how-the-most-advanced-encryption-actually-works-b6341c44edb9
+// https://networkbuilders.intel.com/docs/networkbuilders/advanced-encryption-standard-galois-counter-mode-optimized-ghash-function-technology-guide-1693300747.pdf
+
+// https://datatracker.ietf.org/doc/html/rfc8452#appendix-A
+
+// https://blog.0x7d0.dev/education/how-aes-is-implemented/
+// https://github.com/m3y54m/aes-in-c?tab=readme-ov-file#the-rijndael-key-schedule
+
+// Code grabbed from https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf and massaged
+// mixedcolumns solve from https://github.com/p4-team/crypto-commons/blob/master/crypto_commons/symmetrical/aes.py#L243

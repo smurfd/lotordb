@@ -1,4 +1,4 @@
-// Auth: smurfd, 2023 More reading & Borrow/Stolen parts read at the bottom of the file; 2 spacs indent; 150 width                                  //
+// Auth: smurfd, 2024 More reading at the bottom of the file; 2 spacs indent; 150 width                                                             //
 #ifndef AES_H
 #define AES_H 1
 #include <stdint.h>
@@ -33,3 +33,4 @@ void KEYEXPANSIONEIC(uint8_t *w, uint8_t *key);
 void ciph_decryptcbc(uint8_t *out, const uint8_t *in, const uint8_t *key, const uint8_t *iv);
 void ciph_encryptcbc(uint8_t *out, const uint8_t *in, const uint8_t *key, const uint8_t *iv);
 #endif
+// Code grabbed from https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf and massaged
