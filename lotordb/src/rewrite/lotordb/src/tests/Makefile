@@ -4,7 +4,7 @@ BUILD:=../.build
 all: tests
 
 tests:
-	${CC} -o ${BUILD}/tests tests.c ${BUILD}/hash.o ${BUILD}/aes.o
+	${CC} -o ${BUILD}/tests tests.c ${BUILD}/hash.o ${BUILD}/aes.o -lm
 	${BUILD}/tests
 #${BUILD}/keys_client.o ${BUILD}/tables_client.o \
 ${BUILD}/crypto_client.o ${BUILD}/tables_server.o ${BUILD}/keys_server.o ${BUILD}/crypto_server.o ${BUILD}/db_keystore.o \

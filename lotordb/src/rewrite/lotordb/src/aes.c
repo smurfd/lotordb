@@ -39,10 +39,9 @@ static const uint8_t reverse_sbox[256] = {
   0x60, 0x51, 0x7f, 0xa9, 0x19, 0xb5, 0x4a, 0x0d, 0x2d, 0xe5, 0x7a, 0x9f, 0x93, 0xc9, 0x9c, 0xef,
   0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
   0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d};
-static const uint8_t rcon[11] = {0x87, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36};
 
 // TODO: Fix always have 1st argument as return value if needed
-static inline unsigned long long str_to_bin(const char *s) {
+static unsigned long long str_to_bin(const char *s) {
   unsigned long long i = 0;
   while (*s) {
     i <<= 1;
@@ -51,7 +50,7 @@ static inline unsigned long long str_to_bin(const char *s) {
   return i;
 }
 
-static inline void long_to_bin(uint8_t *ret, u64 num) {
+static void long_to_bin(uint8_t *ret, u64 num) {
   uint8_t i = 0;
   while (num != 0) {
     ret[i++] = num % 2;
@@ -59,19 +58,26 @@ static inline void long_to_bin(uint8_t *ret, u64 num) {
   }
 }
 
-static inline u64 bin_to_long(uint8_t *bin) {
+static u64 bin_to_long(uint8_t *bin) {
   uint8_t num[128] = {0};
   u64 dec = 0, base = 1;
   memcpy(num, bin, 128 * sizeof(uint8_t));
-  for (int i = 127; i >= 0; i--) {
+  for (uint8_t i = 127; i >= 0; i--) {
     if (num[i] == 1) dec += base;
     base *= 2;
   }
   return dec;
 }
 
-static inline uint8_t times(uint8_t x) {
+static uint8_t times(uint8_t x) {
   return ((x << 1) ^ (((x >> 7) & 1) * 0x1b));
+}
+
+uint8_t *right_pad_to_multiple_of_16_bytes(uint8_t *input, int len) {
+  while (len++ % 16 != 0) {
+    input[len] = 0;
+  }
+  return input;
 }
 
 /*
@@ -124,11 +130,31 @@ static void ShiftRows(AES_BYTE *b, int Nb, char *t)
 }
 */
 
-uint8_t *right_pad_to_multiple_of_16_bytes(uint8_t *input, int len) {
-  while(len++ % 16 != 0) {
-    input[len] = 0;
+static void copystate(state_t *state, state_t *in) {
+  memcpy(state->state, in->state, 4 * NB * sizeof(uint8_t));
+}
+
+static void statefromarr(state_t *state, const uint8_t in[16]) {
+  memcpy(state->state, in, 4 * NB * sizeof(uint8_t));
+}
+
+static void arrfromstate(uint8_t s[16], state_t *state) {
+  memcpy(s, state->state, 4 * NB * sizeof(uint8_t));
+}
+
+static void xorarr(uint8_t *r, const uint8_t *X, const uint8_t *Y) {
+  for (uint8_t i = 0; i < 4 * NB * sizeof(uint8_t); i++) {
+    r[i] = X[i] ^ Y[i];
   }
-  return input;
+}
+
+static void rcon(uint8_t *wrd, const uint8_t a) {
+  uint8_t c = 1;
+  for (uint8_t i = 0; i < a - 1; i++) {
+    c = (c << 1) ^ (((c >> 7) & 1) * 0x1b);
+  }
+  wrd[0] = c;
+  wrd[1] = wrd[2] = wrd[3] = 0;
 }
 
 #define AES(x, y) 0 // TODO: fix : https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf // also return length
@@ -146,223 +172,204 @@ uint8_t *right_pad_to_multiple_of_16_bytes(uint8_t *input, int len) {
 // https://github.com/m3y54m/aes-in-c?tab=readme-ov-file#the-rijndael-key-schedule
 
 // AES https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf
-void ADDROUNDKEY(state_t state, uint8_t *key) {
-  // memcpy to key so it contains right frame of key
+void ADDROUNDKEY(state_t *state, const uint8_t *key) {
+  state_t *temp = malloc(sizeof(state_t));
+  memset(temp, 0, sizeof(state_t));
+  copystate(temp, state);
+  for (uint8_t i = 0; i < 16; ++i) {
+    temp->state[i % 4][i / 4] = state->state[i % 4][i / 4] ^ key[(i % 4) + 4 * (i / 4)];
+  }
+  copystate(state, temp);
+  free(temp);
+}
+
+void SUBBYTES(state_t *state) {
+  for (uint8_t i = 0; i < 16; i++) {
+    state->state[i / 4][i % 4] = sbox[state->state[i / 4][i % 4]];
+  }
+}
+
+void INVSUBBYTES(state_t *state) {
+  for (uint8_t i = 0; i < 16; i++) {
+    state->state[i % 4][i / 4] = reverse_sbox[state->state[i % 4][i / 4]];
+  }
+}
+
+void SHIFTROWS(state_t *state) {
+  uint8_t temp[4] = {0};
+  memcpy(temp, state->state[1], 4 * sizeof(uint8_t));
+  state->state[1][0] = temp[1];
+  state->state[1][1] = temp[2];
+  state->state[1][2] = temp[3];
+  state->state[1][3] = temp[0];
+
+  memcpy(temp, state->state[2], 4 * sizeof(uint8_t));
+  state->state[2][0] = temp[1];
+  state->state[2][1] = temp[2];
+  state->state[2][2] = temp[3];
+  state->state[2][3] = temp[0];
+
+  memcpy(temp, state->state[3], 4 * sizeof(uint8_t));
+  state->state[3][0] = temp[1];
+  state->state[3][1] = temp[2];
+  state->state[3][2] = temp[3];
+  state->state[3][3] = temp[0];
+}
+
+void INVSHIFTROWS(state_t *state) {
+  uint8_t temp[4] = {0};
+  memcpy(temp, state->state[1], 4 * sizeof(uint8_t));
+  state->state[1][0] = temp[3];
+  state->state[1][1] = temp[0];
+  state->state[1][2] = temp[1];
+  state->state[1][3] = temp[2];
+
+  memcpy(temp, state->state[2], 4 * sizeof(uint8_t));
+  state->state[2][0] = temp[3];
+  state->state[2][1] = temp[0];
+  state->state[2][2] = temp[1];
+  state->state[2][3] = temp[2];
+
+  memcpy(temp, state->state[3], 4 * sizeof(uint8_t));
+  state->state[3][0] = temp[3];
+  state->state[3][1] = temp[0];
+  state->state[3][2] = temp[1];
+  state->state[3][3] = temp[2];
+}
+
+void mixcolumn(uint8_t *state) {
+  uint8_t t = state[0] ^ state[1] ^ state[2] ^ state[3];
+  uint8_t u = state[0];
+  state[0] ^= t ^ times(state[0] ^ state[1]);
+  state[1] ^= t ^ times(state[1] ^ state[2]);
+  state[2] ^= t ^ times(state[2] ^ state[3]);
+  state[3] ^= t ^ times(state[3] ^ u);
+}
+
+void MIXCOLUMNS(state_t *state) {
+  mixcolumn(state->state[0]);
+  mixcolumn(state->state[1]);
+  mixcolumn(state->state[2]);
+  mixcolumn(state->state[3]);
+}
+
+void INVMIXCOLUMNS(state_t *state) {
+  for (uint8_t i = 0; i < 4; ++i) {
+    uint8_t u = times(times(state->state[i][0] ^ state->state[i][2]));
+    uint8_t v = times(times(state->state[i][1] ^ state->state[i][3]));
+    state->state[i][0] ^= u;
+    state->state[i][1] ^= v;
+    state->state[i][2] ^= u;
+    state->state[i][3] ^= v;
+  }
+  MIXCOLUMNS(state);
+}
+
+void SUBWORD(uint8_t *word) {
+  word[0] = sbox[word[0]];
+  word[1] = sbox[word[1]];
+  word[2] = sbox[word[2]];
+  word[3] = sbox[word[3]];
+}
+
+void ROTWORD(uint8_t *word) {
+  uint8_t temp = word[0];
   for (uint8_t i = 0; i < 4; i++) {
-    for (uint8_t j = 0; j < 4; j++) {
-      state.state[j][i] ^= key[(i * 4) + j];
+    word[i] = word[i + 1];
+  }
+  word[3] = temp;
+}
+
+void KEYEXPANSION(uint8_t w[], const uint8_t key[]) {
+  uint8_t tmp[6] = {0}, rc[6] = {0};
+  memcpy(w, key, 4 * NK * sizeof(uint8_t));
+  for (uint8_t i = 4 * NK; i < 4 * NB * (14 + 1); i += 4) {
+    memcpy(tmp, w, 4 * sizeof(uint8_t));
+    if (i / 4 % NK == 0) {
+      ROTWORD(tmp);
+      SUBWORD(tmp);
+      rcon(rc, i / (4 * NK));
+      for (uint8_t k = 0; k < 4; k++) {
+        tmp[k] = tmp[k] ^ rc[k];
+      }
+    } else if (NK > 6 && i / 4 % NK == 4) {
+      SUBWORD(tmp);
+    }
+    for (uint8_t j = 0; j < 4; ++j) {
+      w[i + j] = w[i + j - 4 * NK] ^ tmp[j];
     }
   }
 }
 
-void SUBBYTES(state_t state) {
-  for (uint8_t i = 0; i < 4; i++) {
-    for (uint8_t j = 0; j < 4; j++) {
-      state.state[j][i] = sbox[state.state[j][i]];
-    }
+//
+// Encrypt a block of data
+static void encrypt_block(uint8_t *out, const uint8_t *in, const uint8_t *rk) {
+  state_t *state = malloc(sizeof(state_t));
+  statefromarr(state, in);
+  ADDROUNDKEY(state, rk);
+  for (uint32_t round = 1; round <= NR - 1; round++) {
+    SUBBYTES(state);
+    SHIFTROWS(state);
+    MIXCOLUMNS(state);
+    ADDROUNDKEY(state, rk + round * 4 * NB);
   }
+  SUBBYTES(state);
+  SHIFTROWS(state);
+  ADDROUNDKEY(state, rk + NR * 4 * NB);
+  arrfromstate(out, state);
+  free(state);
 }
 
-void INVSUBBYTES(state_t state) {
-  for (uint8_t i = 0; i < 4; i++) {
-    for (uint8_t j = 0; j < 4; j++) {
-      state.state[j][i] = reverse_sbox[state.state[j][i]];
-    }
-  }
-}
-
-void SHIFTROWS(state_t state) {
-  // skip first row // rotate rows to left, number of steps = row
-  uint8_t temp = state.state[0][1];
-  state.state[0][1] = state.state[1][1];
-  state.state[1][1] = state.state[2][1];
-  state.state[2][1] = state.state[3][1];
-  state.state[3][1] = temp;
-
-  temp = state.state[0][2];
-  state.state[0][2] = state.state[2][2];
-  state.state[2][2] = temp;
-  temp = state.state[1][2];
-  state.state[1][2] = state.state[3][2];
-  state.state[3][2] = temp;
-
-  temp = state.state[0][3];
-  state.state[0][3] = state.state[3][3];
-  state.state[3][3] = state.state[2][3];
-  state.state[2][3] = state.state[1][3];
-  state.state[1][3] = temp;
-}
-
-void INVSHIFTROWS(state_t state) {
-  // skip first row // rotate rows to right, number of steps = row
-  uint8_t temp = state.state[3][1];
-  state.state[3][1] = state.state[2][1];
-  state.state[2][1] = state.state[1][1];
-  state.state[1][1] = state.state[0][1];
-  state.state[0][1] = temp;
-
-  temp = state.state[0][2];
-  state.state[0][2] = state.state[2][2];
-  state.state[2][2] = temp;
-  temp = state.state[1][2];
-  state.state[1][2] = state.state[3][2];
-  state.state[3][2] = temp;
-
-  temp = state.state[0][3];
-  state.state[0][3] = state.state[1][3];
-  state.state[1][3] = state.state[2][3];
-  state.state[2][3] = state.state[3][3];
-  state.state[3][3] = temp;
-}
-
-
-
-void MIXCOLUMNS(state_t state) {
-  for (uint8_t i = 0; i < 4; i++) {
-    uint8_t state0 = state.state[i][0];
-    uint8_t statecol = state.state[i][0] ^ state.state[i][1] ^ state.state[i][2] ^ state.state[i][3];
-    uint8_t statesav = times(state.state[i][0] ^ state.state[i][1]);
-    state.state[i][0] ^= statesav ^ statecol;
-
-    statesav = times(state.state[i][1] ^ state.state[i][2]);
-    state.state[i][1] ^= statesav ^ statecol;
-
-    statesav = times(state.state[i][2] ^ state.state[i][3]);
-    state.state[i][2] ^= statesav ^ statecol;
-
-    statesav = times(state.state[i][3] ^ state0);
-    state.state[i][3] ^= statesav ^ statecol;
-  }
-}
-
-void INVMIXCOLUMNS(state_t state) {
-  for (uint8_t i = 0; i < 4; i++) {
-    uint8_t *statecol = NULL;
-    statecol[0] = (0x0e * state.state[i][0]) ^ (0x0b * state.state[i][1]) ^ (0x0d * state.state[i][2]) ^ (0x09 * state.state[i][3]);
-    statecol[1] = (0x09 * state.state[i][0]) ^ (0x0e * state.state[i][1]) ^ (0x0b * state.state[i][2]) ^ (0x0d * state.state[i][3]);
-    statecol[2] = (0x0d * state.state[i][0]) ^ (0x09 * state.state[i][1]) ^ (0x0e * state.state[i][2]) ^ (0x0b * state.state[i][3]);
-    statecol[3] = (0x0b * state.state[i][0]) ^ (0x0d * state.state[i][1]) ^ (0x09 * state.state[i][2]) ^ (0x0e * state.state[i][3]);
-    state.state[i][0] = statecol[0];
-    state.state[i][1] = statecol[1];
-    state.state[i][2] = statecol[2];
-    state.state[i][3] = statecol[3];
-  }
-}
-
-void SUBWORD(uint32_t word) {
-  uint8_t *bytes = NULL;
-  bytes[0] = (word >> 24) & 0xFF;
-  bytes[1] = (word >> 16) & 0xFF;
-  bytes[2] = (word >> 8) & 0xFF;
-  bytes[3] = word & 0xFF;
-  bytes[0] = sbox[bytes[0]];
-  bytes[1] = sbox[bytes[1]];
-  bytes[2] = sbox[bytes[2]];
-  bytes[3] = sbox[bytes[3]];
-  word = (uint32_t)bytes[3] | ((uint32_t)bytes[2] << 8) | ((uint32_t)bytes[1] << 16) | ((uint32_t)bytes[0] << 24);
-}
-
-void ROTWORD(uint32_t word) {
-  uint8_t *bytes = NULL;
-  bytes[0] = (word >> 24) & 0xFF;
-  bytes[1] = (word >> 16) & 0xFF;
-  bytes[2] = (word >> 8) & 0xFF;
-  bytes[3] = word & 0xFF;
-  uint32_t temp = bytes[0];
-  bytes[0] = bytes[1];
-  bytes[1] = bytes[2];
-  bytes[2] = bytes[3];
-  bytes[3] = temp;
-  word = (uint32_t)bytes[3] | ((uint32_t)bytes[2] << 8) | ((uint32_t)bytes[1] << 16) | ((uint32_t)bytes[0] << 24);
-}
-
-void KEYEXPANSION(uint32_t *w, uint32_t *key) {
-  int i = 0, Nr = 4, Nk = 8;
-  while (i <= Nk - 1) {
-    memcpy(&w[i], key + (4 * i), 4);
-    i += 1;
-  }
-  while (i <= 4 * Nr + 3) {
-    uint32_t temp = w[i - 1];
-    if (i % Nk == 0) {
-      ROTWORD(temp);
-      SUBWORD(temp);
-      temp = temp ^ rcon[i/Nk];
-    } else if (Nk > 6 && i % Nk == 4) {
-      SUBWORD(temp);
-    }
-    w[i] = w[i - Nk] ^ temp;
-    i += 1;
-  }
-}
-
-void INVCIPHER(state_t state, uint8_t **in, uint8_t *w) {
-  uint8_t *wtmp = NULL, Nr = 4;
-  memcpy(state.state, in, 4 * 4 * sizeof(uint8_t));
-  memcpy(wtmp, w + (4 * Nr), 4);
-  ADDROUNDKEY(state, wtmp);
-  for (uint8_t round = Nr - 1; round >= 1; round--) {
-    INVSHIFTROWS(state);
-    INVSUBBYTES(state);
-    memcpy(wtmp, w + (4 * round), 4);
-    ADDROUNDKEY(state, wtmp);
-    INVMIXCOLUMNS(state);
-  }
-  INVSHIFTROWS(state);
-  INVSUBBYTES(state);
-  memcpy(wtmp, w, 4);
-  ADDROUNDKEY(state, wtmp);
-}
-
-void EQINVCIPHER(state_t state, uint8_t **in, uint8_t *dw) {
-  uint8_t *wtmp = NULL, Nr = 4;
-  memcpy(state.state, in, 4 * 4 * sizeof(uint8_t));
-  memcpy(wtmp, dw + (4 * Nr), 4);
-  ADDROUNDKEY(state, wtmp);
-  for (uint8_t round = Nr - 1; round >= 1; round--) {
+//
+// Decrypt a block of data
+static void decrypt_block(uint8_t *out, const uint8_t *in, const uint8_t *rk) {
+  state_t *state = malloc(sizeof(state_t));
+  statefromarr(state, in);
+  ADDROUNDKEY(state, rk + NR * 4 * NB);
+  for (uint32_t round = NR - 1; round >= 1; round--) {
     INVSUBBYTES(state);
     INVSHIFTROWS(state);
+    ADDROUNDKEY(state, rk + round * 4 * NB);
     INVMIXCOLUMNS(state);
-    memcpy(wtmp, dw + (4 * round), 4);
-    ADDROUNDKEY(state, wtmp);
   }
   INVSUBBYTES(state);
   INVSHIFTROWS(state);
-  memcpy(wtmp, dw, 4);
-  ADDROUNDKEY(state, wtmp);
+  ADDROUNDKEY(state, rk);
+  arrfromstate(out, state);
+  free(state);
 }
 
-// EIC = EQINVCIPHER
-void KEYEXPANSIONEIC(uint32_t *dw, uint32_t *key) {
-  int i = 0, Nr = 4, Nk = 8;
-  uint32_t *w = NULL;
-  while (i <= Nk - 1) {
-    memcpy(&w[i], key + (4 * i), 4);
-    memcpy(&dw[i], &w[i], 4);
-    i += 1;
+void ciph_encryptcbc(uint8_t *out, const uint8_t *in, const uint8_t *key, const uint8_t *iv) {
+  uint8_t block[NB * NR] = {0}, roundkeys[4 * NB * (NR + 1)] = {0};
+  KEYEXPANSION(roundkeys, key);
+  memcpy(block, iv, BBL);
+  for (uint32_t i = 0; i < BBL; i += BBL) {
+    xorarr(block, block, (in + i));
+    encrypt_block((out + i), block, roundkeys);
+    memcpy(block, (out + i), BBL);
   }
-  while (i <= 4 * Nr + 3) {
-    uint32_t temp = w[i - 1];
-    if (i % Nk == 0) {
-      ROTWORD(temp);
-      SUBWORD(temp);
-      temp = temp ^ rcon[i / Nk];
-    } else if (Nk > 6 && i % Nk == 4) {
-      SUBWORD(temp);
-    }
-    w[i] = w[i - Nk] ^ temp;
-    dw[i] = w[i];
-    i += 1;
+}
+
+void ciph_decryptcbc(uint8_t *out, const uint8_t *in, const uint8_t *key, const uint8_t *iv) {
+  uint8_t block[NB * NR] = {0}, roundkeys[4 * NB * (NR + 1)] = {0};
+  KEYEXPANSION(roundkeys, key);
+  memcpy(block, iv, BBL);
+  for (uint32_t i = 0; i < BBL; i += BBL) {
+    decrypt_block((out + i), (in + i), roundkeys);
+    xorarr((out + i), block, (out + i));
+    memcpy(block, in + i, BBL);
   }
-  for (uint8_t round = 1; round <= Nr - 1; round++) {
-    i = 4 * round;
-    uint32_t *tmp = NULL;
-    state_t state;
-    memcpy(tmp, dw + i, 4 * sizeof(uint32_t));
-    memcpy(state.state[i], tmp, 4 * sizeof(uint32_t));
-    INVMIXCOLUMNS(state);
-    memcpy(tmp, state.state[i], 4 * sizeof(uint32_t));
-    memcpy(dw + i, tmp, 4 * sizeof(uint32_t));
+}
+/*
+void ciph_cryptcfb(uint8_t *out, const uint8_t *in, const uint8_t *key, const uint8_t *iv, bool dec) {
+  uint8_t block[NB * NR] = {0}, encryptedblock[NB * NR] = {0}, roundkeys[4 * NB * (NR + 1)] = {0};
+  KEYEXPANSION(roundkeys, key);
+  memcpy(block, iv, BBL);
+  for (uint32_t i = 0; i < BBL; i += BBL) {
+    encrypt_block(encryptedblock, block, roundkeys);
+    xorarr((out + i), (in + i), encryptedblock);
+    if (dec) memcpy(block, in + i, BBL);
+    else memcpy(block, (out + i), BBL);
   }
 }
 
@@ -386,6 +393,81 @@ void CIPHER(state_t state, uint8_t **in, uint8_t *w) {
   ADDROUNDKEY(state, wtmp);
 }
 
+void INVCIPHER(state_t *state, uint8_t *in, uint8_t *w) {
+  uint8_t *wtmp = malloc(16);
+  memcpy(state->state, in, 4 * NB * sizeof(uint8_t));
+  memcpy(wtmp, w + (4 * NK), 4 * NB * sizeof(uint8_t));
+  ADDROUNDKEY(state, wtmp);
+  for (uint8_t round = NK - 1; round >= 1; round--) {
+    INVSHIFTROWS(state);
+    INVSUBBYTES(state);
+    memcpy(wtmp, w + (4 * round), 4 * NB * sizeof(uint8_t));
+    ADDROUNDKEY(state, wtmp);
+    INVMIXCOLUMNS(state);
+  }
+  INVSHIFTROWS(state);
+  INVSUBBYTES(state);
+  memcpy(wtmp, w, 4 * NB * sizeof(uint8_t));
+  ADDROUNDKEY(state, wtmp);
+  free(wtmp);
+}
+
+void EQINVCIPHER(state_t *state, uint8_t *in, uint8_t *dw) {
+  uint8_t *wtmp = malloc(16);
+  memcpy(state->state, in, 4 * NB * sizeof(uint8_t));
+  memcpy(wtmp, dw + (4 * NK), 4 * NB * sizeof(uint8_t));
+  ADDROUNDKEY(state, wtmp);
+  for (uint8_t round = NK - 1; round >= 1; round--) {
+    INVSUBBYTES(state);
+    INVSHIFTROWS(state);
+    INVMIXCOLUMNS(state);
+    memcpy(wtmp, dw + (4 * round), 4 * NB * sizeof(uint8_t));
+    ADDROUNDKEY(state, wtmp);
+    INVMIXCOLUMNS(state);
+  }
+  INVSUBBYTES(state);
+  INVSHIFTROWS(state);
+  memcpy(wtmp, dw, 4 * NB * sizeof(uint8_t));
+  ADDROUNDKEY(state, wtmp);
+  free(wtmp);
+}
+
+// EIC = EQINVCIPHER
+void KEYEXPANSIONEIC(uint8_t *dw, uint8_t *key) {
+  int i = 0, Nr = 4, Nk = 8;
+  uint8_t *w = malloc(32);
+  while (i <= Nk - 1) {
+    memcpy(&w[i], key + (4 * i), 4);
+    memcpy(&dw[i], &w[i], 4);
+    i += 1;
+  }
+  while (i <= 4 * Nr + 3) {
+    uint32_t temp = w[i - 1];
+    if (i % Nk == 0) {
+      ROTWORD(temp);
+      SUBWORD(temp);
+      temp = temp ^ rcon[i / Nk];
+    } else if (Nk > 6 && i % Nk == 4) {
+      SUBWORD(temp);
+    }
+    w[i] = w[i - Nk] ^ temp;
+    dw[i] = w[i];
+    i += 1;
+  }
+    uint8_t *tmp = malloc(32*sizeof(uint8_t));
+    state_t *state = (state_t*) malloc(sizeof(state_t)*2);
+  for (uint8_t round = 1; round <= Nr - 1; round++) {
+    i = 4 * round;
+    memcpy(tmp, dw + i, 4 * sizeof(uint8_t));
+    memcpy(state->state[round], tmp, 4 * sizeof(uint8_t));
+    INVMIXCOLUMNS(state);
+    memcpy(tmp, state->state[round], 4 * sizeof(uint8_t));
+    memcpy(dw + i, tmp, 4 * sizeof(uint8_t));
+  }
+}
+*/
+
+
 // https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 // 6.3 multiply
 void mul(uint8_t *Z, uint8_t *BITX, uint8_t *BITY) {
@@ -402,12 +484,6 @@ void mul(uint8_t *Z, uint8_t *BITX, uint8_t *BITY) {
   }
 }
 
-void xorarr(uint8_t *X, uint8_t *Y, uint8_t *r) {
-  for (int i = 1; i < 128; i++) {
-    r[i] = X[i] ^ Y[i];
-  }
-}
-
 // 6.4 for GHASH
 // In effect, the GHASH function calculates: (X1*Hm) ^ (X2*Hm-1) ^ ... ^ (Xm-1*H2) ^ (Xm*H)
 void ghash(uint8_t **Y, uint8_t **X, uint8_t **H, int m) { // X must be 128*m length
@@ -416,7 +492,7 @@ void ghash(uint8_t **Y, uint8_t **X, uint8_t **H, int m) { // X must be 128*m le
     mul(RET[i], X[i], H[m-(i-1)]); // LONG2BIN(X[i])? LONG2BIN(H[m-(i-i)])?
   }
   for (int i = 1; i < m; i++) {
-    xorarr(RET[i-1], RET[i], Y[i]);
+    xorarr(Y[i], RET[i-1], RET[i]);
   }
 }
 
