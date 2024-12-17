@@ -354,8 +354,8 @@ void ciph_decryptcbc(uint8_t *out, const uint8_t *in, const uint8_t *key, const 
     memcpy(block, in + i, BBL);
   }
 }
-/*
-void ciph_cryptcfb(uint8_t *out, const uint8_t *in, const uint8_t *key, const uint8_t *iv, bool dec) {
+
+void ciph_cryptcfb(uint8_t *out, const uint8_t *in, const uint8_t *key, const uint8_t *iv, uint8_t dec) {
   uint8_t block[NB * NR] = {0}, encryptedblock[NB * NR] = {0}, roundkeys[4 * NB * (NR + 1)] = {0};
   KEYEXPANSION(roundkeys, key);
   memcpy(block, iv, BBL);
@@ -366,7 +366,7 @@ void ciph_cryptcfb(uint8_t *out, const uint8_t *in, const uint8_t *key, const ui
     else memcpy(block, (out + i), BBL);
   }
 }
-
+/*
 // AES256(in, key) = CIPHER(in, KEYEXPANSION(key))
 // 128, 192, 256 (Nk = 4, 6, 8: Nr = 10, 12, 14), assume 256: Nk = 8, Nr = 14
 void CIPHER(state_t state, uint8_t **in, uint8_t *w) {
@@ -706,23 +706,19 @@ void st(u64 Z) {
   C6 = Z + 10; // 46
   C7 = Z + 11; // 47
 }
+// Code grabbed from https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf and massaged
+// mixedcolumns solve from https://github.com/p4-team/crypto-commons/blob/master/crypto_commons/symmetrical/aes.py#L243
 
 // good read:
 //   https://engineering.purdue.edu/kak/compsec/NewLectures/Lecture8.pdf
 //   https://www.cse.wustl.edu/~jain/cse571-11/ftp/l_05aes.pdf
 //   https://ie.u-ryukyu.ac.jp/~wada/design04/spec_e.html
 //   https://blog.0x7d0.dev/education/how-aes-is-implemented/
-
-// https://github.com/m3y54m/aes-in-c?tab=readme-ov-file#the-rijndael-key-schedule
-// https://en.wikipedia.org/wiki/Rijndael_S-box
-// https://csrc.nist.gov/csrc/media/Events/2023/third-workshop-on-block-cipher-modes-of-operation/documents/accepted-papers/Galois%20Counter%20Mode%20with%20Secure%20Short%20Tags.pdf
-// https://medium.com/codex/aes-how-the-most-advanced-encryption-actually-works-b6341c44edb9
-// https://networkbuilders.intel.com/docs/networkbuilders/advanced-encryption-standard-galois-counter-mode-optimized-ghash-function-technology-guide-1693300747.pdf
-
-// https://datatracker.ietf.org/doc/html/rfc8452#appendix-A
-
-// https://blog.0x7d0.dev/education/how-aes-is-implemented/
-// https://github.com/m3y54m/aes-in-c?tab=readme-ov-file#the-rijndael-key-schedule
-
-// Code grabbed from https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf and massaged
-// mixedcolumns solve from https://github.com/p4-team/crypto-commons/blob/master/crypto_commons/symmetrical/aes.py#L243
+//   https://github.com/m3y54m/aes-in-c?tab=readme-ov-file#the-rijndael-key-schedule
+//   https://en.wikipedia.org/wiki/Rijndael_S-box
+//   https://csrc.nist.gov/csrc/media/Events/2023/third-workshop-on-block-cipher-modes-of-operation/documents/accepted-papers/Galois%20Counter%20Mode%20with%20Secure%20Short%20Tags.pdf
+//   https://medium.com/codex/aes-how-the-most-advanced-encryption-actually-works-b6341c44edb9
+//   https://networkbuilders.intel.com/docs/networkbuilders/advanced-encryption-standard-galois-counter-mode-optimized-ghash-function-technology-guide-1693300747.pdf
+//   https://datatracker.ietf.org/doc/html/rfc8452#appendix-A
+//   https://blog.0x7d0.dev/education/how-aes-is-implemented/
+//   https://github.com/m3y54m/aes-in-c?tab=readme-ov-file#the-rijndael-key-schedule

@@ -2,7 +2,6 @@ CC := gcc -O3 -Wall -pedantic -std=c99
 BUILD:=.build
 
 all: mkbuilddir hash aes test
-#ciphers keys db_keystore db_tables crypto crypto_server crypto_client test
 
 mkbuilddir:
 	mkdir -p ${BUILD}

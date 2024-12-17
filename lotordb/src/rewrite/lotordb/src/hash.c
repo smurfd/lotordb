@@ -223,7 +223,6 @@ static void keccak_p(uint8_t s[], u64 (*ss)[5][5], const uint8_t sm[], bool str)
   else memcpy((*ss), &a, 25 * sizeof(u64));
 }
 
-
 //
 // Concatenate
 static u64 cat(uint8_t z[], const uint8_t x[], const u64 xl, const uint8_t y[], const u64 yl) {
@@ -393,6 +392,5 @@ void hash_shake_new(uint8_t *out, uint32_t outlen, const uint8_t *in, uint32_t i
     }
   }
 }
-
 // Code grabbed from https://www.rfc-editor.org/rfc/rfc6234 and massaged
 // https://hashes.com/en/generate/hash
