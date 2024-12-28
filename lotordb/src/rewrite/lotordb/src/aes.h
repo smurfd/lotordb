@@ -2,40 +2,10 @@
 #ifndef AES_H
 #define AES_H 1
 #include <stdint.h>
+#define KEYSIZE1 sizeof(uint32_t) * 4
+#define KEYSIZE2 sizeof(uint32_t) * 8
 
-typedef struct state_t {
-  uint8_t state[4][4];
-} state_t;
-
-#define NB 4
-#define NK 8
-#define NR 14
-#define BBL 4 * NB * sizeof(uint8_t)
-#define BIN(x) str_to_bin(#x) // TODO: maby not needed?
-#define LONG2BIN(x, y) long_to_bin(x, y)
-#define BIN2LONG(x) bin_to_long(x)
-#define u64 unsigned long long int // because linux uint64_t is not same as on mac
-
-void multiply(u64 *R);
-void modreduce(u64 *K);
-void st(u64 Z);
-uint32_t little_endian_uint32(uint8_t x);
-uint8_t *right_pad_to_multiple_of_16_bytes(uint8_t *input, int len);
-
-// AES
-void EQINVCIPHER(state_t *state, uint8_t *in, uint8_t *w);
-void INVCIPHER(state_t *state, uint8_t *in, uint8_t *w);
-void CIPHER(state_t *state, uint8_t *in, uint8_t *w);
-void KEYEXPANSION(uint8_t *w, const uint8_t *key);
-void KEYEXPANSIONEIC(uint8_t *w, uint8_t *key);
-
-void ciph_cryptcfb(uint8_t *out, const uint8_t *in, const uint8_t *key, const uint8_t *iv, uint8_t dec);
-void ciph_decryptcbc(uint8_t *out, const uint8_t *in, const uint8_t *key, const uint8_t *iv);
-void ciph_encryptcbc(uint8_t *out, const uint8_t *in, const uint8_t *key, const uint8_t *iv);
-
-// GCM
-
-// AES GCM
-
+void cipher(uint32_t *ret, uint32_t *key, uint32_t *block);
+void inv_cipher(uint32_t *ret, uint32_t *key, uint32_t *block);
 #endif
 // Code grabbed from https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf and massaged

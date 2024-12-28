@@ -1,11 +1,11 @@
 // Auth: smurfd, 2024 More reading at the bottom of the file; 2 spacs indent; 150 width                                                             //
 #include <stdlib.h>
+#include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include "aes.h"
 
-// TODO: Figure out later how to generate these
-static const uint8_t sbox[256] = {
+static const uint8_t SBOX[256] = {
   0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
   0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
   0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
@@ -23,7 +23,7 @@ static const uint8_t sbox[256] = {
   0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
   0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16};
 
-static const uint8_t reverse_sbox[256] = {
+static const uint8_t INV_SBOX[256] = {
   0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
   0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
   0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
@@ -41,673 +41,289 @@ static const uint8_t reverse_sbox[256] = {
   0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
   0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d};
 
-// TODO: Fix always have 1st argument as return value if needed
-static unsigned long long str_to_bin(const char *s) {
-  unsigned long long i = 0;
-  while (*s) {
-    i <<= 1;
-    i += *s++ - '0';
+//
+// Convert 4 bytes to a word
+static uint32_t bytes2word(const uint8_t *b) {
+  return (b[0] << 24) + (b[1] << 16) + (b[2] << 8) + b[3];
+}
+
+//
+// Convert a word to 4 bytes
+static void word2bytes(uint8_t *b, const uint32_t w) {
+  b[0] = w >> 24;
+  b[1] = w >> 16 & 0xff;
+  b[2] = w >> 8 & 0xff;
+  b[3] = w & 0xff;
+}
+
+//
+// Used to manage 4.1 & 4.2 addition and multiplication
+static inline uint8_t gm2(const uint8_t b) {
+  return ((b << 1) ^ (0x1b & ((b >> 7) * 0xff))) & 0xff;
+}
+
+//
+// Substitue a word using SBox
+static uint32_t subword(const uint32_t w) {
+  uint8_t b[4], s[4];
+  word2bytes(b, w);
+  s[0] = SBOX[b[0]];
+  s[1] = SBOX[b[1]];
+  s[2] = SBOX[b[2]];
+  s[3] = SBOX[b[3]];
+  return bytes2word(s);
+}
+
+//
+// Rotate word x steps
+static inline uint32_t rolx(const uint32_t w, const uint32_t x) {
+  return ((w << x) | (w >> (32 - x))) & 0xffffffff;
+}
+
+static void expandnextkeyA(uint32_t *k, const uint32_t *key0, const uint32_t *key1, const uint8_t rcon) {
+  uint32_t w[8] = {0};
+  memcpy(w + 0, key0, 4 * sizeof(uint32_t));
+  memcpy(w + 4, key1, 4 * sizeof(uint32_t));
+  uint32_t sw = subword(rolx(w[7], 8)), rw = (rcon << 24), t = sw ^ rw;
+  k[0] = w[0] ^ t;
+  k[1] = w[1] ^ w[0] ^ t;
+  k[2] = w[2] ^ w[1] ^ w[0] ^ t;
+  k[3] = w[3] ^ w[2] ^ w[1] ^ w[0] ^ t;
+}
+
+static void expandnextkeyB(uint32_t *k, const uint32_t *key0, const uint32_t *key1) {
+  uint32_t w[8] = {0};
+  memcpy(w + 0, key0, 4 * sizeof(uint32_t));
+  memcpy(w + 4, key1, 4 * sizeof(uint32_t));
+  uint32_t t = subword(w[7]);
+  k[0] = w[0] ^ t;
+  k[1] = w[1] ^ w[0] ^ t;
+  k[2] = w[2] ^ w[1] ^ w[0] ^ t;
+  k[3] = w[3] ^ w[2] ^ w[1] ^ w[0] ^ t;
+}
+
+//
+// Get the RCON constant
+static inline uint8_t getrcon(const uint8_t round) {
+  uint8_t rcon = 0x8d;
+  for (int i = 0; i < round; i++) {
+    rcon = ((rcon << 1) ^ (0x11b & - (rcon >> 7))) & 0xff;
   }
-  return i;
+  return rcon;
 }
 
-static void long_to_bin(uint8_t *ret, u64 num) {
-  uint8_t i = 0;
-  while (num != 0) {
-    ret[i++] = num % 2;
-    num /= 2;
+//
+// 5.2
+// KEYEXPANSION() is a routine that is applied to the key to generate 4 ∗ (Nr + 1) words. Thus, four words are generated for each of the Nr + 1
+// applications of ADDROUNDKEY() within the specifcation of CIPHER(), as described in Section 5.1.4. The output of the routine consists of a
+// linear array of words, denoted by w[i], where i is in the range 0 ≤ i < 4 ∗ (Nr + 1)
+static void keyexpansion(uint32_t *rk, const uint32_t *key) {
+  uint32_t ktmp[4], rk1[64], rk2[64], rk3[64], co1 = 4, co2 = 0, rkco = 8;
+  memcpy(rk1, key + 0, 4 * sizeof(uint32_t));
+  memcpy(rk2, key + 4, 4 * sizeof(uint32_t));
+  memcpy(rk, key, 8 * sizeof(uint32_t));
+  for (uint8_t i = 0; i < 12; i++) { // 14 number of rounds - 2
+    expandnextkeyA(ktmp, rk1 + co2, rk2 + co2, getrcon(i + 1));
+    memcpy(rk1 + co1, ktmp, 4 * sizeof(uint32_t));
+    memcpy(rk3 + co2, ktmp, 4 * sizeof(uint32_t));
+    expandnextkeyB(ktmp, rk2 + co2, rk3 + co2);
+    memcpy(rk2 + co1, ktmp, 4 * sizeof(uint32_t));
+    memcpy(rk + rkco + 0, rk3 + co2, 4 * sizeof(uint32_t));
+    memcpy(rk + rkco + 4, rk2 + co1, 4 * sizeof(uint32_t));
+    co1+=4; co2+=4; rkco+=8;
   }
+  expandnextkeyA(ktmp, rk1 + co1, rk2 + co1, getrcon(7));
+  memcpy(rk + (rkco - 8), ktmp, 4 * sizeof(uint32_t));
 }
 
-static u64 bin_to_long(uint8_t *bin) {
-  uint8_t num[128] = {0};
-  u64 dec = 0, base = 1;
-  memcpy(num, bin, 128 * sizeof(uint8_t));
-  for (uint8_t i = 127; i >= 0; i--) {
-    if (num[i] == 1) dec += base;
-    base *= 2;
-  }
-  return dec;
+static uint32_t mixword(uint32_t w) {
+  uint8_t b[4] = {0}, mb[4] = {0};
+  word2bytes(b, w);
+  mb[0] = gm2(b[0]) ^ gm2(b[1]) ^ b[1] ^ b[2] ^ b[3];
+  mb[1] = b[0] ^ gm2(b[1]) ^ gm2(b[2]) ^ b[2] ^ b[3];
+  mb[2] = b[0] ^ b[1] ^ gm2(b[2]) ^ gm2(b[3]) ^ b[3];
+  mb[3] = gm2(b[0]) ^ b[0] ^ b[1] ^ b[2] ^ gm2(b[3]);
+  return bytes2word(mb);
 }
 
-static uint8_t times(uint8_t x) {
-  return ((x << 1) ^ (((x >> 7) & 1) * 0x1b));
+//
+// 5.1.1
+// SUBBYTES() is an invertible, non-linear transformation of the state in which a substitution table, called an S-box, is applied independently to
+// each byte in the state. The AES S-box is denoted by SBOX().
+static void subbytes(uint32_t *ret, const uint32_t *block) {
+  ret[0] = subword(block[0]);
+  ret[1] = subword(block[1]);
+  ret[2] = subword(block[2]);
+  ret[3] = subword(block[3]);
 }
 
-uint8_t *right_pad_to_multiple_of_16_bytes(uint8_t *input, int len) {
-  while (len++ % 16 != 0) {
-    input[len] = 0;
-  }
-  return input;
+//
+// 5.1.2
+// SHIFTROWS() is a transformation of the state in which the bytes in the last three rows of the state are cyclically shifted.
+static void shiftrows(uint32_t *ret, const uint32_t *block) {
+  uint8_t c0[4], c1[4], c2[4], c3[4], ctmp[4];
+  word2bytes(c0, block[0]);
+  word2bytes(c1, block[1]);
+  word2bytes(c2, block[2]);
+  word2bytes(c3, block[3]);
+  ctmp[0] = c0[0]; ctmp[1] = c1[1]; ctmp[2] = c2[2]; ctmp[3] = c3[3];
+  ret[0] = bytes2word(ctmp);
+  ctmp[0] = c1[0]; ctmp[1] = c2[1]; ctmp[2] = c3[2]; ctmp[3] = c0[3];
+  ret[1] = bytes2word(ctmp);
+  ctmp[0] = c2[0]; ctmp[1] = c3[1]; ctmp[2] = c0[2]; ctmp[3] = c1[3];
+  ret[2] = bytes2word(ctmp);
+  ctmp[0] = c3[0]; ctmp[1] = c0[1]; ctmp[2] = c1[2]; ctmp[3] = c2[3];
+  ret[3] = bytes2word(ctmp);
 }
 
+//
+// 5.1.3
+// MIXCOLUMNS() is a transformation of the state that multiplies each of the four columns of the state by a single fxed matrix,
+// as described in Section 4.3
+static void mixcolumns(uint32_t *ret, const uint32_t *block) {
+  ret[0] = mixword(block[0]);
+  ret[1] = mixword(block[1]);
+  ret[2] = mixword(block[2]);
+  ret[3] = mixword(block[3]);
+}
+
+//
+// 5.1.4
+// ADDROUNDKEY() is a transformation of the state in which a round key is combined with the state by applying the bitwise XOR operation.
+// In particular, each round key consists of four words from the key schedule (described in Section 5.2),
+// each of which is combined with a column of the state
+static void addroundkey(uint32_t *ret, const uint32_t *key, const uint32_t *block) {
+  ret[0] = block[0] ^ key[0];
+  ret[1] = block[1] ^ key[1];
+  ret[2] = block[2] ^ key[2];
+  ret[3] = block[3] ^ key[3];
+}
+
+//
+// Substitute a word using SBox inverse
+static uint32_t inv_subword(const uint32_t w) {
+  uint8_t b[4], s[4];
+  word2bytes(b, w);
+  s[0] = INV_SBOX[b[0]];
+  s[1] = INV_SBOX[b[1]];
+  s[2] = INV_SBOX[b[2]];
+  s[3] = INV_SBOX[b[3]];
+  return bytes2word(s);
+}
+
+static uint32_t inv_mixword(uint32_t w) {
+  uint8_t b[4] = {0}, mb[4] = {0};
+  word2bytes(b, w);
 /*
-
-#define ROTL8(x,shift) ((uint8_t) ((x) << (shift)) | ((x) >> (8 - (shift))))
-
-void initialize_aes_sbox(uint8_t sbox[256]) {
-  uint8_t p = 1, q = 1;
-  
-  // loop invariant: p * q == 1 in the Galois field
-  do {
-    // multiply p by 3
-    p = p ^ (p << 1) ^ (p & 0x80 ? 0x1B : 0);
-
-    // divide q by 3 (equals multiplication by 0xf6)
-    q ^= q << 1;
-    q ^= q << 2;
-    q ^= q << 4;
-    q ^= q & 0x80 ? 0x09 : 0;
-
-    // compute the affine transformation
-    uint8_t xformed = q ^ ROTL8(q, 1) ^ ROTL8(q, 2) ^ ROTL8(q, 3) ^ ROTL8(q, 4);
-
-    sbox[p] = xformed ^ 0x63;
-  } while (p != 1);
-
-  // 0 is a special case since it has no inverse
-  sbox[0] = 0x63;
-}
-
-static void ShiftRows(AES_BYTE *b, int Nb, char *t)
-{
-  AES_BYTE *temp = alloca(AES_WS*Nb);
-  int i, j;
-
-  memcpy(temp, b, AES_WS*Nb);
-
-  for (i = 0; i < AES_WS; i++) {
-    for (j = 0; j < Nb; j++) {
-      b[j*AES_WS + i] = temp[(j + t[i] + Nb) % Nb * AES_WS + i];
-    }
-  }
-}
+  mb[0] = gm14(b[0]) ^ gm11(b[1]) ^ gm13(b[2]) ^ gm9(b[3]);
+  mb[1] = gm9(b[0]) ^ gm14(b[1]) ^ gm11(b[2]) ^ gm13(b[3]);
+  mb[2] = gm13(b[0]) ^ gm9(b[1]) ^ gm14(b[2]) ^ gm11(b[3]);
+  mb[3] = gm11(b[0]) ^ gm13(b[1]) ^ gm9(b[2]) ^ gm14(b[3]);
 */
-
-static void copystate(state_t *state, state_t *in) {
-  memcpy(state->state, in->state, 4 * NB * sizeof(uint8_t));
-}
-
-static void statefromarr(state_t *state, const uint8_t in[16]) {
-  memcpy(state->state, in, 4 * NB * sizeof(uint8_t));
-}
-
-static void arrfromstate(uint8_t s[16], state_t *state) {
-  memcpy(s, state->state, 4 * NB * sizeof(uint8_t));
-}
-
-static void xorarr(uint8_t *r, const uint8_t *X, const uint8_t *Y) {
-  for (uint8_t i = 0; i < 4 * NB * sizeof(uint8_t); i++) {
-    r[i] = X[i] ^ Y[i];
-  }
-}
-
-static void rcon(uint8_t *wrd, const uint8_t a) {
-  uint8_t c = 1;
-  for (uint8_t i = 0; i < a - 1; i++) {
-    c = (c << 1) ^ (((c >> 7) & 1) * 0x1b);
-  }
-  wrd[0] = c;
-  wrd[1] = wrd[2] = wrd[3] = 0;
-}
-
-#define AES(x, y) 0 // TODO: fix : https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf // also return length
-#define POLYVAL(x, y) 0 // TODO: fix
-//#define POLYVAL() ByteReverse(GHASH(ByteReverse(H) * x, ByteReverse(X_1), ByteReverse(X_2), ...))
-//  returns Its result is S_s, where S is defined by the iteration S_0 = 0; S_j = dot(S_{j-1} + X_j, H), for j = 1..s.
-//  POLYVAL takes a field element, H, and a series of field elements X_1, ..., X_s.  Its result is S_s, where S is defined by the iteration S_0 = 0; S_j = dot(S_{j-1} + X_j, H), for j = 1..s.
-// https://csrc.nist.gov/csrc/media/Events/2023/third-workshop-on-block-cipher-modes-of-operation/documents/accepted-papers/Galois%20Counter%20Mode%20with%20Secure%20Short%20Tags.pdf
-// https://medium.com/codex/aes-how-the-most-advanced-encryption-actually-works-b6341c44edb9
-// https://networkbuilders.intel.com/docs/networkbuilders/advanced-encryption-standard-galois-counter-mode-optimized-ghash-function-technology-guide-1693300747.pdf
-
-// https://datatracker.ietf.org/doc/html/rfc8452#appendix-A
-
-// https://blog.0x7d0.dev/education/how-aes-is-implemented/
-// https://github.com/m3y54m/aes-in-c?tab=readme-ov-file#the-rijndael-key-schedule
-
-// AES https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf
-void ADDROUNDKEY(state_t *state, const uint8_t *key) {
-  state_t *temp = malloc(sizeof(state_t));
-  memset(temp, 0, sizeof(state_t));
-  copystate(temp, state);
-  for (uint8_t i = 0; i < 16; ++i) {
-    temp->state[i % 4][i / 4] = state->state[i % 4][i / 4] ^ key[(i % 4) + 4 * (i / 4)];
-  }
-  copystate(state, temp);
-  free(temp);
-}
-
-void SUBBYTES(state_t *state) {
-  for (uint8_t i = 0; i < 16; i++) {
-    state->state[i / 4][i % 4] = sbox[state->state[i / 4][i % 4]];
-  }
-}
-
-void INVSUBBYTES(state_t *state) {
-  for (uint8_t i = 0; i < 16; i++) {
-    state->state[i % 4][i / 4] = reverse_sbox[state->state[i % 4][i / 4]];
-  }
-}
-
-void SHIFTROWS(state_t *state) {
-  uint8_t temp[4] = {0};
-  memcpy(temp, state->state[1], 4 * sizeof(uint8_t));
-  state->state[1][0] = temp[1];
-  state->state[1][1] = temp[2];
-  state->state[1][2] = temp[3];
-  state->state[1][3] = temp[0];
-
-  memcpy(temp, state->state[2], 4 * sizeof(uint8_t));
-  state->state[2][0] = temp[1];
-  state->state[2][1] = temp[2];
-  state->state[2][2] = temp[3];
-  state->state[2][3] = temp[0];
-
-  memcpy(temp, state->state[3], 4 * sizeof(uint8_t));
-  state->state[3][0] = temp[1];
-  state->state[3][1] = temp[2];
-  state->state[3][2] = temp[3];
-  state->state[3][3] = temp[0];
-}
-
-void INVSHIFTROWS(state_t *state) {
-  uint8_t temp[4] = {0};
-  memcpy(temp, state->state[1], 4 * sizeof(uint8_t));
-  state->state[1][0] = temp[3];
-  state->state[1][1] = temp[0];
-  state->state[1][2] = temp[1];
-  state->state[1][3] = temp[2];
-
-  memcpy(temp, state->state[2], 4 * sizeof(uint8_t));
-  state->state[2][0] = temp[3];
-  state->state[2][1] = temp[0];
-  state->state[2][2] = temp[1];
-  state->state[2][3] = temp[2];
-
-  memcpy(temp, state->state[3], 4 * sizeof(uint8_t));
-  state->state[3][0] = temp[3];
-  state->state[3][1] = temp[0];
-  state->state[3][2] = temp[1];
-  state->state[3][3] = temp[2];
-}
-
-void mixcolumn(uint8_t *state) {
-  uint8_t t = state[0] ^ state[1] ^ state[2] ^ state[3];
-  uint8_t u = state[0];
-  state[0] ^= t ^ times(state[0] ^ state[1]);
-  state[1] ^= t ^ times(state[1] ^ state[2]);
-  state[2] ^= t ^ times(state[2] ^ state[3]);
-  state[3] ^= t ^ times(state[3] ^ u);
-}
-
-void MIXCOLUMNS(state_t *state) {
-  mixcolumn(state->state[0]);
-  mixcolumn(state->state[1]);
-  mixcolumn(state->state[2]);
-  mixcolumn(state->state[3]);
-}
-
-void INVMIXCOLUMNS(state_t *state) {
-  for (uint8_t i = 0; i < 4; ++i) {
-    uint8_t u = times(times(state->state[i][0] ^ state->state[i][2]));
-    uint8_t v = times(times(state->state[i][1] ^ state->state[i][3]));
-    state->state[i][0] ^= u;
-    state->state[i][1] ^= v;
-    state->state[i][2] ^= u;
-    state->state[i][3] ^= v;
-  }
-  MIXCOLUMNS(state);
-}
-
-void SUBWORD(uint8_t *word) {
-  word[0] = sbox[word[0]];
-  word[1] = sbox[word[1]];
-  word[2] = sbox[word[2]];
-  word[3] = sbox[word[3]];
-}
-
-void ROTWORD(uint8_t *word) {
-  uint8_t temp = word[0];
-  for (uint8_t i = 0; i < 4; i++) {
-    word[i] = word[i + 1];
-  }
-  word[3] = temp;
-}
-
-void KEYEXPANSION(uint8_t w[], const uint8_t key[]) {
-  uint8_t tmp[6] = {0}, rc[6] = {0};
-  memcpy(w, key, 4 * NK * sizeof(uint8_t));
-  for (uint8_t i = 4 * NK; i < 4 * NB * (14 + 1); i += 4) {
-    memcpy(tmp, w, 4 * sizeof(uint8_t));
-    if (i / 4 % NK == 0) {
-      ROTWORD(tmp);
-      SUBWORD(tmp);
-      rcon(rc, i / (4 * NK));
-      for (uint8_t k = 0; k < 4; k++) {
-        tmp[k] = tmp[k] ^ rc[k];
-      }
-    } else if (NK > 6 && i / 4 % NK == 4) {
-      SUBWORD(tmp);
-    }
-    for (uint8_t j = 0; j < 4; ++j) {
-      w[i + j] = w[i + j - 4 * NK] ^ tmp[j];
-    }
-  }
+  mb[0] = gm2(gm2(gm2(b[0]))) ^ gm2(gm2(b[0])) ^ gm2(b[0]) ^ \
+  gm2(gm2(gm2(b[1]))) ^ gm2(b[1]) ^ b[1] ^ \
+  gm2(gm2(gm2(b[2]))) ^ gm2(gm2(b[2])) ^ b[2] ^ \
+  gm2(gm2(gm2(b[3]))) ^ b[3];
+  mb[1] = gm2(gm2(gm2(b[0]))) ^ b[0] ^ \
+  gm2(gm2(gm2(b[1]))) ^ gm2(gm2(b[1])) ^ gm2(b[1]) ^ \
+  gm2(gm2(gm2(b[2]))) ^ gm2(b[2]) ^ b[2] ^ \
+  gm2(gm2(gm2(b[3]))) ^ gm2(gm2(b[3])) ^ b[3];
+  mb[2] = gm2(gm2(gm2(b[0]))) ^ gm2(gm2(b[0])) ^ b[0] ^ \
+  gm2(gm2(gm2(b[1]))) ^ b[1] ^ \
+  gm2(gm2(gm2(b[2]))) ^ gm2(gm2(b[2])) ^ gm2(b[2]) ^ \
+  gm2(gm2(gm2(b[3]))) ^ gm2(b[3]) ^ b[3];
+  mb[3] = gm2(gm2(gm2(b[0]))) ^ gm2(b[0]) ^ b[0] ^ \
+  gm2(gm2(gm2(b[1]))) ^ gm2(gm2(b[1])) ^ b[1] ^ \
+  gm2(gm2(gm2(b[2]))) ^ b[2] ^ \
+  gm2(gm2(gm2(b[3]))) ^ gm2(gm2(b[3])) ^ gm2(b[3]);
+  return bytes2word(mb);
 }
 
 //
-// Encrypt a block of data
-static void encrypt_block(uint8_t *out, const uint8_t *in, const uint8_t *rk) {
-  state_t *state = malloc(sizeof(state_t));
-  statefromarr(state, in);
-  ADDROUNDKEY(state, rk);
-  for (uint32_t round = 1; round <= NR - 1; round++) {
-    SUBBYTES(state);
-    SHIFTROWS(state);
-    MIXCOLUMNS(state);
-    ADDROUNDKEY(state, rk + round * 4 * NB);
-  }
-  SUBBYTES(state);
-  SHIFTROWS(state);
-  ADDROUNDKEY(state, rk + NR * 4 * NB);
-  arrfromstate(out, state);
-  free(state);
+// 5.3.1
+// INVSHIFTROWS() is the inverse of SHIFROWS()
+static void inv_shiftrows(uint32_t *ret, const uint32_t *block) {
+  uint8_t c0[4], c1[4], c2[4], c3[4], ctmp[4];
+  word2bytes(c0, block[0]);
+  word2bytes(c1, block[1]);
+  word2bytes(c2, block[2]);
+  word2bytes(c3, block[3]);
+  ctmp[0] = c0[0]; ctmp[1] = c3[1]; ctmp[2] = c2[2]; ctmp[3] = c1[3];
+  ret[0] = bytes2word(ctmp);
+  ctmp[0] = c1[0]; ctmp[1] = c0[1]; ctmp[2] = c3[2]; ctmp[3] = c2[3];
+  ret[1] = bytes2word(ctmp);
+  ctmp[0] = c2[0]; ctmp[1] = c1[1]; ctmp[2] = c0[2]; ctmp[3] = c3[3];
+  ret[2] = bytes2word(ctmp);
+  ctmp[0] = c3[0]; ctmp[1] = c2[1]; ctmp[2] = c1[2]; ctmp[3] = c0[3];
+  ret[3] = bytes2word(ctmp);
 }
 
 //
-// Decrypt a block of data
-static void decrypt_block(uint8_t *out, const uint8_t *in, const uint8_t *rk) {
-  state_t *state = malloc(sizeof(state_t));
-  statefromarr(state, in);
-  ADDROUNDKEY(state, rk + NR * 4 * NB);
-  for (uint32_t round = NR - 1; round >= 1; round--) {
-    INVSUBBYTES(state);
-    INVSHIFTROWS(state);
-    ADDROUNDKEY(state, rk + round * 4 * NB);
-    INVMIXCOLUMNS(state);
-  }
-  INVSUBBYTES(state);
-  INVSHIFTROWS(state);
-  ADDROUNDKEY(state, rk);
-  arrfromstate(out, state);
-  free(state);
-}
-
-void ciph_encryptcbc(uint8_t *out, const uint8_t *in, const uint8_t *key, const uint8_t *iv) {
-  uint8_t block[NB * NR] = {0}, roundkeys[4 * NB * (NR + 1)] = {0};
-  KEYEXPANSION(roundkeys, key);
-  memcpy(block, iv, BBL);
-  for (uint32_t i = 0; i < BBL; i += BBL) {
-    xorarr(block, block, (in + i));
-    encrypt_block((out + i), block, roundkeys);
-    memcpy(block, (out + i), BBL);
-  }
-}
-
-void ciph_decryptcbc(uint8_t *out, const uint8_t *in, const uint8_t *key, const uint8_t *iv) {
-  uint8_t block[NB * NR] = {0}, roundkeys[4 * NB * (NR + 1)] = {0};
-  KEYEXPANSION(roundkeys, key);
-  memcpy(block, iv, BBL);
-  for (uint32_t i = 0; i < BBL; i += BBL) {
-    decrypt_block((out + i), (in + i), roundkeys);
-    xorarr((out + i), block, (out + i));
-    memcpy(block, in + i, BBL);
-  }
-}
-
-void ciph_cryptcfb(uint8_t *out, const uint8_t *in, const uint8_t *key, const uint8_t *iv, uint8_t dec) {
-  uint8_t block[NB * NR] = {0}, encryptedblock[NB * NR] = {0}, roundkeys[4 * NB * (NR + 1)] = {0};
-  KEYEXPANSION(roundkeys, key);
-  memcpy(block, iv, BBL);
-  for (uint32_t i = 0; i < BBL; i += BBL) {
-    encrypt_block(encryptedblock, block, roundkeys);
-    xorarr((out + i), (in + i), encryptedblock);
-    if (dec) memcpy(block, in + i, BBL);
-    else memcpy(block, (out + i), BBL);
-  }
-}
-/*
-// AES256(in, key) = CIPHER(in, KEYEXPANSION(key))
-// 128, 192, 256 (Nk = 4, 6, 8: Nr = 10, 12, 14), assume 256: Nk = 8, Nr = 14
-void CIPHER(state_t state, uint8_t **in, uint8_t *w) {
-  uint8_t *wtmp = NULL, Nr = 14;
-  memcpy(state.state, &in, 4 * 4 * sizeof(uint8_t));
-  memcpy(wtmp, w, 4 * sizeof(uint8_t));
-  ADDROUNDKEY(state, wtmp);
-  for (uint8_t round = 1; round < Nr - 1; round++) {
-    SUBBYTES(state);
-    SHIFTROWS(state);
-    MIXCOLUMNS(state);
-    memcpy(wtmp, w + (4 * round), 4 * sizeof(uint8_t));
-    ADDROUNDKEY(state, wtmp);
-  }
-  SUBBYTES(state);
-  SHIFTROWS(state);
-  memcpy(wtmp, w + (4 * Nr), 4 * sizeof(uint8_t));
-  ADDROUNDKEY(state, wtmp);
-}
-
-void INVCIPHER(state_t *state, uint8_t *in, uint8_t *w) {
-  uint8_t *wtmp = malloc(16);
-  memcpy(state->state, in, 4 * NB * sizeof(uint8_t));
-  memcpy(wtmp, w + (4 * NK), 4 * NB * sizeof(uint8_t));
-  ADDROUNDKEY(state, wtmp);
-  for (uint8_t round = NK - 1; round >= 1; round--) {
-    INVSHIFTROWS(state);
-    INVSUBBYTES(state);
-    memcpy(wtmp, w + (4 * round), 4 * NB * sizeof(uint8_t));
-    ADDROUNDKEY(state, wtmp);
-    INVMIXCOLUMNS(state);
-  }
-  INVSHIFTROWS(state);
-  INVSUBBYTES(state);
-  memcpy(wtmp, w, 4 * NB * sizeof(uint8_t));
-  ADDROUNDKEY(state, wtmp);
-  free(wtmp);
-}
-
-void EQINVCIPHER(state_t *state, uint8_t *in, uint8_t *dw) {
-  uint8_t *wtmp = malloc(16);
-  memcpy(state->state, in, 4 * NB * sizeof(uint8_t));
-  memcpy(wtmp, dw + (4 * NK), 4 * NB * sizeof(uint8_t));
-  ADDROUNDKEY(state, wtmp);
-  for (uint8_t round = NK - 1; round >= 1; round--) {
-    INVSUBBYTES(state);
-    INVSHIFTROWS(state);
-    INVMIXCOLUMNS(state);
-    memcpy(wtmp, dw + (4 * round), 4 * NB * sizeof(uint8_t));
-    ADDROUNDKEY(state, wtmp);
-    INVMIXCOLUMNS(state);
-  }
-  INVSUBBYTES(state);
-  INVSHIFTROWS(state);
-  memcpy(wtmp, dw, 4 * NB * sizeof(uint8_t));
-  ADDROUNDKEY(state, wtmp);
-  free(wtmp);
-}
-
-// EIC = EQINVCIPHER
-void KEYEXPANSIONEIC(uint8_t *dw, uint8_t *key) {
-  int i = 0, Nr = 4, Nk = 8;
-  uint8_t *w = malloc(32);
-  while (i <= Nk - 1) {
-    memcpy(&w[i], key + (4 * i), 4);
-    memcpy(&dw[i], &w[i], 4);
-    i += 1;
-  }
-  while (i <= 4 * Nr + 3) {
-    uint32_t temp = w[i - 1];
-    if (i % Nk == 0) {
-      ROTWORD(temp);
-      SUBWORD(temp);
-      temp = temp ^ rcon[i / Nk];
-    } else if (Nk > 6 && i % Nk == 4) {
-      SUBWORD(temp);
-    }
-    w[i] = w[i - Nk] ^ temp;
-    dw[i] = w[i];
-    i += 1;
-  }
-    uint8_t *tmp = malloc(32*sizeof(uint8_t));
-    state_t *state = (state_t*) malloc(sizeof(state_t)*2);
-  for (uint8_t round = 1; round <= Nr - 1; round++) {
-    i = 4 * round;
-    memcpy(tmp, dw + i, 4 * sizeof(uint8_t));
-    memcpy(state->state[round], tmp, 4 * sizeof(uint8_t));
-    INVMIXCOLUMNS(state);
-    memcpy(tmp, state->state[round], 4 * sizeof(uint8_t));
-    memcpy(dw + i, tmp, 4 * sizeof(uint8_t));
-  }
-}
-*/
-
-
-// https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
-// 6.3 multiply
-void mul(uint8_t *Z, uint8_t *BITX, uint8_t *BITY) {
-  uint8_t V[128], R[128] = {1, 1, 1, 0, 0, 0, 0, 1}, BITV[128]; // R = 11100001 || 0 ^ 120
-  u64 RDEC = 0;
-  memcpy(V, BITY, 128);
-  RDEC = BIN2LONG(R);
-  for (int i = 0; i < 128; i++) {
-    if (BITX[i] == 0) Z[i+1] = Z[i];
-    if (BITX[i] == 1) Z[i+1] = Z[i] ^ V[i];
-    LONG2BIN(BITV, V[i]); // Take LSB1 of V[i] below
-    if (BITV[127] == 0) V[i+1] = V[i] >> 1;
-    if (BITV[127] == 1) V[i+1] = (V[i] >> 1) ^ RDEC;
-  }
-}
-
-// 6.4 for GHASH
-// In effect, the GHASH function calculates: (X1*Hm) ^ (X2*Hm-1) ^ ... ^ (Xm-1*H2) ^ (Xm*H)
-void ghash(uint8_t **Y, uint8_t **X, uint8_t **H, int m) { // X must be 128*m length
-  uint8_t RET[128][128]; // TODO: we assume m=128
-  for (int i = 1; i < m; i++) {
-    mul(RET[i], X[i], H[m-(i-1)]); // LONG2BIN(X[i])? LONG2BIN(H[m-(i-i)])?
-  }
-  for (int i = 1; i < m; i++) {
-    xorarr(Y[i], RET[i-1], RET[i]);
-  }
-}
-
-uint32_t little_endian_uint32(uint8_t x) {
-  x = ((x << 8) & 0xFF00FF00) | ((x >> 8) & 0xFF00FF);
-  return (x << 16) | (x >> 16);
-}
-
-u64 little_endian_uint64(u64 x) {
-  x = ((x << 8) & 0xFF00FF00FF00FF00ULL) | ((x >> 8) & 0x00FF00FF00FF00FFULL);
-  x = ((x << 16) & 0xFFFF0000FFFF0000ULL) | ((x >> 16) & 0x0000FFFF0000FFFFULL);
-  return (x << 32) | (x >> 32);
-}
-
-uint32_t read_little_endian_uint32(uint8_t *x) {
-  uint32_t result;
-  memcpy(&result, x, sizeof(result));
-  return result;
-}
-
-// // https://www.rfc-editor.org/rfc/rfc8452.html
-// return message_authentication_key, message_encryption_key
-void derive_keys(uint8_t *key_generating_key, uint8_t *nonce, uint8_t **message_authentication_key, uint8_t **message_encryption_key) {
-  uint8_t *tmp1 = NULL, *tmp2 = NULL, AESSIZE = 8;
-  memcpy(tmp1, AES(key_generating_key, little_endian_uint32(0) + nonce), 8 * AESSIZE);
-  memcpy(tmp2, AES(key_generating_key, little_endian_uint32(1) + nonce), 8 * AESSIZE);
-  memcpy(message_authentication_key + (0 * AESSIZE), tmp1, 8 * AESSIZE);
-  memcpy(message_authentication_key + (8 * AESSIZE), tmp2, 8 * AESSIZE);
-
-  memcpy(tmp1, AES(key_generating_key, little_endian_uint32(2) + nonce), 8 * AESSIZE);
-  memcpy(tmp2, AES(key_generating_key, little_endian_uint32(3) + nonce), 8 * AESSIZE);
-  memcpy(message_encryption_key + (0 * AESSIZE), tmp1, 8 * AESSIZE);
-  memcpy(message_encryption_key + (8 * AESSIZE), tmp2, 8 * AESSIZE);
-
-  // always assume keylength == 32, if not, check length of key_generating_key == 32
-  memcpy(tmp1, AES(key_generating_key, little_endian_uint32(4) + nonce), 8 * AESSIZE);
-  memcpy(tmp2, AES(key_generating_key, little_endian_uint32(5) + nonce), 8 * AESSIZE);
-  memcpy(message_encryption_key + (16 * AESSIZE), tmp1, 8 * AESSIZE);
-  memcpy(message_encryption_key + (24 * AESSIZE), tmp2, 8 * AESSIZE);
-}
-
-uint8_t *AES_CTR(uint8_t *key, uint8_t *initial_counter_block, uint8_t *in, u64 inlen) {
-  uint8_t todo, *block = malloc(32);
-  memcpy(block, initial_counter_block, 32);
-  uint8_t *output = NULL;
-  while (inlen > 0) {
-    uint8_t *keystream_block = AES(key, block);
-    block[0] = read_little_endian_uint32(&block[0]);
-    block[1] = read_little_endian_uint32(&block[1]);
-    block[2] = read_little_endian_uint32(&block[2]);
-    block[3] = read_little_endian_uint32(&block[3]);
-
-    block[0] = little_endian_uint32(*(&block[0]+1));
-    block[1] = little_endian_uint32(*(&block[1]+1));
-    block[2] = little_endian_uint32(*(&block[2]+1));
-    block[3] = little_endian_uint32(*(&block[3]+1));
-
-    u64 keystream_blocklen = 16; // TODO: fix correct length
-    if (inlen < keystream_blocklen) todo = inlen;
-    else todo = keystream_blocklen;
-    for (int j = 0; j < todo; j++) {
-      output = output + (keystream_block[j] ^ in[j]);
-    }
-    memcpy(in, &in, todo);
-  }
-  free(block);
-  return output;
-}
-
-uint8_t *encrypt(uint8_t *key_generating_key, uint8_t *nonce, uint8_t *plaintext, u64 plaintextlen, uint8_t *additional_data, u64 additional_datalen) {
-  if (plaintextlen > 68719476736 || additional_datalen > 68719476736) { // 2 ^ 36 == 68719476736
-    printf("Input text / data to long, exiting\n");
-    exit(0);
-  }
-  uint8_t **message_authentication_key = NULL, **message_encryption_key = NULL;
-  derive_keys(key_generating_key, nonce, message_encryption_key, message_authentication_key);
-  //u64 length_block = little_endian_uint64(additional_datalen * 8) + little_endian_uint64(plaintextlen * 8);
-  //uint8_t *padded_plaintext = right_pad_to_multiple_of_16_bytes(plaintext, plaintextlen);
-  //uint8_t *padded_ad = right_pad_to_multiple_of_16_bytes(additional_data, additional_datalen);
-  u64 *S_s = POLYVAL(message_authentication_key, right_pad_to_multiple_of_16_bytes(additional_data, additional_datalen) + right_pad_to_multiple_of_16_bytes(plaintext, plaintextlen) + (little_endian_uint64(additional_datalen * 8) + little_endian_uint64(plaintextlen * 8)));//padded_ad + padded_plaintext + length_block);
-  for (int i = 0; i < 12; i++) {
-    S_s[i] ^= nonce[i];
-  }
-  S_s[15] &= 0x7f;
-  uint8_t *tag = NULL, *counter_block = NULL;
-  memcpy(tag, AES(message_encryption_key, S_s), 16); // TODO: fix correct length
-  counter_block[15] |= 0x80;
-  uint8_t *ret = NULL;
-  memcpy(ret, AES_CTR(*message_encryption_key, counter_block, plaintext, plaintextlen), 32); // TODO: fix correct length
-  memcpy(ret + 32, tag, 16); // TODO: fix correct length
-  return ret;
-}
-
-uint8_t *decrypt(uint8_t *key_generating_key,uint8_t *nonce, uint8_t *ciphertext, u64 ciphertextlen, uint8_t *additional_data, u64 additional_datalen) {
-  if (ciphertextlen < 16 || ciphertextlen > (68719476736 + 16) || additional_datalen > 68719476736) { // 2 ^ 36 == 68719476736
-    printf("Cipher text / data to long, exiting\n");
-    exit(0);
-  }
-  uint8_t **message_authentication_key = NULL, **message_encryption_key = NULL;
-  derive_keys(key_generating_key, nonce, message_encryption_key, message_authentication_key);
-  uint8_t *tag = NULL, *counter_block = NULL, *ct = NULL;
-  memcpy(tag, ciphertext, ciphertextlen - 16);
-  memcpy(counter_block, tag, ciphertextlen - 16);
-  counter_block[15] |= 0x80;
-  memcpy(ct, ciphertext, ciphertextlen - 16); // take end of ciphertext, from ciphertextlen - 16
-  uint8_t *plaintext = AES_CTR(*message_encryption_key, counter_block, ct, ciphertextlen - 16);
-  //u64 plaintextlen = ciphertextlen; // TODO: incorrect
-  //u64 length_block = little_endian_uint64(additional_datalen * 8) + little_endian_uint64(plaintextlen * 8);
-  //uint8_t *padded_plaintext = right_pad_to_multiple_of_16_bytes(plaintext, plaintextlen);
-  //uint8_t *padded_ad = right_pad_to_multiple_of_16_bytes(additional_data, additional_datalen);
-  u64 *S_s = POLYVAL(message_authentication_key, right_pad_to_multiple_of_16_bytes(additional_data, additional_datalen) + right_pad_to_multiple_of_16_bytes(plaintext, ciphertextlen) + (little_endian_uint64(additional_datalen * 8) + little_endian_uint64(ciphertextlen * 8)));//padded_ad + padded_plaintext + length_block);
-  for (int i = 0; i < 12; i++) {
-    S_s[i] ^= nonce[i];
-  }
-  S_s[15] &= 0x7f;
-  uint8_t *expected_tag = AES(message_encryption_key, S_s);
-  u64 expected_taglen = 32; // TOOD: fix
-  u64 xor_sum = 0;
-  for (int i = 0; i < expected_taglen; i++) {
-    xor_sum |= expected_tag[i] ^ tag[i];
-  }
-  if (xor_sum != 0) {
-    exit(0);
-  }
-  return plaintext;
+// 5.3.2
+// INVSUBBYTES() is the inverse of SUBBYTES(), in which the inverse of SBOX(), denoted by INVSBOX(), is applied to each byte of the state.
+// INVSBOX() is derived from Table 4 by switching the roles of inputs and outputs, as presented in Table 6
+static void inv_subbytes(uint32_t *ret, const uint32_t *block) {
+  ret[0] = inv_subword(block[0]);
+  ret[1] = inv_subword(block[1]);
+  ret[2] = inv_subword(block[2]);
+  ret[3] = inv_subword(block[3]);
 }
 
 //
-// hmm where did i get these from? what paper?!?!
-void multiply(u64 R[]) {
-  R[25] = 0x06;
-  for (int i = 7; i >= 0; --i) {
-    for (int j = 3; j >= 0; --j) {
-      if (R[16+j] == 1) {
-        R[0] = R[0] + R[25];
-        for (int k = 0; k < 4; ++k) {
-          R[8+j+k] = R[8+j+k] ^ R[20+k];
-        }
-      } else {
-        for (int k = 0; k < 4; ++k) {
-          R[24] = R[24] ^ R[20+k];
-        }
-      }
-    }
-    for (int k = 15; k > 6; k--) {
-      R[k] = R[k] << 1;
-    }
+// 5.3.3
+// INVMIXCOLUMNS() is the inverse of MIXCOLUMNS(). In particular, INVMIXCOLUMNS() multiplies each of the four columns of the state by a single
+// fixed matrix, as described in Section 4.3
+static void inv_mixcolumns(uint32_t *ret, const uint32_t *block) {
+  ret[0] = inv_mixword(block[0]);
+  ret[1] = inv_mixword(block[1]);
+  ret[2] = inv_mixword(block[2]);
+  ret[3] = inv_mixword(block[3]);
+}
+
+//
+// 5.1
+// The rounds in the specifcation of CIPHER() are composed of the following four byte-oriented transformations on the state:
+// SUBBYTES() applies a substitution table (S-box) to each byte.
+// SHIFTROWS() shifts rows of the state array by different offsets.
+// MIXCOLUMNS() mixes the data within each column of the state array.
+// ADDROUNDKEY() combines a round key with the state.
+// The four transformations are specifed in Sections 5.1.1–5.1.4.
+void cipher(uint32_t *ret, uint32_t *key, uint32_t *block) {
+  uint32_t rk[128], tmpb1[4] = {0}, tmpb2[4] = {0}, tmpb3[4] = {0}, tmpb4[4] = {0};
+  keyexpansion(rk, key);
+  addroundkey(tmpb4, rk, block);
+  for (int i = 1; i < 14; i++) {
+    subbytes(tmpb1, tmpb4);
+    shiftrows(tmpb2, tmpb1);
+    mixcolumns(tmpb3, tmpb2);
+    addroundkey(tmpb4, rk + (i * 4), tmpb3);
   }
+  subbytes(tmpb1, tmpb4);
+  shiftrows(tmpb2, tmpb1);
+  addroundkey(ret, rk + (14 * 4), tmpb2);
 }
 
-void modreduce(u64 K[]) {
-  u64 A = (K[31] & BIN(1)) << 6, B = (K[31] & BIN(10)) << 5, C = (K[31] & BIN(1111111));
-  K[16] = K[16] ^ ((A ^ B ^ C) << 1);
-  K[8] = K[8] ^ K[24] ^ ((K[23] << 7) | K[24] >> 1) ^ ((K[23] << 6) | K[24] >> 2) ^ ((K[23] << 1) | K[24] >> 7);
-  K[0] = K[0] ^ K[16] ^ (K[16] >> 2) ^ (K[16] >> 7);
-  for (int i = 1; i < 8; ++i) {
-    K[i+8] = K[i+8] ^ K[i+24] ^ ((K[i+23] << 7) | K[i+24] >> 1) ^ ((K[i+23] << 6) | K[i+24] >> 2) ^ ((K[i+23] << 1) | K[i+24] >> 7);
-    K[i] = K[i] ^ K[i+16] ^ ((K[i+15] << 7) | K[i+16] >> 1) ^ ((K[i+15] << 6) | K[i+16] >> 2) ^ ((K[i+15] << 1) | K[i+16] >> 7);
+//
+// 5.3
+// To implement INVCIPHER(), the transformations in the specifcation of CIPHER() (Section 5.1) are inverted and executed in reverse order.
+// The inverted transformations of the state — denoted by INVSHIFTROWS(), INVSUBBYTES(), INVMIXCOLUMNS(), and ADDROUNDKEY() — are
+// described in Sections 5.3.1–5.3.4.
+void inv_cipher(uint32_t *ret, uint32_t *key, uint32_t *block) {
+  uint32_t rk[128], tmpb1[4] = {0}, tmpb2[4] = {0}, tmpb3[4] = {0}, tmpb4[4] = {0};
+  keyexpansion(rk, key);
+  addroundkey(tmpb1, rk + (14 * 4), block);
+  inv_shiftrows(tmpb2, tmpb1);
+  inv_subbytes(tmpb4, tmpb2);
+  for (int i = 13; i >= 1; i--) { // 14 rounds but one already done, so -1
+    addroundkey(tmpb1, rk + (i * 4), tmpb4);
+    inv_mixcolumns(tmpb2, tmpb1);
+    inv_shiftrows(tmpb3, tmpb2);
+    inv_subbytes(tmpb4, tmpb3);
   }
+  addroundkey(ret, rk, tmpb4);
 }
 
-// translated from asm
-void st(u64 Z) {
-  u64 K0=0, K1=0, K2=0, K3=0, K4=0, K5=0, K6=0, K7=0; //
-  u64 C4=0, C5=0, C6=0, C7=0; //
-
-  // ROUND32 // 1
-  u64 C0 = Z+0, C1 = Z+1, C2 = Z+2, C3 = Z+3; // 2-5
-  C4 = C4 ^ C0; // 6
-  C5 = C5 ^ C1; // 7
-  C6 = C6 ^ C2; // 8
-  C7 = C7 ^ C3; // 9
-
-  C0 = K0; // 10
-  C2 = K2; // 11
-  C4 = K4; // 12
-  C6 = K6; // 13
-
-  // ROUND32 // 14
-  C4 = Z + 12; // 15
-  C5 = Z + 13; // 16
-  C6 = Z + 14; // 17
-  C7 = Z + 15; // 18
-
-  C0 = C0 ^ K0; // 19
-  C1 = C1 ^ K1; // 20
-  C2 = C2 ^ K2; // 21
-  C3 = C3 ^ K3; // 22
-
-  C4 = C4 ^ C0; // 23
-  C5 = C5 ^ C1; // 24
-  C6 = C6 ^ C2; // 25
-  C7 = C7 ^ C3; // 26
-
-  C0 = C0 ^ K4; // 27
-  C1 = C1 ^ K5; // 28
-  C2 = C2 ^ K6; // 29
-  C3 = C3 ^ K7; // 30
-
-  // ROUND32 // 31
-  K0 = K0 ^ C0; // 32
-  K1 = K1 ^ C1; // 33
-  K2 = K2 ^ C2; // 34
-  K3 = K3 ^ C3; // 35
-
-  K4 = K4 ^ C4; // 36
-  K5 = K5 ^ C5; // 37
-  K6 = K6 ^ C6; // 38
-  K7 = K7 ^ C7; // 39
-
-  C0 = Z + 4; // 40
-  C1 = Z + 5; // 41
-  C2 = Z + 6; // 42
-  C3 = Z + 7; // 43
-  C4 = Z + 8; // 44
-  C5 = Z + 9; // 45
-  C6 = Z + 10; // 46
-  C7 = Z + 11; // 47
-}
 // Code grabbed from https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf and massaged
-// mixedcolumns solve from https://github.com/p4-team/crypto-commons/blob/master/crypto_commons/symmetrical/aes.py#L243
 
 // good read:
 //   https://engineering.purdue.edu/kak/compsec/NewLectures/Lecture8.pdf
@@ -720,5 +336,9 @@ void st(u64 Z) {
 //   https://medium.com/codex/aes-how-the-most-advanced-encryption-actually-works-b6341c44edb9
 //   https://networkbuilders.intel.com/docs/networkbuilders/advanced-encryption-standard-galois-counter-mode-optimized-ghash-function-technology-guide-1693300747.pdf
 //   https://datatracker.ietf.org/doc/html/rfc8452#appendix-A
-//   https://blog.0x7d0.dev/education/how-aes-is-implemented/
-//   https://github.com/m3y54m/aes-in-c?tab=readme-ov-file#the-rijndael-key-schedule
+//   https://github.com/secworks/aes/blob/master/src/model/python/aes.py
+//   https://github.com/p4-team/crypto-commons/blob/master/crypto_commons/symmetrical/aes.py#L243
+
+// AES GCM
+// https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
+// https://csrc.nist.rip/groups/ST/toolkit/BCM/documents/proposedmodes/gcm/gcm-revised-spec.pdf
