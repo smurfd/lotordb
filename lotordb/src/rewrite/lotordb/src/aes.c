@@ -50,10 +50,10 @@ static uint32_t bytes2word(const uint8_t *b) {
 //
 // Convert a word to 4 bytes
 static void word2bytes(uint8_t *b, const uint32_t w) {
-  b[0] = w >> 24;
-  b[1] = w >> 16 & 0xff;
-  b[2] = w >> 8 & 0xff;
-  b[3] = w & 0xff;
+  b[0] = (w >> 24) & 0xff;
+  b[1] = (w >> 16) & 0xff;
+  b[2] = (w >> 8) & 0xff;
+  b[3] = (w >> 0) & 0xff;
 }
 
 //
@@ -82,8 +82,8 @@ static inline uint32_t rolx(const uint32_t w, const uint32_t x) {
 
 static void expandnextkeyA(uint32_t *k, const uint32_t *key0, const uint32_t *key1, const uint8_t rcon) {
   uint32_t w[8] = {0};
-  memcpy(w + 0, key0, 4 * sizeof(uint32_t));
-  memcpy(w + 4, key1, 4 * sizeof(uint32_t));
+  memcpy(w + 0, key0, KEYSIZE1);
+  memcpy(w + 4, key1, KEYSIZE1);
   uint32_t sw = subword(rolx(w[7], 8)), rw = (rcon << 24), t = sw ^ rw;
   k[0] = w[0] ^ t;
   k[1] = w[1] ^ w[0] ^ t;
@@ -93,8 +93,8 @@ static void expandnextkeyA(uint32_t *k, const uint32_t *key0, const uint32_t *ke
 
 static void expandnextkeyB(uint32_t *k, const uint32_t *key0, const uint32_t *key1) {
   uint32_t w[8] = {0};
-  memcpy(w + 0, key0, 4 * sizeof(uint32_t));
-  memcpy(w + 4, key1, 4 * sizeof(uint32_t));
+  memcpy(w + 0, key0, KEYSIZE1);
+  memcpy(w + 4, key1, KEYSIZE1);
   uint32_t t = subword(w[7]);
   k[0] = w[0] ^ t;
   k[1] = w[1] ^ w[0] ^ t;
@@ -119,21 +119,21 @@ static inline uint8_t getrcon(const uint8_t round) {
 // linear array of words, denoted by w[i], where i is in the range 0 ≤ i < 4 ∗ (Nr + 1)
 static void keyexpansion(uint32_t *rk, const uint32_t *key) {
   uint32_t ktmp[4], rk1[64], rk2[64], rk3[64], co1 = 4, co2 = 0, rkco = 8;
-  memcpy(rk1, key + 0, 4 * sizeof(uint32_t));
-  memcpy(rk2, key + 4, 4 * sizeof(uint32_t));
+  memcpy(rk1, key + 0, KEYSIZE1);
+  memcpy(rk2, key + 4, KEYSIZE1);
   memcpy(rk, key, 8 * sizeof(uint32_t));
   for (uint8_t i = 0; i < 12; i++) { // 14 number of rounds - 2
     expandnextkeyA(ktmp, rk1 + co2, rk2 + co2, getrcon(i + 1));
-    memcpy(rk1 + co1, ktmp, 4 * sizeof(uint32_t));
-    memcpy(rk3 + co2, ktmp, 4 * sizeof(uint32_t));
+    memcpy(rk1 + co1, ktmp, KEYSIZE1);
+    memcpy(rk3 + co2, ktmp, KEYSIZE1);
     expandnextkeyB(ktmp, rk2 + co2, rk3 + co2);
-    memcpy(rk2 + co1, ktmp, 4 * sizeof(uint32_t));
-    memcpy(rk + rkco + 0, rk3 + co2, 4 * sizeof(uint32_t));
-    memcpy(rk + rkco + 4, rk2 + co1, 4 * sizeof(uint32_t));
+    memcpy(rk2 + co1, ktmp, KEYSIZE1);
+    memcpy(rk + rkco + 0, rk3 + co2, KEYSIZE1);
+    memcpy(rk + rkco + 4, rk2 + co1, KEYSIZE1);
     co1+=4; co2+=4; rkco+=8;
   }
   expandnextkeyA(ktmp, rk1 + co1, rk2 + co1, getrcon(7));
-  memcpy(rk + (rkco - 8), ktmp, 4 * sizeof(uint32_t));
+  memcpy(rk + (rkco - 8), ktmp, KEYSIZE1);
 }
 
 static uint32_t mixword(uint32_t w) {
@@ -288,7 +288,7 @@ static void inv_mixcolumns(uint32_t *ret, const uint32_t *block) {
 // MIXCOLUMNS() mixes the data within each column of the state array.
 // ADDROUNDKEY() combines a round key with the state.
 // The four transformations are specifed in Sections 5.1.1–5.1.4.
-void cipher(uint32_t *ret, uint32_t *key, uint32_t *block) {
+void cipher(uint32_t *ret, const uint32_t *key, const uint32_t *block) {
   uint32_t rk[128], tmpb1[4] = {0}, tmpb2[4] = {0}, tmpb3[4] = {0}, tmpb4[4] = {0};
   keyexpansion(rk, key);
   addroundkey(tmpb4, rk, block);
@@ -308,7 +308,7 @@ void cipher(uint32_t *ret, uint32_t *key, uint32_t *block) {
 // To implement INVCIPHER(), the transformations in the specifcation of CIPHER() (Section 5.1) are inverted and executed in reverse order.
 // The inverted transformations of the state — denoted by INVSHIFTROWS(), INVSUBBYTES(), INVMIXCOLUMNS(), and ADDROUNDKEY() — are
 // described in Sections 5.3.1–5.3.4.
-void inv_cipher(uint32_t *ret, uint32_t *key, uint32_t *block) {
+void inv_cipher(uint32_t *ret, const uint32_t *key, const uint32_t *block) {
   uint32_t rk[128], tmpb1[4] = {0}, tmpb2[4] = {0}, tmpb3[4] = {0}, tmpb4[4] = {0};
   keyexpansion(rk, key);
   addroundkey(tmpb1, rk + (14 * 4), block);
@@ -322,6 +322,280 @@ void inv_cipher(uint32_t *ret, uint32_t *key, uint32_t *block) {
   }
   addroundkey(ret, rk, tmpb4);
 }
+
+static inline void big_endian_uint32(uint8_t *a, uint32_t value) {
+  a[0] = (value >> 24) & 0xff;
+  a[1] = (value >> 16) & 0xff;
+  a[2] = (value >> 8) & 0xff;
+  a[3] = value & 0xff;
+}
+
+static inline uint32_t read_big_endian_uint32(const uint8_t *a) {
+  return (a[0] << 24) | (a[1] << 16) | (a[2] << 8) | a[3];
+}
+
+static inline void xorblock(uint8_t *Z, const uint8_t *X, const uint8_t *Y) {
+  for (int i = 0; i < 16; i++) {
+    Z[i] = X[i] ^ Y[i];
+  }
+}
+
+static inline void andblock(u64 *Z, const u64 *X, const u64 *Y) {
+  for (int i = 0; i < 16; i++) {
+    Z[i] = X[i] & Y[i];
+  }
+}
+
+static inline void inc32(uint8_t *wrd) {
+  uint32_t value = read_big_endian_uint32((wrd + (16 - 4)));
+  value++;
+  big_endian_uint32((wrd + (16 - 4)), value);
+}
+
+// AES GCM
+// https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
+// https://csrc.nist.rip/groups/ST/toolkit/BCM/documents/proposedmodes/gcm/gcm-revised-spec.pdf
+// 6.3 multiply
+static void GCM_MULTIPLY(uint8_t *BITZ, const uint8_t *BITX, const uint8_t *BITY) {
+  u64 Z, R=0xe1000000U, t;
+  for (int i = 0; i < 16; i++) {
+    for (int j = 0; j < 8; j++) {
+      if (BITX[i] & (1 << (7 - j))) {
+        xorblock(BITZ, BITZ, BITX);
+      }
+    }
+    andblock(&t, &R, &Z);
+    R <<= 1;
+    if (t & 0x10000000U) {
+      R ^= 0x87;
+    }
+    Z = t;
+    for (int j = 0; j < 16; j++) {
+      BITZ[j] = (BITZ[j] >> (8 * j)) & 0xFF;
+    }
+  }
+}
+
+static void GHASH(uint8_t *Y, const uint8_t *X, const uint8_t *H, uint32_t lenx) {
+  uint8_t tmp[16] = {0};
+  memset(Y, 0, 16 * sizeof(uint8_t));
+  for (int i = 1; i < (lenx / 16) + 1; i++) {
+    xorblock(tmp, Y, X + ((i-1)*16));
+    GCM_MULTIPLY(Y, tmp, H);
+  }
+}
+
+static void GCTR(uint8_t *Y, const uint8_t *ICB, const uint8_t *X, const uint8_t *key, const uint32_t lenx) {
+  uint32_t nblocks = lenx / 16;
+  uint8_t *CB = malloc(16), eCB[16] = {0}, bkey[4] = {0}, keybytes[32] = {0}, plain[16] = {0}, cipB[16] = {0};
+  if (X == NULL) return;
+  memcpy(CB, ICB, 16);
+  inc32(CB);
+  for (int j = 0; j < 8; j++) {
+    word2bytes(bkey, key[j]);
+    keybytes[(j*4)+0] = bkey[0];
+    keybytes[(j*4)+1] = bkey[1];
+    keybytes[(j*4)+2] = bkey[2];
+    keybytes[(j*4)+3] = bkey[3];
+  }
+  for (int i = 0; i < nblocks; i++) {
+    if (((i+1) * 16) > lenx) break;
+    cipher(eCB, keybytes, CB++);
+    memcpy(plain, X + (i * 16), 16);
+    xorblock(cipB, eCB, plain);
+    memcpy(Y+(i*16), cipB, 16);
+  }
+  uint32_t fl = lenx - (nblocks * 16);
+  cipher(eCB, keybytes, CB++);
+  memcpy(plain, X + (nblocks * 16), fl);
+  xorblock(cipB, eCB, plain);
+  memcpy(Y+(nblocks*16), cipB, fl);
+}
+
+void GCM_AUTHENC(uint8_t *c, uint8_t *t, const uint8_t *key, const uint8_t *iv, const uint8_t *plain, const uint8_t *aad, const uint32_t lenx) {
+  uint32_t aadlen = 12, ivlen = 32, clen = 32;
+  uint8_t hk[16] = {0}, h[16] = {0}, j0[16] = {0}, hb[16] = {0};
+  // if any of these are true, bail: (len(plaintext) > MAXIMUM_MESSAGE_LENGTH) or (len(additionalAuthenticatedData) > MAXIMUM_AAD_LENGTH) or (len(initializationVector) > MAXIMUM_IV_LENGTH or len(initializationVector) < 1)
+  cipher(hk, key, h);
+  if (ivlen == 12) { // when does this happen?!
+    uint8_t b0[4]={0x00, 0x00, 0x00, 0x01};
+    memcpy(iv+ivlen, b0, 4);
+  } else {
+    uint32_t pl = (16*(ivlen / 16)) - ivlen;
+    uint8_t *bs = malloc(ivlen + pl + (2 * sizeof(uint32_t)));
+    memcpy(bs, iv, ivlen);
+    memcpy(bs+ivlen, &pl, sizeof(uint32_t));
+    memcpy(bs+ivlen+sizeof(uint32_t), &ivlen, sizeof(uint32_t));
+    GHASH(j0, bs, hk, ivlen+(2*sizeof(uint32_t)));
+    free(bs);
+  }
+  inc32(j0);
+  uint32_t ICB = (*j0)++;
+  GCTR(c, &ICB, plain, key, lenx);
+  uint32_t pc = (16 * (clen / 16)) - clen, pa = (16 * (aadlen / 16)) - aadlen, bhlen = aadlen+(4*sizeof(uint32_t))+clen;
+  uint8_t *bh = malloc(bhlen);
+  memcpy(bh, aad, aadlen);
+  memcpy(bh+aadlen, &pc, sizeof(uint32_t));
+  memcpy(bh+aadlen+sizeof(uint32_t), c, clen);
+  memcpy(bh+aadlen+sizeof(uint32_t)+clen, &pa, sizeof(uint32_t));
+  memcpy(bh+aadlen+(2*sizeof(uint32_t))+clen, &aadlen, sizeof(uint32_t));
+  memcpy(bh+aadlen+(3*sizeof(uint32_t))+clen, &clen, sizeof(uint32_t));
+  GHASH(hb, bh, hk, bhlen);
+  GCTR(t, j0, hb, key, 12); // 12 = tag length?
+  free(bh);
+}
+
+void GCM_AUTHDEC(uint8_t *plain, uint8_t *t, const uint8_t *key, const uint8_t *iv, const uint8_t *c, const uint8_t *aad, const uint8_t *tag) {
+  uint32_t aadlen = 12, ivlen = 32, clen = 32;
+  uint8_t hk[16] = {0}, h[16] = {0}, j0[16] = {0}, hb[16] = {0};
+  // if any of these are true, bail: (len(ciphertext) > MAXIMUM_MESSAGE_LENGTH) or (len(additionalAuthenticatedData) > MAXIMUM_AAD_LENGTH) or (len(initializationVector) > MAXIMUM_IV_LENGTH or len(initializationVector) < 1)
+  cipher(hk, key, h);
+  if (ivlen == 12) { // when does this happen?!
+    uint8_t b0[4]={0x00, 0x00, 0x00, 0x01};
+    memcpy(j0, iv, ivlen);
+    memcpy(j0+ivlen, b0, 4);
+  } else {
+    uint32_t pl = (16*(ivlen / 16)) - ivlen;
+    uint8_t *bs = malloc(ivlen + pl + (2 * sizeof(uint32_t)));
+    memcpy(bs, iv, ivlen);
+    memcpy(bs+ivlen, &pl, sizeof(uint32_t));
+    memcpy(bs+ivlen+sizeof(uint32_t), &ivlen, sizeof(uint32_t));
+    GHASH(j0, bs, hk, ivlen+(2*sizeof(uint32_t)));
+    free(bs);
+  }
+  inc32(j0);
+  uint32_t ICB = (*j0)++;
+  GCTR(plain, &ICB, c, key, clen);
+  uint32_t pc = (16 * (clen / 16)) - clen, pa = (16 * (aadlen / 16)) - aadlen, bhlen = aadlen+(4*sizeof(uint32_t))+clen;
+  uint8_t *bh = malloc(bhlen);
+  memcpy(bh, aad, aadlen);
+  memcpy(bh+aadlen, &pc, sizeof(uint32_t));
+  memcpy(bh+aadlen+sizeof(uint32_t), c, clen);
+  memcpy(bh+aadlen+sizeof(uint32_t)+clen, &pa, sizeof(uint32_t));
+  memcpy(bh+aadlen+(2*sizeof(uint32_t))+clen, &aadlen, sizeof(uint32_t));
+  memcpy(bh+aadlen+(3*sizeof(uint32_t))+clen, &clen, sizeof(uint32_t));
+  GHASH(hb, bh, hk, bhlen);
+  GCTR(t, j0, hb, key, 12); // 12 = tag length?
+  for (int i = 0; i < 16; i++) {
+    printf("TAG: %d %d\n", t[i], tag[i]); // add assert here instead!
+    assert(t[i] == tag[i]);
+  }
+  free(bh);
+}
+
+
+/*
+==============================================================
+Example #5
+Taglen = 128
+AADlen = 160
+PTlen = 480
+Encrypt-Generate
+K is
+FEFFE992 8665731C 6D6A8F94 67308308
+FEFFE992 8665731C 6D6A8F94 67308308
+IV is
+CAFEBABE FACEDBAD DECAF888
+A is
+3AD77BB4 0D7A3660 A89ECAF3 2466EF97
+F5D3D585
+P is
+D9313225 F88406E5 A55909C5 AFF5269A
+86A7A953 1534F7DA 2E4C303D 8A318A72
+1C3C0C95 95680953 2FCF0E24 49A6B525
+B16AEDF5 AA0DE657 BA637B39
+H is
+ACBEF205 79B4B8EB CE889BAC 8732DAD7
+-----------------------
+-----------------------
+--------------------------------------------------------------
+-----------------------
+J0 is
+CAFEBABE FACEDBAD DECAF888 00000001
+GCM_Ctr
+Block #1:
+CB is
+CAFEBABE FACEDBAD DECAF888 00000002
+CT is
+8B1CF3D5 61D27BE2 51263E66 857164E7
+E is
+522DC1F0 99567D07 F47F37A3 2A84427D
+Block #2:
+CB is
+CAFEBABE FACEDBAD DECAF888 00000003
+CT is
+E29D258F AAD13713 5BD49280 AF645BD8
+E is
+643A8CDC BFE5C0C9 7598A2BD 2555D1AA
+Block #3:
+CB is
+CAFEBABE FACEDBAD DECAF888 00000004
+CT is
+908C82DD CC65B26E 887F8534 1F243D1D
+E is
+8CB08E48 590DBB3D A7B08B10 56828838
+Block #4:
+CB is
+CAFEBABE FACEDBAD DECAF888 00000005
+CT is
+749CF396 39B79C5D 06AA8D5B 932FC7F8
+E is
+C5F61E63 93BA7A0A BCC9F662 898015AD
+CT is
+522DC1F0 99567D07 F47F37A3 2A84427D
+643A8CDC BFE5C0C9 7598A2BD 2555D1AA
+8CB08E48 590DBB3D A7B08B10 56828838
+C5F61E63 93BA7A0A BCC9F662
+S is
+1DBBB349 E0B1F4FF F5AA3BB1 F6B2B0DE
+Cipher(K, J0) is
+FD2CAA16 A5832E76 AA132C14 53EEDA7E
+C is
+522DC1F0 99567D07 F47F37A3 2A84427D
+643A8CDC BFE5C0C9 7598A2BD 2555D1AA
+8CB08E48 590DBB3D A7B08B10 56828838
+C5F61E63 93BA7A0A BCC9F662
+Tag is
+E097195F 4532DA89 5FB917A5 A55C6AA0
+Decrypt-Verify
+GCM_Ctr
+Block #1:
+CB is
+CAFEBABE FACEDBAD DECAF888 00000002
+CT is
+8B1CF3D5 61D27BE2 51263E66 857164E7
+-----------------------
+--------------------------------------------------------------
+E is
+D9313225 F88406E5 A55909C5 AFF5269A
+Block #2:
+CB is
+CAFEBABE FACEDBAD DECAF888 00000003
+CT is
+E29D258F AAD13713 5BD49280 AF645BD8
+E is
+86A7A953 1534F7DA 2E4C303D 8A318A72
+Block #3:
+CB is
+CAFEBABE FACEDBAD DECAF888 00000004
+CT is
+908C82DD CC65B26E 887F8534 1F243D1D
+E is
+1C3C0C95 95680953 2FCF0E24 49A6B525
+Block #4:
+CB is
+CAFEBABE FACEDBAD DECAF888 00000005
+CT is
+749CF396 39B79C5D 06AA8D5B 932FC7F8
+E is
+B16AEDF5 AA0DE657 BA637B39 818F4000
+The Mac verifies
+P is
+D9313225 F88406E5 A55909C5 AFF5269A
+86A7A953 1534F7DA 2E4C303D 8A318A72
+1C3C0C95 95680953 2FCF0E24 49A6B525
+B16AEDF5 AA0DE657 BA637B39
+*/
 
 // Code grabbed from https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf and massaged
 
