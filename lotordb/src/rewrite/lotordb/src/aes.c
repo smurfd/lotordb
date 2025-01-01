@@ -386,37 +386,78 @@ static void GHASH(uint8_t *Y, const uint8_t *X, const uint8_t *H, uint32_t lenx)
 }
 
 static void GCTR(uint8_t *Y, const uint8_t *ICB, const uint8_t *X, const uint8_t *key, const uint32_t lenx) {
-  uint32_t nblocks = lenx / 16;
-  uint8_t *CB = malloc(16), eCB[16] = {0}, bkey[4] = {0}, keybytes[32] = {0}, plain[16] = {0}, cipB[16] = {0};
+  uint32_t nblocks = lenx / 16, eCB[16] = {0}, CBwrd[16] = {0}, *CBinc = CBwrd;
+  uint8_t *CB = malloc(16), plain[16] = {0}, cipB[16] = {0}, eCBbytes[16] = {0}, eCBb[4] = {0}, CBb[4] = {0};
   if (X == NULL) return;
   memcpy(CB, ICB, 16);
   inc32(CB);
-  for (int j = 0; j < 8; j++) {
-    word2bytes(bkey, key[j]);
-    keybytes[(j*4)+0] = bkey[0];
-    keybytes[(j*4)+1] = bkey[1];
-    keybytes[(j*4)+2] = bkey[2];
-    keybytes[(j*4)+3] = bkey[3];
+  uint32_t keywrd[16] = {0};
+  uint8_t bkey[4] = {0};
+  for (int j = 0; j < 32; j+=4) {
+    bkey[0] = key[(j*4)+0];
+    bkey[1] = key[(j*4)+1];
+    bkey[2] = key[(j*4)+2];
+    bkey[3] = key[(j*4)+3];
+    keywrd[j/4] = bytes2word(bkey);
+    CBb[0] = CB[(j*4)+0];
+    CBb[1] = CB[(j*4)+1];
+    CBb[2] = CB[(j*4)+2];
+    CBb[3] = CB[(j*4)+3];
+    CBwrd[j/4] = bytes2word(CBb);
   }
   for (int i = 0; i < nblocks; i++) {
-    if (((i+1) * 16) > lenx) break;
-    cipher(eCB, keybytes, CB++);
+    if (((i + 1) * 16) > lenx) break;
+    cipher(eCB, keywrd, CBinc++);
+    for (int j = 0; j < 8; j++) {
+      word2bytes(eCBb, eCB[j]);
+      eCBbytes[(j*4)+0] = eCBb[0];
+      eCBbytes[(j*4)+1] = eCBb[1];
+      eCBbytes[(j*4)+2] = eCBb[2];
+      eCBbytes[(j*4)+3] = eCBb[3];
+    }
     memcpy(plain, X + (i * 16), 16);
-    xorblock(cipB, eCB, plain);
+    xorblock(cipB, eCBbytes, plain);
     memcpy(Y+(i*16), cipB, 16);
   }
   uint32_t fl = lenx - (nblocks * 16);
-  cipher(eCB, keybytes, CB++);
+  cipher(eCB, keywrd, CBinc++);
+  for (int j = 0; j < 8; j++) {
+    word2bytes(eCBb, eCB[j]);
+    eCBbytes[(j*4)+0] = eCBb[0];
+    eCBbytes[(j*4)+1] = eCBb[1];
+    eCBbytes[(j*4)+2] = eCBb[2];
+    eCBbytes[(j*4)+3] = eCBb[3];
+  }
   memcpy(plain, X + (nblocks * 16), fl);
-  xorblock(cipB, eCB, plain);
+  xorblock(cipB, eCBbytes, plain);
   memcpy(Y+(nblocks*16), cipB, fl);
+  //free(CB);
 }
 
-void GCM_AUTHENC(uint8_t *c, uint8_t *t, const uint8_t *key, const uint8_t *iv, const uint8_t *plain, const uint8_t *aad, const uint32_t lenx) {
+void GCM_AUTHENC(uint8_t *c, uint8_t *t, const uint8_t *key, uint8_t *iv, const uint8_t *plain, const uint8_t *aad, const uint32_t lenx) {
   uint32_t aadlen = 12, ivlen = 32, clen = 32;
   uint8_t hk[16] = {0}, h[16] = {0}, j0[16] = {0}, hb[16] = {0};
   // if any of these are true, bail: (len(plaintext) > MAXIMUM_MESSAGE_LENGTH) or (len(additionalAuthenticatedData) > MAXIMUM_AAD_LENGTH) or (len(initializationVector) > MAXIMUM_IV_LENGTH or len(initializationVector) < 1)
-  cipher(hk, key, h);
+  uint32_t keywrd[16] = {0}, hwrd[16] = {0}, hkwrd[16] = {0};
+  uint8_t bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0};
+  for (int j = 0; j < 32; j+=4) {
+    bkey[0] = key[(j*4)+0];
+    bkey[1] = key[(j*4)+1];
+    bkey[2] = key[(j*4)+2];
+    bkey[3] = key[(j*4)+3];
+    keywrd[j/4] = bytes2word(bkey);
+    bbh[0] = h[(j*4)+0];
+    bbh[1] = h[(j*4)+1];
+    bbh[2] = h[(j*4)+2];
+    bbh[3] = h[(j*4)+3];
+    hwrd[j/4] = bytes2word(bbh);
+    bhk[0] = hk[(j*4)+0];
+    bhk[1] = hk[(j*4)+1];
+    bhk[2] = hk[(j*4)+2];
+    bhk[3] = hk[(j*4)+3];
+    hkwrd[j/4] = bytes2word(bhk);
+  }
+  cipher(hkwrd, keywrd, hwrd);
   if (ivlen == 12) { // when does this happen?!
     uint8_t b0[4]={0x00, 0x00, 0x00, 0x01};
     memcpy(iv+ivlen, b0, 4);
@@ -430,7 +471,7 @@ void GCM_AUTHENC(uint8_t *c, uint8_t *t, const uint8_t *key, const uint8_t *iv, 
     free(bs);
   }
   inc32(j0);
-  uint32_t ICB = (*j0)++;
+  uint8_t ICB = (*j0)++;
   GCTR(c, &ICB, plain, key, lenx);
   uint32_t pc = (16 * (clen / 16)) - clen, pa = (16 * (aadlen / 16)) - aadlen, bhlen = aadlen+(4*sizeof(uint32_t))+clen;
   uint8_t *bh = malloc(bhlen);
@@ -449,7 +490,26 @@ void GCM_AUTHDEC(uint8_t *plain, uint8_t *t, const uint8_t *key, const uint8_t *
   uint32_t aadlen = 12, ivlen = 32, clen = 32;
   uint8_t hk[16] = {0}, h[16] = {0}, j0[16] = {0}, hb[16] = {0};
   // if any of these are true, bail: (len(ciphertext) > MAXIMUM_MESSAGE_LENGTH) or (len(additionalAuthenticatedData) > MAXIMUM_AAD_LENGTH) or (len(initializationVector) > MAXIMUM_IV_LENGTH or len(initializationVector) < 1)
-  cipher(hk, key, h);
+  uint32_t keywrd[16] = {0}, hwrd[16] = {0}, hkwrd[16] = {0};
+  uint8_t bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0};
+  for (int j = 0; j < 32; j+=4) {
+    bkey[0] = key[(j*4)+0];
+    bkey[1] = key[(j*4)+1];
+    bkey[2] = key[(j*4)+2];
+    bkey[3] = key[(j*4)+3];
+    keywrd[j/4] = bytes2word(bkey);
+    bbh[0] = h[(j*4)+0];
+    bbh[1] = h[(j*4)+1];
+    bbh[2] = h[(j*4)+2];
+    bbh[3] = h[(j*4)+3];
+    hwrd[j/4] = bytes2word(bbh);
+    bhk[0] = hk[(j*4)+0];
+    bhk[1] = hk[(j*4)+1];
+    bhk[2] = hk[(j*4)+2];
+    bhk[3] = hk[(j*4)+3];
+    hkwrd[j/4] = bytes2word(bhk);
+  }
+  cipher(hkwrd, keywrd, hwrd);
   if (ivlen == 12) { // when does this happen?!
     uint8_t b0[4]={0x00, 0x00, 0x00, 0x01};
     memcpy(j0, iv, ivlen);
@@ -464,7 +524,7 @@ void GCM_AUTHDEC(uint8_t *plain, uint8_t *t, const uint8_t *key, const uint8_t *
     free(bs);
   }
   inc32(j0);
-  uint32_t ICB = (*j0)++;
+  uint8_t ICB = (*j0)++;
   GCTR(plain, &ICB, c, key, clen);
   uint32_t pc = (16 * (clen / 16)) - clen, pa = (16 * (aadlen / 16)) - aadlen, bhlen = aadlen+(4*sizeof(uint32_t))+clen;
   uint8_t *bh = malloc(bhlen);
