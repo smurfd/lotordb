@@ -341,7 +341,7 @@ static inline void xorblock(uint8_t *Z, const uint8_t *X, const uint8_t *Y) {
 }
 
 static inline void xorblock32bit(uint32_t *Z, const uint32_t *X, const uint32_t *Y) {
-  for (int i = 0; i < 16; i++) {
+  for (int i = 0; i < 8; i++) {
     Z[i] = (X[i] ^ Y[i]);
   }
 }
@@ -420,7 +420,7 @@ static void GHASH(uint8_t *Y, const uint8_t *X, const uint8_t *H, uint32_t lenx)
 static void GHASH32bit(uint32_t *Y, const uint32_t *X, const uint32_t *H, uint32_t lenx) {
   uint32_t tmp[16] = {0};
   memset(Y, 0, 8 * sizeof(uint32_t));
-  for (int i = 1; i < (lenx / 8) + 1; i++) {
+  for (int i = 1; i < (lenx / 32) + 1; i++) {
     xorblock32bit(tmp, Y, X + ((i - 1) * 8));
     GCM_MULTIPLY32bit(Y, tmp, H);
   }
@@ -554,7 +554,7 @@ void gcm_ciphertag32bit(uint32_t *c, uint32_t *t, const uint32_t *key, uint32_t 
   if (lenx > MAXPLAIN || aadlen > MAXAAD || ivlen > MAXIV || ivlen < 1) return;
   uint32_t pc = (8 * (clen / 8)) - clen, pa = (8 * (aadlen / 8)) - aadlen;
   uint32_t bhlen = aadlen + (4 * sizeof(uint32_t)) + clen, hk[16] = {0}, h[16] = {0}, j0[16] = {0};
-  uint32_t *bh = malloc(bhlen*sizeof(uint32_t)), hb[16] = {0}, bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0};
+  uint32_t *bh = malloc(bhlen*sizeof(uint32_t)), hb[16] = {0};//, bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0};
   cipher(hk, key, h);
   if (ivlen == 12) { // when does this happen?!
     uint32_t b0[4] = {0x00000000, 0x00000000, 0x00000000, 0x000000000001};
@@ -643,8 +643,7 @@ void gcm_inv_ciphertag32bit(uint32_t *plain, uint32_t *t, const uint32_t *key, c
   u64 aadlen = 12, ivlen = 8, clen = 8;
   if (clen > MAXPLAIN || aadlen > MAXAAD || ivlen > MAXIV || ivlen < 1) return;
   uint32_t pc = (8 * (clen / 8)) - clen, pa = (8 * (aadlen / 8)) - aadlen, bhlen = aadlen + (4 * sizeof(uint32_t)) + clen;
-  uint32_t keywrd[16] = {0}, hwrd[16] = {0}, hkwrd[16] = {0}, j0[16] = {0};
-  uint32_t bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0}, hk[16] = {0}, h[16] = {0}, hb[16] = {0}, *bh = malloc(bhlen*sizeof(uint32_t));
+  uint32_t j0[16] = {0}, hk[16] = {0}, h[16] = {0}, hb[16] = {0}, *bh = malloc(bhlen*sizeof(uint32_t));
   cipher(hk, key, h);
   if (ivlen == 12) { // when does this happen?!
     uint32_t b0[4] = {0x00000000, 0x00000000, 0x00000000, 0x00000001};
