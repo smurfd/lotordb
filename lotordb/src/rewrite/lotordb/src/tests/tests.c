@@ -101,11 +101,45 @@ void test_aesgcmloop(void) {
   printf("Time taken %d seconds %d milliseconds\n", msec/1000, msec%1000);
 }
 
+void test_aesgcm32bit(void) {
+  uint32_t iv[32] = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff},
+  key[32] = {0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f, 0x10111213, 0x14151617, 0x18191a1b, 0x1c1d1e1f},
+  plain[32] = {0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff, 0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff},
+  cipher[32] = {0}, tag[32] = {0}, tag2[32] = {0}, aad[32] = {0}, plain2[32] = {0};
+  gcm_ciphertag32bit(cipher, tag, key, iv, plain, aad,  32);
+  gcm_inv_ciphertag32bit(plain2, tag2, key, iv, cipher, aad, tag);
+  for (int i = 0; i < 8; i++) {
+    printf("aes new %d %d\n", plain[i], plain2[i]);
+    assert(plain[i] == plain2[i]);
+  }
+}
+
+void test_aesgcm32bitloop(void) {
+  uint32_t iv[32] = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff},
+  key[32] = {0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f, 0x10111213, 0x14151617, 0x18191a1b, 0x1c1d1e1f},
+  plain[32] = {0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff, 0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff},
+  cipher[32] = {0}, tag[32] = {0}, tag2[32] = {0}, aad[32] = {0}, plain2[32] = {0};
+  clock_t start = clock(), end;
+  for (int i = 0; i < 1000000; i++) {
+    gcm_ciphertag32bit(cipher, tag, key, iv, plain, aad, 8);
+    gcm_inv_ciphertag32bit(plain2, tag2, key, iv, cipher, aad, tag);
+    for (int j = 0; j < 8; j++) {
+      //printf("aes new %d %d\n", plain[i], plain2[i]);
+      assert(plain[j] == plain2[j]);
+    }
+  }
+  end = clock() - start;
+  int msec = end * 1000 / CLOCKS_PER_SEC;
+  printf("Time taken %d seconds %d milliseconds\n", msec/1000, msec%1000);
+}
+
 int main(void) {
   test_hash();
   test_aes();
   test_aesloop();
   test_aesgcm();
   test_aesgcmloop();
+  test_aesgcm32bit();
+  test_aesgcm32bitloop();
   printf("OK\n");
 }

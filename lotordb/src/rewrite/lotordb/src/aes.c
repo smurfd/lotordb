@@ -340,6 +340,12 @@ static inline void xorblock(uint8_t *Z, const uint8_t *X, const uint8_t *Y) {
   }
 }
 
+static inline void xorblock32bit(uint32_t *Z, const uint32_t *X, const uint32_t *Y) {
+  for (int i = 0; i < 16; i++) {
+    Z[i] = (X[i] ^ Y[i]);
+  }
+}
+
 // AES GCM
 // https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 // https://csrc.nist.rip/groups/ST/toolkit/BCM/documents/proposedmodes/gcm/gcm-revised-spec.pdf
@@ -377,6 +383,26 @@ static void GCM_MULTIPLY(uint8_t *BITZ, const uint8_t *BITX, const uint8_t *BITY
   }
 }
 
+static void GCM_MULTIPLY32bit(uint32_t *BITZ, const uint32_t *BITX, const uint32_t *BITY) {
+  u64 Z, R=0xe1000000U, t;
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 8; j++) {
+      if (BITX[i] & (1 << (7 - j))) {
+        BITZ[i] = BITX[i] ^ BITY[i];
+      }
+    }
+    t = R & Z;
+    R <<= 1;
+    if (t & 0x10000000U) {
+      R ^= 0x87;
+    }
+    Z = t;
+    for (int j = 0; j < 8; j++) {
+      BITZ[j] = (BITZ[j] >> (8 * j)) & 0xFF;
+    }
+  }
+}
+
 // 6.4
 // Algorithm 2: GHASHh (X)
 // GHASH Function
@@ -388,6 +414,15 @@ static void GHASH(uint8_t *Y, const uint8_t *X, const uint8_t *H, uint32_t lenx)
   for (int i = 1; i < (lenx / 16) + 1; i++) {
     xorblock(tmp, Y, X + ((i - 1) * 16));
     GCM_MULTIPLY(Y, tmp, H);
+  }
+}
+
+static void GHASH32bit(uint32_t *Y, const uint32_t *X, const uint32_t *H, uint32_t lenx) {
+  uint32_t tmp[16] = {0};
+  memset(Y, 0, 8 * sizeof(uint32_t));
+  for (int i = 1; i < (lenx / 8) + 1; i++) {
+    xorblock32bit(tmp, Y, X + ((i - 1) * 8));
+    GCM_MULTIPLY32bit(Y, tmp, H);
   }
 }
 
@@ -440,6 +475,25 @@ static void GCTR(uint8_t *Y, const uint8_t *ICB, const uint8_t *X, const uint8_t
   memcpy(plain, X + (nblocks * 16), fl);
   xorblock(cipB, eCBbytes, plain);
   memcpy(Y + (nblocks * 16), cipB, fl);
+}
+
+static void GCTR32bit(uint32_t *Y, const uint32_t *ICB, const uint32_t *X, const uint32_t *key, const uint32_t lenx) {
+  uint32_t nblocks = lenx / 8, eCB[16] = {0}, CBwrd[16] = {0}, *CBinc = CBwrd, CB[16] = {0}, plain[16] = {0}, cipB[16] = {0};
+  if (X == NULL) return;
+  memcpy(CB, ICB, 8*sizeof(uint32_t));
+  (*CB)++;
+  for (int i = 0; i < nblocks; i++) {
+    if (((i + 1) * 8) > lenx) break;
+    cipher(eCB, key, CBinc++);
+    memcpy(plain, X + (i * 8), 8*sizeof(uint32_t));
+    xorblock32bit(cipB, eCB, plain);
+    memcpy(Y + (i * 8), cipB, 8*sizeof(uint32_t));
+  }
+  uint32_t fl = lenx - (nblocks * 8);// * sizeof(uint32_t);
+  cipher(eCB, key, CBinc++);
+  memcpy(plain, X + (nblocks * 8), fl);
+  xorblock32bit(cipB, eCB, plain);
+  memcpy(Y + (nblocks * 8), cipB, fl);
 }
 
 // 7.1
@@ -495,6 +549,38 @@ void gcm_ciphertag(uint8_t *c, uint8_t *t, const uint8_t *key, uint8_t *iv, cons
   free(bh);
 }
 
+void gcm_ciphertag32bit(uint32_t *c, uint32_t *t, const uint32_t *key, uint32_t *iv, const uint32_t *plain, const uint32_t *aad, const u64 lenx) {
+  u64 aadlen = 12, ivlen = 8, clen = 8;
+  if (lenx > MAXPLAIN || aadlen > MAXAAD || ivlen > MAXIV || ivlen < 1) return;
+  uint32_t pc = (8 * (clen / 8)) - clen, pa = (8 * (aadlen / 8)) - aadlen;
+  uint32_t bhlen = aadlen + (4 * sizeof(uint32_t)) + clen, hk[16] = {0}, h[16] = {0}, j0[16] = {0};
+  uint32_t *bh = malloc(bhlen*sizeof(uint32_t)), hb[16] = {0}, bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0};
+  cipher(hk, key, h);
+  if (ivlen == 12) { // when does this happen?!
+    uint32_t b0[4] = {0x00000000, 0x00000000, 0x00000000, 0x000000000001};
+    memcpy(iv + ivlen, b0, 4*sizeof(uint32_t));
+  } else {
+    uint32_t pl = (16 * (ivlen / 16)) - ivlen;
+    uint32_t *bs = malloc((ivlen + pl + (2 * sizeof(uint32_t)))* sizeof(uint32_t));
+    memcpy(bs, iv, ivlen);
+    memcpy(bs + ivlen, &pl, sizeof(uint32_t));
+    memcpy(bs + ivlen + sizeof(uint32_t), &ivlen, sizeof(uint32_t));
+    GHASH32bit(j0, bs, hk, ivlen + (2 * sizeof(uint32_t)));
+    free(bs);
+  }
+  (*j0)++;
+  uint32_t ICB = (*j0)++;
+  GCTR32bit(c, &ICB, plain, key, lenx);
+  memcpy(bh, aad, aadlen);
+  memcpy(bh + aadlen, &pc, sizeof(uint32_t));
+  memcpy(bh + aadlen + sizeof(uint32_t), c, clen);
+  memcpy(bh + aadlen + sizeof(uint32_t) + clen, &pa, sizeof(uint32_t));
+  memcpy(bh + aadlen + (2 * sizeof(uint32_t)) + clen, &aadlen, sizeof(uint32_t));
+  memcpy(bh + aadlen + (3 * sizeof(uint32_t)) + clen, &clen, sizeof(uint32_t));
+  GHASH32bit(hb, bh, hk, bhlen);
+  GCTR32bit(t, j0, hb, key, 12); // 12 = tag length?
+  free(bh);
+}
 // 7.2
 // Algorithm 5: GCM-ADK (IV, C, A, T)
 // Algorithm for the Authenticated Decryption Function
@@ -553,6 +639,43 @@ void gcm_inv_ciphertag(uint8_t *plain, uint8_t *t, const uint8_t *key, const uin
   free(bh);
 }
 
+void gcm_inv_ciphertag32bit(uint32_t *plain, uint32_t *t, const uint32_t *key, const uint32_t *iv, const uint32_t *c, const uint32_t *aad, const uint32_t *tag) {
+  u64 aadlen = 12, ivlen = 8, clen = 8;
+  if (clen > MAXPLAIN || aadlen > MAXAAD || ivlen > MAXIV || ivlen < 1) return;
+  uint32_t pc = (8 * (clen / 8)) - clen, pa = (8 * (aadlen / 8)) - aadlen, bhlen = aadlen + (4 * sizeof(uint32_t)) + clen;
+  uint32_t keywrd[16] = {0}, hwrd[16] = {0}, hkwrd[16] = {0}, j0[16] = {0};
+  uint32_t bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0}, hk[16] = {0}, h[16] = {0}, hb[16] = {0}, *bh = malloc(bhlen*sizeof(uint32_t));
+  cipher(hk, key, h);
+  if (ivlen == 12) { // when does this happen?!
+    uint32_t b0[4] = {0x00000000, 0x00000000, 0x00000000, 0x00000001};
+    memcpy(j0, iv, ivlen*sizeof(uint32_t));
+    memcpy(j0 + ivlen, b0, 4*sizeof(uint32_t));
+  } else {
+    uint32_t pl = (16 * (ivlen / 16)) - ivlen;
+    uint32_t *bs = malloc(ivlen + pl + (2 * sizeof(uint32_t)));
+    memcpy(bs, iv, ivlen);
+    memcpy(bs + ivlen, &pl, sizeof(uint32_t));
+    memcpy(bs + ivlen + sizeof(uint32_t), &ivlen, sizeof(uint32_t));
+    GHASH32bit(j0, bs, hk, ivlen + (2 * sizeof(uint32_t)));
+    free(bs);
+  }
+  (*j0)++;
+  uint32_t ICB = (*j0)++;
+  GCTR32bit(plain, &ICB, c, key, clen);
+  memcpy(bh, aad, aadlen);
+  memcpy(bh + aadlen, &pc, sizeof(uint32_t));
+  memcpy(bh + aadlen + sizeof(uint32_t), c, clen);
+  memcpy(bh + aadlen + sizeof(uint32_t) + clen, &pa, sizeof(uint32_t));
+  memcpy(bh + aadlen + (2 * sizeof(uint32_t)) + clen, &aadlen, sizeof(uint32_t));
+  memcpy(bh + aadlen + (3 * sizeof(uint32_t)) + clen, &clen, sizeof(uint32_t));
+  GHASH32bit(hb, bh, hk, bhlen);
+  GCTR32bit(t, j0, hb, key, 12); // 12 = tag length?
+  /*for (int i = 0; i < 8; i++) {
+    //printf("TAG: %d %d\n", t[i], tag[i]);
+    assert(t[i] == tag[i]);
+  }*/
+  free(bh);
+}
 
 /*
 ==============================================================
