@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include "aes.h"
 
@@ -365,12 +366,16 @@ static inline void inc32(uint8_t *wrd) {
 // Multiplication Operation on Blocks
 static void GCM_MULTIPLY(uint8_t *BITZ, const uint8_t *BITX, const uint8_t *BITY) {
   u64 Z, R=0xe1000000U, t;
+  uint8_t b8[16] = {0}, b0, b1, b2, b3, b4, b5, b6, b7;
+  uint32_t bz[16] = {0};
+  // Pre-calculate for speed
   for (int i = 0; i < 16; i++) {
-    for (int j = 0; j < 8; j++) {
-      if (BITX[i] & (1 << (7 - j))) {
-        BITZ[i] = BITX[i] ^ BITY[i];
-      }
-    }
+    bz[i] = BITX[i] ^ BITY[i];
+    b0 = BITX[i] & 128, b1 = BITX[i] & 64, b2 = BITX[i] & 32, b3 = BITX[i] & 16, b4 = BITX[i] & 8, b5 = BITX[i] & 4, b6 = BITX[i] & 2, b7 = BITX[i] & 1;
+    b8[i] = (b0 || b1 || b2 || b3 || b4 || b5 || b6 || b7);
+  }
+  for (int i = 0; i < 16; i++) {
+    BITZ[i] = (b8[i]) ? bz[i] : BITZ[i];
     t = R & Z;
     R <<= 1;
     if (t & 0x10000000U) {
@@ -385,12 +390,16 @@ static void GCM_MULTIPLY(uint8_t *BITZ, const uint8_t *BITX, const uint8_t *BITY
 
 static void GCM_MULTIPLY32bit(uint32_t *BITZ, const uint32_t *BITX, const uint32_t *BITY) {
   u64 Z, R=0xe1000000U, t;
+  uint8_t b8[8] = {0}, b0, b1, b2, b3, b4, b5, b6, b7;
+  uint32_t bz[8] = {0};
+  // Pre-calculate for speed
   for (int i = 0; i < 8; i++) {
-    for (int j = 0; j < 8; j++) {
-      if (BITX[i] & (1 << (7 - j))) {
-        BITZ[i] = BITX[i] ^ BITY[i];
-      }
-    }
+    bz[i] = BITX[i] ^ BITY[i];
+    b0 = BITX[i] & 128, b1 = BITX[i] & 64, b2 = BITX[i] & 32, b3 = BITX[i] & 16, b4 = BITX[i] & 8, b5 = BITX[i] & 4, b6 = BITX[i] & 2, b7 = BITX[i] & 1;
+    b8[i] = (b0 || b1 || b2 || b3 || b4 || b5 || b6 || b7);
+  }
+  for (int i = 0; i < 8; i++) {
+    BITZ[i] = (b8[i]) ? bz[i] : BITZ[i]; // way faster than a if-statement
     t = R & Z;
     R <<= 1;
     if (t & 0x10000000U) {
@@ -420,7 +429,7 @@ static void GHASH(uint8_t *Y, const uint8_t *X, const uint8_t *H, uint32_t lenx)
 static void GHASH32bit(uint32_t *Y, const uint32_t *X, const uint32_t *H, uint32_t lenx) {
   uint32_t tmp[16] = {0};
   memset(Y, 0, 8 * sizeof(uint32_t));
-  for (int i = 1; i < (lenx / 32) + 1; i++) {
+  for (int i = 1; i < (lenx / 16) + 1; i++) {
     xorblock32bit(tmp, Y, X + ((i - 1) * 8));
     GCM_MULTIPLY32bit(Y, tmp, H);
   }
@@ -581,6 +590,7 @@ void gcm_ciphertag32bit(uint32_t *c, uint32_t *t, const uint32_t *key, uint32_t 
   GCTR32bit(t, j0, hb, key, 12); // 12 = tag length?
   free(bh);
 }
+
 // 7.2
 // Algorithm 5: GCM-ADK (IV, C, A, T)
 // Algorithm for the Authenticated Decryption Function
@@ -669,10 +679,10 @@ void gcm_inv_ciphertag32bit(uint32_t *plain, uint32_t *t, const uint32_t *key, c
   memcpy(bh + aadlen + (3 * sizeof(uint32_t)) + clen, &clen, sizeof(uint32_t));
   GHASH32bit(hb, bh, hk, bhlen);
   GCTR32bit(t, j0, hb, key, 12); // 12 = tag length?
-  /*for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 8; i++) {
     //printf("TAG: %d %d\n", t[i], tag[i]);
     assert(t[i] == tag[i]);
-  }*/
+  }
   free(bh);
 }
 
