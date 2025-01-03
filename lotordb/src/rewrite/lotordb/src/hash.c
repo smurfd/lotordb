@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include "hash.h"
 
+static char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
 //
 // 0-255 to 0x0 to 0xff
 static void to_hex(uint8_t h[], uint8_t d) {

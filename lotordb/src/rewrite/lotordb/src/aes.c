@@ -500,6 +500,7 @@ void gcm_ciphertag(uint8_t *c, uint8_t *t, const uint8_t *key, uint8_t *iv, cons
   uint32_t keywrd[32] = {0}, hwrd[32] = {0}, hkwrd[32] = {0}, pc = (16 * (clen / 16)) - clen, pa = (16 * (aadlen / 16)) - aadlen;
   uint32_t bhlen = aadlen + (4 * sizeof(uint32_t)) + clen;
   uint8_t *bh = malloc(bhlen), hk[32] = {0}, h[32] = {0}, j0[16] = {0}, hb[32] = {0}, bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0};
+  memset(bh, 0, bhlen * sizeof(uint8_t));
   for (int j = 0; j < 32; j+=4) {
     bkey[0] = key[j + 0];
     bkey[1] = key[j + 1];
@@ -523,7 +524,8 @@ void gcm_ciphertag(uint8_t *c, uint8_t *t, const uint8_t *key, uint8_t *iv, cons
     memcpy(iv + ivlen, b0, 4);
   } else {
     uint32_t pl = (16 * (ivlen / 16)) - ivlen;
-    uint8_t *bs = malloc(ivlen + pl + (2 * sizeof(uint32_t)));
+    uint8_t *bs = malloc((ivlen + pl + (2 * sizeof(uint32_t))) * sizeof(uint8_t));
+    memset(bs, 0, ivlen + pl + (2 * sizeof(uint32_t)));
     memcpy(bs, iv, ivlen);
     memcpy(bs + ivlen, &pl, sizeof(uint32_t));
     memcpy(bs + ivlen + sizeof(uint32_t), &ivlen, sizeof(uint32_t));
@@ -549,14 +551,16 @@ void gcm_ciphertag32bit(uint32_t *c, uint32_t *t, const uint32_t *key, uint32_t 
   if (lenx > MAXPLAIN || aadlen > MAXAAD || ivlen > MAXIV || ivlen < 1) return;
   uint32_t pc = (8 * (clen / 8)) - clen, pa = (8 * (aadlen / 8)) - aadlen;
   uint32_t bhlen = aadlen + (4 * sizeof(uint32_t)) + clen, hk[32] = {0}, h[32] = {0}, j0[32] = {0};
-  uint32_t *bh = malloc(bhlen*sizeof(uint32_t)), hb[32] = {0};//, bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0};
+  uint32_t *bh = malloc(bhlen * sizeof(uint32_t)), hb[32] = {0};
+  memset(bh, 0, bhlen * sizeof(uint32_t));
   cipher(hk, key, h);
   if (ivlen == 12) { // when does this happen?!
     uint32_t b0[4] = {0x00000000, 0x00000000, 0x00000000, 0x000000000001};
     memcpy(iv + ivlen, b0, 4*sizeof(uint32_t));
   } else {
     uint32_t pl = (16 * (ivlen / 16)) - ivlen;
-    uint32_t *bs = malloc((ivlen + pl + (2 * sizeof(uint32_t)))* sizeof(uint32_t));
+    uint32_t *bs = malloc((ivlen + pl + (2 * sizeof(uint32_t))) * sizeof(uint32_t));
+    memset(bs, 0, (ivlen + pl + (2 * sizeof(uint32_t))) * sizeof(uint32_t));
     memcpy(bs, iv, ivlen);
     memcpy(bs + ivlen, &pl, sizeof(uint32_t));
     memcpy(bs + ivlen + sizeof(uint32_t), &ivlen, sizeof(uint32_t));
@@ -586,6 +590,7 @@ void gcm_inv_ciphertag(uint8_t *plain, uint8_t *t, const uint8_t *key, const uin
   uint32_t pc = (16 * (clen / 16)) - clen, pa = (16 * (aadlen / 16)) - aadlen, bhlen = aadlen + (4 * sizeof(uint32_t)) + clen;
   uint32_t keywrd[32] = {0}, hwrd[32] = {0}, hkwrd[32] = {0};
   uint8_t bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0}, hk[32] = {0}, h[32] = {0}, j0[32] = {0}, hb[32] = {0}, *bh = malloc(bhlen);
+  memset(bh, 0, bhlen * sizeof(uint8_t));
   for (int j = 0; j < 32; j+=4) {
     bkey[0] = key[j + 0];
     bkey[1] = key[j + 1];
@@ -611,6 +616,7 @@ void gcm_inv_ciphertag(uint8_t *plain, uint8_t *t, const uint8_t *key, const uin
   } else {
     uint32_t pl = (16 * (ivlen / 16)) - ivlen;
     uint8_t *bs = malloc(ivlen + pl + (2 * sizeof(uint32_t)));
+    memset(bs, 0, ivlen + pl + (2 * sizeof(uint32_t)));
     memcpy(bs, iv, ivlen);
     memcpy(bs + ivlen, &pl, sizeof(uint32_t));
     memcpy(bs + ivlen + sizeof(uint32_t), &ivlen, sizeof(uint32_t));
@@ -638,7 +644,8 @@ void gcm_inv_ciphertag32bit(uint32_t *plain, uint32_t *t, const uint32_t *key, c
   u64 aadlen = 12, ivlen = 8, clen = 8;
   if (clen > MAXPLAIN || aadlen > MAXAAD || ivlen > MAXIV || ivlen < 1) return;
   uint32_t pc = (8 * (clen / 8)) - clen, pa = (8 * (aadlen / 8)) - aadlen, bhlen = aadlen + (4 * sizeof(uint32_t)) + clen;
-  uint32_t j0[32] = {0}, hk[32] = {0}, h[32] = {0}, hb[32] = {0}, *bh = malloc(bhlen*sizeof(uint32_t));
+  uint32_t j0[32] = {0}, hk[32] = {0}, h[32] = {0}, hb[32] = {0}, *bh = malloc(bhlen * sizeof(uint32_t));
+  memset(bh, 0, bhlen * sizeof(uint32_t));
   cipher(hk, key, h);
   if (ivlen == 12) { // when does this happen?!
     uint32_t b0[4] = {0x00000000, 0x00000000, 0x00000000, 0x00000001};
@@ -646,7 +653,8 @@ void gcm_inv_ciphertag32bit(uint32_t *plain, uint32_t *t, const uint32_t *key, c
     memcpy(j0 + ivlen, b0, 4*sizeof(uint32_t));
   } else {
     uint32_t pl = (16 * (ivlen / 16)) - ivlen;
-    uint32_t *bs = malloc(ivlen + pl + (2 * sizeof(uint32_t)));
+    uint32_t *bs = malloc((ivlen + pl + (2 * sizeof(uint32_t))) * sizeof(uint32_t));
+    memset(bs, 0, (ivlen + pl + (2 * sizeof(uint32_t))) * sizeof(uint32_t));
     memcpy(bs, iv, ivlen);
     memcpy(bs + ivlen, &pl, sizeof(uint32_t));
     memcpy(bs + ivlen + sizeof(uint32_t), &ivlen, sizeof(uint32_t));
