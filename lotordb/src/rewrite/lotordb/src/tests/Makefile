@@ -1,5 +1,5 @@
-CC:=gcc -O3 -Wall -pedantic -std=c99
-BUILD:=../.build
+CC := gcc -O3 -Wall -pedantic -std=c99
+BUILD := ../.build
 
 all: tests
 

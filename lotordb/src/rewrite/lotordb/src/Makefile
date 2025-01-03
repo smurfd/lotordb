@@ -1,5 +1,5 @@
 CC := gcc -O3 -Wall -pedantic -std=c99
-BUILD:=.build
+BUILD := .build
 
 all: mkbuilddir hash aes test
 

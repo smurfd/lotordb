@@ -1,3 +1,4 @@
+#include <time.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -17,11 +18,13 @@ static uint8_t key1[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0
 static uint8_t outdec[256] = {0}, outenc[256] = {0}, lain[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff};
 
 uint8_t test_ciphers_aes_gcm_text32loop(void) {
-  for (int i = 0; i < 10000; i++) {
+  clock_t start = clock();
+  for (int i = 0; i < 1000000; i++) {
     aes_gcm_encrypt(outenc, lain, 32, key1, 32, iv1, 32);
     aes_gcm_decrypt(outdec, outenc, sizeof(outenc), key1, 32, iv1, 32);
     for (int i = 0; i < 32; i++) assert(lain[i] == outdec[i]);
   }
+  printf("gcmloop: Time %us %ums\n", (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) / 1000, (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) % 1000);
   return 1;
 }
 

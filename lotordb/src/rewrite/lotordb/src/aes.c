@@ -354,7 +354,7 @@ static inline void inc32(uint8_t *wrd) {
 // Algorithm 1: X • Y
 // MULTIPLICATION Function
 // Multiplication Operation on Blocks
-static void GCM_MULTIPLY(uint8_t *BITZ, const uint8_t *BITX, const uint8_t *BITY) {
+static inline void GCM_MULTIPLY(uint8_t *BITZ, const uint8_t *BITX, const uint8_t *BITY) {
   u64 Z, R=0xe1000000U, t;
   uint8_t b8[16] = {0}, b0, b1, b2, b3, b4, b5, b6, b7;
   uint32_t bz[16] = {0};
@@ -368,7 +368,7 @@ static void GCM_MULTIPLY(uint8_t *BITZ, const uint8_t *BITX, const uint8_t *BITY
     BITZ[i] = (b8[i]) ? bz[i] : BITZ[i];
     t = R & Z;
     R <<= 1;
-    if (t & 0x10000000U) R ^= 0x87;
+    R = (t & 0x10000000U) ? R ^ 0x87 : R;
     Z = t;
     for (int j = 0; j < 16; j++) {
       BITZ[j] = (BITZ[j] >> (8 * j)) & 0xFF;
@@ -376,7 +376,7 @@ static void GCM_MULTIPLY(uint8_t *BITZ, const uint8_t *BITX, const uint8_t *BITY
   }
 }
 
-static void GCM_MULTIPLY32bit(uint32_t *BITZ, const uint32_t *BITX, const uint32_t *BITY) {
+static inline void GCM_MULTIPLY32bit(uint32_t *BITZ, const uint32_t *BITX, const uint32_t *BITY) {
   u64 Z, R=0xe1000000U, t;
   uint8_t b8[8] = {0}, b0, b1, b2, b3, b4, b5, b6, b7;
   uint32_t bz[8] = {0};
@@ -390,7 +390,7 @@ static void GCM_MULTIPLY32bit(uint32_t *BITZ, const uint32_t *BITX, const uint32
     BITZ[i] = (b8[i]) ? bz[i] : BITZ[i]; // way faster than a if-statement
     t = R & Z;
     R <<= 1;
-    if (t & 0x10000000U) R ^= 0x87;
+    R = (t & 0x10000000U) ? R ^ 0x87 : R;
     Z = t;
     for (int j = 0; j < 8; j++) {
       BITZ[j] = (BITZ[j] >> (8 * j)) & 0xFF;
@@ -403,7 +403,7 @@ static void GCM_MULTIPLY32bit(uint32_t *BITZ, const uint32_t *BITX, const uint32
 // GHASH Function
 // In effect, the GHASH function calculates X1•Hm ⊕ X2•Hm-1 ⊕ ... ⊕ Xm-1•H2 ⊕ Xm•H. Ref. [6] describes methods for optimizing
 // implementations of GHASH in both hardware and software
-static void GHASH(uint8_t *Y, const uint8_t *X, const uint8_t *H, uint32_t lenx) {
+static inline void GHASH(uint8_t *Y, const uint8_t *X, const uint8_t *H, uint32_t lenx) {
   uint8_t tmp[32] = {0};
   memset(Y, 0, 16 * sizeof(uint8_t));
   for (int i = 1; i < (lenx / 16) + 1; i++) {
@@ -412,7 +412,7 @@ static void GHASH(uint8_t *Y, const uint8_t *X, const uint8_t *H, uint32_t lenx)
   }
 }
 
-static void GHASH32bit(uint32_t *Y, const uint32_t *X, const uint32_t *H, uint32_t lenx) {
+static inline void GHASH32bit(uint32_t *Y, const uint32_t *X, const uint32_t *H, uint32_t lenx) {
   uint32_t tmp[32] = {0};
   memset(Y, 0, 8 * sizeof(uint32_t));
   for (int i = 1; i < (lenx / 16) + 1; i++) {
@@ -424,11 +424,11 @@ static void GHASH32bit(uint32_t *Y, const uint32_t *X, const uint32_t *H, uint32
 // 6.5
 // Algorithm 3: GCTRk (ICB, X)
 // GCTR Function
-static void GCTR(uint8_t *Y, const uint8_t *ICB, const uint8_t *X, const uint8_t *key, const uint32_t lenx) {
+static inline void GCTR(uint8_t *Y, const uint8_t *ICB, const uint8_t *X, const uint8_t *key, const uint32_t lenx) {
   uint32_t nblocks = lenx / 16, eCB[32] = {0}, CBwrd[32] = {0}, *CBinc = CBwrd;
   uint8_t CB[32] = {0}, plain[32] = {0}, cipB[32] = {0}, eCBbytes[32] = {0}, eCBb[4] = {0}, CBb[4] = {0};
   if (X == NULL) return;
-  memcpy(CB, ICB, 16);
+  for (int i = 0; i < 16; i++) CB[i] = ICB[i];
   inc32(CB);
   uint32_t keywrd[32] = {0};
   uint8_t bkey[4] = {0};
@@ -472,10 +472,10 @@ static void GCTR(uint8_t *Y, const uint8_t *ICB, const uint8_t *X, const uint8_t
   memcpy(Y + (nblocks * 16), cipB, fl);
 }
 
-static void GCTR32bit(uint32_t *Y, const uint32_t *ICB, const uint32_t *X, const uint32_t *key, const uint32_t lenx) {
+static inline void GCTR32bit(uint32_t *Y, const uint32_t *ICB, const uint32_t *X, const uint32_t *key, const uint32_t lenx) {
   uint32_t nblocks = lenx / 8, eCB[32] = {0}, CBwrd[32] = {0}, *CBinc = CBwrd, CB[32] = {0}, plain[32]= {0}, cipB[32] = {0};
   if (X == NULL) return;
-  memcpy(CB, ICB, 8*sizeof(uint32_t));
+  for (int i = 0; i < 8; i++) CB[i] = ICB[i];
   (*CB)++;
   for (int i = 0; i < nblocks; i++) {
     if (((i + 1) * 8) > lenx) break;
@@ -533,8 +533,8 @@ void gcm_ciphertag(uint8_t *c, uint8_t *t, const uint8_t *key, uint8_t *iv, cons
     free(bs);
   }
   inc32(j0);
-  uint8_t ICB = (*j0)++;
-  GCTR(c, &ICB, plain, key, lenx);
+  (*j0)++;
+  GCTR(c, j0, plain, key, lenx);
   memcpy(bh, aad, aadlen);
   memcpy(bh + aadlen, &pc, sizeof(uint32_t));
   memcpy(bh + aadlen + sizeof(uint32_t), c, clen);
@@ -568,8 +568,8 @@ void gcm_ciphertag32bit(uint32_t *c, uint32_t *t, const uint32_t *key, uint32_t 
     free(bs);
   }
   (*j0)++;
-  uint32_t ICB = (*j0)++;
-  GCTR32bit(c, &ICB, plain, key, lenx);
+  (*j0)++;
+  GCTR32bit(c, j0, plain, key, lenx);
   memcpy(bh, aad, aadlen);
   memcpy(bh + aadlen, &pc, sizeof(uint32_t));
   memcpy(bh + aadlen + sizeof(uint32_t), c, clen);
@@ -624,8 +624,8 @@ void gcm_inv_ciphertag(uint8_t *plain, uint8_t *t, const uint8_t *key, const uin
     free(bs);
   }
   inc32(j0);
-  uint8_t ICB = (*j0)++;
-  GCTR(plain, &ICB, c, key, clen);
+  (*j0)++;
+  GCTR(plain, j0, c, key, clen);
   memcpy(bh, aad, aadlen);
   memcpy(bh + aadlen, &pc, sizeof(uint32_t));
   memcpy(bh + aadlen + sizeof(uint32_t), c, clen);
@@ -649,8 +649,8 @@ void gcm_inv_ciphertag32bit(uint32_t *plain, uint32_t *t, const uint32_t *key, c
   cipher(hk, key, h);
   if (ivlen == 12) { // when does this happen?!
     uint32_t b0[4] = {0x00000000, 0x00000000, 0x00000000, 0x00000001};
-    memcpy(j0, iv, ivlen*sizeof(uint32_t));
-    memcpy(j0 + ivlen, b0, 4*sizeof(uint32_t));
+    memcpy(j0, iv, ivlen * sizeof(uint32_t));
+    memcpy(j0 + ivlen, b0, 4 * sizeof(uint32_t));
   } else {
     uint32_t pl = (16 * (ivlen / 16)) - ivlen;
     uint32_t *bs = malloc((ivlen + pl + (2 * sizeof(uint32_t))) * sizeof(uint32_t));
@@ -662,8 +662,8 @@ void gcm_inv_ciphertag32bit(uint32_t *plain, uint32_t *t, const uint32_t *key, c
     free(bs);
   }
   (*j0)++;
-  uint32_t ICB = (*j0)++;
-  GCTR32bit(plain, &ICB, c, key, clen);
+  (*j0)++;
+  GCTR32bit(plain, j0, c, key, clen);
   memcpy(bh, aad, aadlen);
   memcpy(bh + aadlen, &pc, sizeof(uint32_t));
   memcpy(bh + aadlen + sizeof(uint32_t), c, clen);

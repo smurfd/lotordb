@@ -37,7 +37,7 @@ void test_aesloop(void) {
     res += memcmp(resultdec, plain, 4 * sizeof(uint32_t));
   }
   assert(res == 0);
-  printf("aesloop: Time %lus %lums\n", ((clock() - start) * 1000 / CLOCKS_PER_SEC) / 1000, ((clock() - start) * 1000 / CLOCKS_PER_SEC) % 1000);
+  printf("aesloop: Time %us %ums\n", (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) / 1000, (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) % 1000);
 }
 
 /*
@@ -93,7 +93,7 @@ void test_aesgcmloop(void) {
       assert(plain[j] == plain2[j]);
     }
   }
-  printf("aesgcmloop: Time %lus %lums\n", ((clock() - start) * 1000 / CLOCKS_PER_SEC) / 1000, ((clock() - start) * 1000 / CLOCKS_PER_SEC) % 1000);
+  printf("aesgcmloop: Time %us %ums\n", (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) / 1000, (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) % 1000);
 }
 
 void test_aesgcm32bit(void) {
