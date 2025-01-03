@@ -29,7 +29,7 @@ void test_aesloop(void) {
   uint32_t plain[4] = {0xf69f2445, 0xdf4f9b17, 0xad2b417b, 0xe66c3710};
   uint32_t expect[4] = {0x23304b7a, 0x39f9f3ff, 0x067d8d8f, 0x9e24ecc7};
   uint32_t resultenc[64] = {0}, resultdec[64] = {0};
-  clock_t start = clock(), end;
+  clock_t start = clock();
   for (int i = 0; i < 1000000; i++) {
     cipher(resultenc, key, plain);
     inv_cipher(resultdec, key, resultenc);
@@ -37,9 +37,7 @@ void test_aesloop(void) {
     res += memcmp(resultdec, plain, 4 * sizeof(uint32_t));
   }
   assert(res == 0);
-  end = clock() - start;
-  int msec = end * 1000 / CLOCKS_PER_SEC;
-  printf("Time taken %d seconds %d milliseconds\n", msec/1000, msec%1000);
+  printf("aesloop: Time %lus %lums\n", ((clock() - start) * 1000 / CLOCKS_PER_SEC) / 1000, ((clock() - start) * 1000 / CLOCKS_PER_SEC) % 1000);
 }
 
 /*
@@ -78,7 +76,6 @@ void test_aesgcm(void) {
   gcm_ciphertag(cipher, tag, key, iv, plain, aad,  32);
   gcm_inv_ciphertag(plain2, tag2, key, iv, cipher, aad, tag);
   for (int i = 0; i < 32; i++) {
-    printf("aes new %d %d\n", plain[i], plain2[i]);
     assert(plain[i] == plain2[i]);
   }
 }
@@ -88,8 +85,7 @@ void test_aesgcmloop(void) {
   key[32] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f},
   plain[32] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff},
   cipher[32] = {0}, tag[32] = {0}, tag2[32] = {0}, aad[32] = {0}, plain2[32] = {0};
-  clock_t start = clock(), end;
-  time_t start1 = time(NULL), end1;
+  clock_t start = clock();
   for (int i = 0; i < 1000000; i++) {
     gcm_ciphertag(cipher, tag, key, iv, plain, aad,  32);
     gcm_inv_ciphertag(plain2, tag2, key, iv, cipher, aad, tag);
@@ -97,12 +93,7 @@ void test_aesgcmloop(void) {
       assert(plain[j] == plain2[j]);
     }
   }
-  end = clock() - start;
-  int msec = end * 1000 / CLOCKS_PER_SEC;
-  printf("Time taken %d seconds %d milliseconds\n", msec/1000, msec%1000);
-  end1 = time(NULL);
-//secs = (double)(stop1.tv_usec - start1.tv_usec) / 1000000 + (double)(stop1.tv_sec - start1.tv_sec);
-printf("time taken %0.2f\n",difftime(end1, start1));
+  printf("aesgcmloop :Time %lus %lums\n", ((clock() - start) * 1000 / CLOCKS_PER_SEC) / 1000, ((clock() - start) * 1000 / CLOCKS_PER_SEC) % 1000);
 }
 
 void test_aesgcm32bit(void) {
@@ -113,7 +104,6 @@ void test_aesgcm32bit(void) {
   gcm_ciphertag32bit(cipher, tag, key, iv, plain, aad,  32);
   gcm_inv_ciphertag32bit(plain2, tag2, key, iv, cipher, aad, tag);
   for (int i = 0; i < 8; i++) {
-    printf("aes new %d %d\n", plain[i], plain2[i]);
     assert(plain[i] == plain2[i]);
   }
 }
@@ -123,22 +113,15 @@ void test_aesgcm32bitloop(void) {
   key[32] = {0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f, 0x10111213, 0x14151617, 0x18191a1b, 0x1c1d1e1f},
   plain[32] = {0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff, 0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff},
   cipher[32] = {0}, tag[32] = {0}, tag2[32] = {0}, aad[32] = {0}, plain2[32] = {0};
-  clock_t start = clock(), end;
-  time_t start1 = time(NULL), end1;
+  clock_t start = clock();
   for (int i = 0; i < 1000000; i++) {
     gcm_ciphertag32bit(cipher, tag, key, iv, plain, aad, 8);
     gcm_inv_ciphertag32bit(plain2, tag2, key, iv, cipher, aad, tag);
     for (int j = 0; j < 8; j++) {
-      //printf("aes new %d %d\n", plain[i], plain2[i]);
       assert(plain[j] == plain2[j]);
     }
   }
-  end = clock() - start;
-  int msec = end * 1000 / CLOCKS_PER_SEC;
-  printf("Time taken %d seconds %d milliseconds\n", msec/1000, msec%1000);
-  end1 = time(NULL);
-//secs = (double)(stop1.tv_usec - start1.tv_usec) / 1000000 + (double)(stop1.tv_sec - start1.tv_sec);
-printf("time taken %0.2f\n",difftime(end1, start1));
+  printf("aesgcm32bitloop :Time %lus %lums\n", ((clock() - start) * 1000 / CLOCKS_PER_SEC) / 1000, ((clock() - start) * 1000 / CLOCKS_PER_SEC) % 1000);
 }
 
 int main(void) {

@@ -215,28 +215,18 @@ static uint32_t inv_subword(const uint32_t w) {
 static uint32_t inv_mixword(uint32_t w) {
   uint8_t b[4] = {0}, mb[4] = {0};
   word2bytes(b, w);
-/*
-  mb[0] = gm14(b[0]) ^ gm11(b[1]) ^ gm13(b[2]) ^ gm9(b[3]);
-  mb[1] = gm9(b[0]) ^ gm14(b[1]) ^ gm11(b[2]) ^ gm13(b[3]);
-  mb[2] = gm13(b[0]) ^ gm9(b[1]) ^ gm14(b[2]) ^ gm11(b[3]);
-  mb[3] = gm11(b[0]) ^ gm13(b[1]) ^ gm9(b[2]) ^ gm14(b[3]);
-*/
-  mb[0] = gm2(gm2(gm2(b[0]))) ^ gm2(gm2(b[0])) ^ gm2(b[0]) ^ \
-  gm2(gm2(gm2(b[1]))) ^ gm2(b[1]) ^ b[1] ^ \
-  gm2(gm2(gm2(b[2]))) ^ gm2(gm2(b[2])) ^ b[2] ^ \
-  gm2(gm2(gm2(b[3]))) ^ b[3];
-  mb[1] = gm2(gm2(gm2(b[0]))) ^ b[0] ^ \
-  gm2(gm2(gm2(b[1]))) ^ gm2(gm2(b[1])) ^ gm2(b[1]) ^ \
-  gm2(gm2(gm2(b[2]))) ^ gm2(b[2]) ^ b[2] ^ \
-  gm2(gm2(gm2(b[3]))) ^ gm2(gm2(b[3])) ^ b[3];
-  mb[2] = gm2(gm2(gm2(b[0]))) ^ gm2(gm2(b[0])) ^ b[0] ^ \
-  gm2(gm2(gm2(b[1]))) ^ b[1] ^ \
-  gm2(gm2(gm2(b[2]))) ^ gm2(gm2(b[2])) ^ gm2(b[2]) ^ \
-  gm2(gm2(gm2(b[3]))) ^ gm2(b[3]) ^ b[3];
-  mb[3] = gm2(gm2(gm2(b[0]))) ^ gm2(b[0]) ^ b[0] ^ \
-  gm2(gm2(gm2(b[1]))) ^ gm2(gm2(b[1])) ^ b[1] ^ \
-  gm2(gm2(gm2(b[2]))) ^ b[2] ^ \
-  gm2(gm2(gm2(b[3]))) ^ gm2(gm2(b[3])) ^ gm2(b[3]);
+  // gm14(b0) ^ gm11(b1) ^ gm13(b2) ^ gm09(b3)
+  mb[0] = (gm2(gm2(gm2(b[0]))) ^ gm2(gm2(b[0])) ^ gm2(b[0])) ^ (gm2(gm2(gm2(b[1]))) ^ gm2(b[1]) ^ b[1]) ^ \
+  (gm2(gm2(gm2(b[2]))) ^ gm2(gm2(b[2])) ^ b[2]) ^ (gm2(gm2(gm2(b[3]))) ^ b[3]);
+  // gm09(b0) ^ gm14(b1) ^ gm11(b2) ^ gm13(b3)
+  mb[1] = (gm2(gm2(gm2(b[0]))) ^ b[0]) ^ (gm2(gm2(gm2(b[1]))) ^ gm2(gm2(b[1])) ^ gm2(b[1])) ^ \
+  (gm2(gm2(gm2(b[2]))) ^ gm2(b[2]) ^ b[2]) ^ (gm2(gm2(gm2(b[3]))) ^ gm2(gm2(b[3])) ^ b[3]);
+  // gm13(b0) ^ gm09(b1) ^ gm14(b2) ^ gm11(b3)
+  mb[2] = (gm2(gm2(gm2(b[0]))) ^ gm2(gm2(b[0])) ^ b[0]) ^ (gm2(gm2(gm2(b[1]))) ^ b[1]) ^ \
+  (gm2(gm2(gm2(b[2]))) ^ gm2(gm2(b[2])) ^ gm2(b[2])) ^ (gm2(gm2(gm2(b[3]))) ^ gm2(b[3]) ^ b[3]);
+  // gm11(b0) ^ gm13(b1) ^ gm09(b2) ^ gm14(b3)
+  mb[3] = (gm2(gm2(gm2(b[0]))) ^ gm2(b[0]) ^ b[0]) ^ (gm2(gm2(gm2(b[1]))) ^ gm2(gm2(b[1])) ^ b[1]) ^ \
+  (gm2(gm2(gm2(b[2]))) ^ b[2]) ^ (gm2(gm2(gm2(b[3]))) ^ gm2(gm2(b[3])) ^ gm2(b[3]));
   return bytes2word(mb);
 }
 
@@ -378,9 +368,7 @@ static void GCM_MULTIPLY(uint8_t *BITZ, const uint8_t *BITX, const uint8_t *BITY
     BITZ[i] = (b8[i]) ? bz[i] : BITZ[i];
     t = R & Z;
     R <<= 1;
-    if (t & 0x10000000U) {
-      R ^= 0x87;
-    }
+    if (t & 0x10000000U) R ^= 0x87;
     Z = t;
     for (int j = 0; j < 16; j++) {
       BITZ[j] = (BITZ[j] >> (8 * j)) & 0xFF;
@@ -402,9 +390,7 @@ static void GCM_MULTIPLY32bit(uint32_t *BITZ, const uint32_t *BITX, const uint32
     BITZ[i] = (b8[i]) ? bz[i] : BITZ[i]; // way faster than a if-statement
     t = R & Z;
     R <<= 1;
-    if (t & 0x10000000U) {
-      R ^= 0x87;
-    }
+    if (t & 0x10000000U) R ^= 0x87;
     Z = t;
     for (int j = 0; j < 8; j++) {
       BITZ[j] = (BITZ[j] >> (8 * j)) & 0xFF;
@@ -418,7 +404,7 @@ static void GCM_MULTIPLY32bit(uint32_t *BITZ, const uint32_t *BITX, const uint32
 // In effect, the GHASH function calculates X1•Hm ⊕ X2•Hm-1 ⊕ ... ⊕ Xm-1•H2 ⊕ Xm•H. Ref. [6] describes methods for optimizing
 // implementations of GHASH in both hardware and software
 static void GHASH(uint8_t *Y, const uint8_t *X, const uint8_t *H, uint32_t lenx) {
-  uint8_t tmp[16] = {0};
+  uint8_t tmp[32] = {0};
   memset(Y, 0, 16 * sizeof(uint8_t));
   for (int i = 1; i < (lenx / 16) + 1; i++) {
     xorblock(tmp, Y, X + ((i - 1) * 16));
@@ -427,7 +413,7 @@ static void GHASH(uint8_t *Y, const uint8_t *X, const uint8_t *H, uint32_t lenx)
 }
 
 static void GHASH32bit(uint32_t *Y, const uint32_t *X, const uint32_t *H, uint32_t lenx) {
-  uint32_t tmp[16] = {0};
+  uint32_t tmp[32] = {0};
   memset(Y, 0, 8 * sizeof(uint32_t));
   for (int i = 1; i < (lenx / 16) + 1; i++) {
     xorblock32bit(tmp, Y, X + ((i - 1) * 8));
@@ -439,23 +425,23 @@ static void GHASH32bit(uint32_t *Y, const uint32_t *X, const uint32_t *H, uint32
 // Algorithm 3: GCTRk (ICB, X)
 // GCTR Function
 static void GCTR(uint8_t *Y, const uint8_t *ICB, const uint8_t *X, const uint8_t *key, const uint32_t lenx) {
-  uint32_t nblocks = lenx / 16, eCB[16] = {0}, CBwrd[16] = {0}, *CBinc = CBwrd;
-  uint8_t CB[16] = {0}, plain[16] = {0}, cipB[16] = {0}, eCBbytes[16] = {0}, eCBb[4] = {0}, CBb[4] = {0};
+  uint32_t nblocks = lenx / 16, eCB[32] = {0}, CBwrd[32] = {0}, *CBinc = CBwrd;
+  uint8_t CB[32] = {0}, plain[32] = {0}, cipB[32] = {0}, eCBbytes[32] = {0}, eCBb[4] = {0}, CBb[4] = {0};
   if (X == NULL) return;
   memcpy(CB, ICB, 16);
   inc32(CB);
-  uint32_t keywrd[16] = {0};
+  uint32_t keywrd[32] = {0};
   uint8_t bkey[4] = {0};
   for (int j = 0; j < 32; j+=4) {
-    bkey[0] = key[(j * 4) + 0];
-    bkey[1] = key[(j * 4) + 1];
-    bkey[2] = key[(j * 4) + 2];
-    bkey[3] = key[(j * 4) + 3];
+    bkey[0] = key[j + 0];
+    bkey[1] = key[j + 1];
+    bkey[2] = key[j + 2];
+    bkey[3] = key[j + 3];
     keywrd[j/4] = bytes2word(bkey);
-    CBb[0] = CB[(j * 4) + 0];
-    CBb[1] = CB[(j * 4) + 1];
-    CBb[2] = CB[(j * 4) + 2];
-    CBb[3] = CB[(j * 4) + 3];
+    CBb[0] = CB[j + 0];
+    CBb[1] = CB[j + 1];
+    CBb[2] = CB[j + 2];
+    CBb[3] = CB[j + 3];
     CBwrd[j/4] = bytes2word(CBb);
   }
   for (int i = 0; i < nblocks; i++) {
@@ -487,7 +473,7 @@ static void GCTR(uint8_t *Y, const uint8_t *ICB, const uint8_t *X, const uint8_t
 }
 
 static void GCTR32bit(uint32_t *Y, const uint32_t *ICB, const uint32_t *X, const uint32_t *key, const uint32_t lenx) {
-  uint32_t nblocks = lenx / 8, eCB[16] = {0}, CBwrd[16] = {0}, *CBinc = CBwrd, CB[16] = {0}, plain[16] = {0}, cipB[16] = {0};
+  uint32_t nblocks = lenx / 8, eCB[32] = {0}, CBwrd[32] = {0}, *CBinc = CBwrd, CB[32] = {0}, plain[32]= {0}, cipB[32] = {0};
   if (X == NULL) return;
   memcpy(CB, ICB, 8*sizeof(uint32_t));
   (*CB)++;
@@ -498,7 +484,7 @@ static void GCTR32bit(uint32_t *Y, const uint32_t *ICB, const uint32_t *X, const
     xorblock32bit(cipB, eCB, plain);
     memcpy(Y + (i * 8), cipB, 8*sizeof(uint32_t));
   }
-  uint32_t fl = lenx - (nblocks * 8);// * sizeof(uint32_t);
+  uint32_t fl = lenx - (nblocks * 8);
   cipher(eCB, key, CBinc++);
   memcpy(plain, X + (nblocks * 8), fl);
   xorblock32bit(cipB, eCB, plain);
@@ -511,24 +497,24 @@ static void GCTR32bit(uint32_t *Y, const uint32_t *ICB, const uint32_t *X, const
 void gcm_ciphertag(uint8_t *c, uint8_t *t, const uint8_t *key, uint8_t *iv, const uint8_t *plain, const uint8_t *aad, const u64 lenx) {
   u64 aadlen = 12, ivlen = 32, clen = 32;
   if (lenx > MAXPLAIN || aadlen > MAXAAD || ivlen > MAXIV || ivlen < 1) return;
-  uint32_t keywrd[16] = {0}, hwrd[16] = {0}, hkwrd[16] = {0}, pc = (16 * (clen / 16)) - clen, pa = (16 * (aadlen / 16)) - aadlen;
+  uint32_t keywrd[32] = {0}, hwrd[32] = {0}, hkwrd[32] = {0}, pc = (16 * (clen / 16)) - clen, pa = (16 * (aadlen / 16)) - aadlen;
   uint32_t bhlen = aadlen + (4 * sizeof(uint32_t)) + clen;
-  uint8_t *bh = malloc(bhlen), hk[16] = {0}, h[16] = {0}, j0[16] = {0}, hb[16] = {0}, bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0};
+  uint8_t *bh = malloc(bhlen), hk[32] = {0}, h[32] = {0}, j0[16] = {0}, hb[32] = {0}, bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0};
   for (int j = 0; j < 32; j+=4) {
-    bkey[0] = key[(j * 4) + 0];
-    bkey[1] = key[(j * 4) + 1];
-    bkey[2] = key[(j * 4) + 2];
-    bkey[3] = key[(j * 4) + 3];
+    bkey[0] = key[j + 0];
+    bkey[1] = key[j + 1];
+    bkey[2] = key[j + 2];
+    bkey[3] = key[j + 3];
     keywrd[j/4] = bytes2word(bkey);
-    bbh[0] = h[(j * 4) + 0];
-    bbh[1] = h[(j * 4) + 1];
-    bbh[2] = h[(j * 4) + 2];
-    bbh[3] = h[(j * 4) + 3];
+    bbh[0] = h[j + 0];
+    bbh[1] = h[j + 1];
+    bbh[2] = h[j + 2];
+    bbh[3] = h[j + 3];
     hwrd[j/4] = bytes2word(bbh);
-    bhk[0] = hk[(j * 4) + 0];
-    bhk[1] = hk[(j * 4) + 1];
-    bhk[2] = hk[(j * 4) + 2];
-    bhk[3] = hk[(j * 4) + 3];
+    bhk[0] = hk[j + 0];
+    bhk[1] = hk[j + 1];
+    bhk[2] = hk[j + 2];
+    bhk[3] = hk[j + 3];
     hkwrd[j/4] = bytes2word(bhk);
   }
   cipher(hkwrd, keywrd, hwrd);
@@ -562,8 +548,8 @@ void gcm_ciphertag32bit(uint32_t *c, uint32_t *t, const uint32_t *key, uint32_t 
   u64 aadlen = 12, ivlen = 8, clen = 8;
   if (lenx > MAXPLAIN || aadlen > MAXAAD || ivlen > MAXIV || ivlen < 1) return;
   uint32_t pc = (8 * (clen / 8)) - clen, pa = (8 * (aadlen / 8)) - aadlen;
-  uint32_t bhlen = aadlen + (4 * sizeof(uint32_t)) + clen, hk[16] = {0}, h[16] = {0}, j0[16] = {0};
-  uint32_t *bh = malloc(bhlen*sizeof(uint32_t)), hb[16] = {0};//, bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0};
+  uint32_t bhlen = aadlen + (4 * sizeof(uint32_t)) + clen, hk[32] = {0}, h[32] = {0}, j0[32] = {0};
+  uint32_t *bh = malloc(bhlen*sizeof(uint32_t)), hb[32] = {0};//, bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0};
   cipher(hk, key, h);
   if (ivlen == 12) { // when does this happen?!
     uint32_t b0[4] = {0x00000000, 0x00000000, 0x00000000, 0x000000000001};
@@ -598,23 +584,23 @@ void gcm_inv_ciphertag(uint8_t *plain, uint8_t *t, const uint8_t *key, const uin
   u64 aadlen = 12, ivlen = 32, clen = 32;
   if (clen > MAXPLAIN || aadlen > MAXAAD || ivlen > MAXIV || ivlen < 1) return;
   uint32_t pc = (16 * (clen / 16)) - clen, pa = (16 * (aadlen / 16)) - aadlen, bhlen = aadlen + (4 * sizeof(uint32_t)) + clen;
-  uint32_t keywrd[16] = {0}, hwrd[16] = {0}, hkwrd[16] = {0};
-  uint8_t bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0}, hk[16] = {0}, h[16] = {0}, j0[16] = {0}, hb[16] = {0}, *bh = malloc(bhlen);
+  uint32_t keywrd[32] = {0}, hwrd[32] = {0}, hkwrd[32] = {0};
+  uint8_t bkey[4] = {0}, bbh[4] = {0}, bhk[4] = {0}, hk[32] = {0}, h[32] = {0}, j0[32] = {0}, hb[32] = {0}, *bh = malloc(bhlen);
   for (int j = 0; j < 32; j+=4) {
-    bkey[0] = key[(j * 4) + 0];
-    bkey[1] = key[(j * 4) + 1];
-    bkey[2] = key[(j * 4) + 2];
-    bkey[3] = key[(j * 4) + 3];
+    bkey[0] = key[j + 0];
+    bkey[1] = key[j + 1];
+    bkey[2] = key[j + 2];
+    bkey[3] = key[j + 3];
     keywrd[j/4] = bytes2word(bkey);
-    bbh[0] = h[(j * 4) + 0];
-    bbh[1] = h[(j * 4) + 1];
-    bbh[2] = h[(j * 4) + 2];
-    bbh[3] = h[(j * 4) + 3];
+    bbh[0] = h[j + 0];
+    bbh[1] = h[j + 1];
+    bbh[2] = h[j + 2];
+    bbh[3] = h[j + 3];
     hwrd[j/4] = bytes2word(bbh);
-    bhk[0] = hk[(j * 4) + 0];
-    bhk[1] = hk[(j * 4) + 1];
-    bhk[2] = hk[(j * 4) + 2];
-    bhk[3] = hk[(j * 4) + 3];
+    bhk[0] = hk[j + 0];
+    bhk[1] = hk[j + 1];
+    bhk[2] = hk[j + 2];
+    bhk[3] = hk[j + 3];
     hkwrd[j/4] = bytes2word(bhk);
   }
   cipher(hkwrd, keywrd, hwrd);
@@ -643,7 +629,6 @@ void gcm_inv_ciphertag(uint8_t *plain, uint8_t *t, const uint8_t *key, const uin
   GHASH(hb, bh, hk, bhlen);
   GCTR(t, j0, hb, key, 12); // 12 = tag length?
   for (int i = 0; i < 16; i++) {
-    //printf("TAG: %d %d\n", t[i], tag[i]);
     assert(t[i] == tag[i]);
   }
   free(bh);
@@ -653,7 +638,7 @@ void gcm_inv_ciphertag32bit(uint32_t *plain, uint32_t *t, const uint32_t *key, c
   u64 aadlen = 12, ivlen = 8, clen = 8;
   if (clen > MAXPLAIN || aadlen > MAXAAD || ivlen > MAXIV || ivlen < 1) return;
   uint32_t pc = (8 * (clen / 8)) - clen, pa = (8 * (aadlen / 8)) - aadlen, bhlen = aadlen + (4 * sizeof(uint32_t)) + clen;
-  uint32_t j0[16] = {0}, hk[16] = {0}, h[16] = {0}, hb[16] = {0}, *bh = malloc(bhlen*sizeof(uint32_t));
+  uint32_t j0[32] = {0}, hk[32] = {0}, h[32] = {0}, hb[32] = {0}, *bh = malloc(bhlen*sizeof(uint32_t));
   cipher(hk, key, h);
   if (ivlen == 12) { // when does this happen?!
     uint32_t b0[4] = {0x00000000, 0x00000000, 0x00000000, 0x00000001};
@@ -680,7 +665,6 @@ void gcm_inv_ciphertag32bit(uint32_t *plain, uint32_t *t, const uint32_t *key, c
   GHASH32bit(hb, bh, hk, bhlen);
   GCTR32bit(t, j0, hb, key, 12); // 12 = tag length?
   for (int i = 0; i < 8; i++) {
-    //printf("TAG: %d %d\n", t[i], tag[i]);
     assert(t[i] == tag[i]);
   }
   free(bh);
