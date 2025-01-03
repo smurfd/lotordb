@@ -24,3 +24,21 @@ jobs:
       run: sudo apt-get update && sudo apt-get -y install make gcc
     - name: Build
       run: make -Clotordb/src
+
+  build-rewrite-2004:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get -y install make gcc
+    - name: Build
+      run: make -Clotordb/src/rewrite/lotordb/src
+
+  build-rewrite-latest:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get -y install make gcc
+    - name: Build
+      run: make -Clotordb/src/rewrite/lotordb/src
