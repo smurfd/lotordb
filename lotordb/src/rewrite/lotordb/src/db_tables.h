@@ -1,5 +1,6 @@
 #ifndef DB_TABLES_H
 #define DB_TABLES_H 1
+#include <stdint.h>
 #include "db_keystore.h"
 //#include "ciphers.h"
 

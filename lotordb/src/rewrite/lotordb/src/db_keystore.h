@@ -1,5 +1,6 @@
 #ifndef DB_KEYSTORE_H
 #define DB_KEYSTORE_H 1
+#include <stdint.h>
 
 typedef struct kvsh {
   char key[256];
