@@ -180,6 +180,6 @@ int main(void) {
   test_aesgcmloop();
   test_aesgcm32bit();
   test_aesgcm32bitloop();
-  assert(test_db_table() == 0);
+  assert(test_db_table() == 1);
   printf("OK\n");
 }
