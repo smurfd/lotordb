@@ -125,7 +125,7 @@ int main(int argc, char** argv) {
   if (argc == 1) { // When run without arguments
     printf("\"[o.o]\" \t testing .... \t \"[o.o]\"\n\n");
     ret &= test_hash();
-    //ret &= test_hashshake();
+    ret &= test_hashshake();
     ret &= test_genkeys();
     ret &= test_keys_verify();
     ret &= test_ciphers_aes_gcm_text32();
