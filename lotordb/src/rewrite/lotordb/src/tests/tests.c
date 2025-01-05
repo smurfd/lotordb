@@ -172,18 +172,26 @@ uint8_t test_db_table(void) {
   return 0;
 }
 
-int main(void) {
+int main(int argc, char** argv) {
   uint8_t ret = 1;
-  ret &= test_hash();
-  ret &= test_hashloop();
-  ret &= test_hashshakeloop();
-  ret &= test_aes();
-  ret &= test_aesloop();
-  ret &= test_aesgcm();
-  ret &= test_aesgcmloop();
-  ret &= test_aesgcm32bit();
-  ret &= test_aesgcm32bitloop();
-  ret &= test_db_table();
+  if (argc == 1) { // When run without arguments or in CI
+    ret &= test_hash();
+    ret &= test_aes();
+    ret &= test_aesgcm();
+    ret &= test_aesgcm32bit();
+    ret &= test_db_table();
+  } else {
+    ret &= test_hash();
+    ret &= test_hashloop();
+    ret &= test_hashshakeloop();
+    ret &= test_aes();
+    ret &= test_aesloop();
+    ret &= test_aesgcm();
+    ret &= test_aesgcmloop();
+    ret &= test_aesgcm32bit();
+    ret &= test_aesgcm32bitloop();
+    ret &= test_db_table();
+  }
   if (ret) {
     printf("OK\n");
   } else {
