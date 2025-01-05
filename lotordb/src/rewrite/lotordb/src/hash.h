@@ -9,6 +9,6 @@
 #define u64 unsigned long long int // because linux uint64_t is not same as on mac
 
 void hash_new(char *s, const uint8_t *n);
-void hash_shake_new(uint8_t *out, uint32_t outlen, const uint8_t *in, uint32_t inlen);
+void hash_shake_new(char *out, uint32_t outlen, const uint8_t *in, uint32_t inlen);
 #endif
 // Code grabbed from https://www.rfc-editor.org/rfc/rfc6234 and massaged

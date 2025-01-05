@@ -16,7 +16,33 @@
 uint8_t test_hash(void) {
   uint8_t hash[256];
   hash_new((char*)hash, (uint8_t*)"some string to hash");
-  assert(memcmp(hash, "3bac5403ba8697d73eac50c2f8ccf688e04d785658c518d50ec8e664f6c71b1fa87394ee056a3cdadd615d9b0b4ad2cef222b9ae68e463eac9ed2aee62367f52", 128));
+  assert(memcmp(hash, "0x3bac5403ba8697d73eac50c2f8ccf688e04d785658c518d50ec8e664f6c71b1fa87394ee056a3cdadd615d9b0b4ad2cef222b9ae68e463eac9ed2aee62367f52", 128) == 0);
+  return 1;
+}
+
+uint8_t test_hashloop(void) {
+  uint8_t res = 0;
+  clock_t start = clock();
+  for (int i = 0; i < 1000000; i++) {
+    uint8_t hash[256] = {0}; 
+    hash_new((char*)hash, (uint8_t*)"some string to hash");
+    res += memcmp(hash, "0x3bac5403ba8697d73eac50c2f8ccf688e04d785658c518d50ec8e664f6c71b1fa87394ee056a3cdadd615d9b0b4ad2cef222b9ae68e463eac9ed2aee62367f52", 128);
+  }
+  assert(res == 0);
+  printf("hashloop: Time %us %ums\n", (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) / 1000, (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) % 1000);
+  return 1;
+}
+
+uint8_t test_hashshakeloop(void) {
+  uint8_t res = 0;
+  clock_t start = clock();
+  for (int i = 0; i < 1000000; i++) {
+    char hash[256] = {0};
+    hash_shake_new(hash, 128, (uint8_t*)"some string to hash", 19);
+    res += memcmp(hash, "0x117a821877bd84a56e3feefca36f4979f733177186b9e2df97c48e2c5045d7afb85252ba5fa57b666d39f43959f9566eaedad6b54b0e2e09fb1c309408da0f2b", 128);
+  }
+  assert(res == 0);
+  printf("hashshakeloop: Time %us %ums\n", (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) / 1000, (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) % 1000);
   return 1;
 }
 
@@ -49,44 +75,15 @@ uint8_t test_aesloop(void) {
   return 1;
 }
 
-/*
-Taglen = 128
-AADlen = 160
-PTlen = 480
-Encrypt-Generate
-K is
-FEFFE992 8665731C 6D6A8F94 67308308
-FEFFE992 8665731C 6D6A8F94 67308308
-IV is
-CAFEBABE FACEDBAD DECAF888
-A is
-3AD77BB4 0D7A3660 A89ECAF3 2466EF97
-F5D3D585
-P is
-D9313225 F88406E5 A55909C5 AFF5269A
-86A7A953 1534F7DA 2E4C303D 8A318A72
-1C3C0C95 95680953 2FCF0E24 49A6B525
-B16AEDF5 AA0DE657 BA637B39
-H is
-ACBEF205 79B4B8EB CE889BAC 8732DAD7
------------------------
------------------------
---------------------------------------------------------------
------------------------
-J0 is
-CAFEBABE FACEDBAD DECAF888 00000001
-*/
-
 uint8_t test_aesgcm(void) {
   uint8_t iv[32] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
   key[32] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f},
   plain[32] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff},
-  cipher[32] = {0}, tag[32] = {0}, tag2[32] = {0}, aad[32] = {0}, plain2[32] = {0};
+  cipher[32] = {0}, tag[32] = {0}, tag2[32] = {0}, aad[32] = {0}, plain2[32] = {0}, res = 0;
   gcm_ciphertag(cipher, tag, key, iv, plain, aad,  32);
   gcm_inv_ciphertag(plain2, tag2, key, iv, cipher, aad, tag);
-  for (int i = 0; i < 32; i++) {
-    assert(plain[i] == plain2[i]);
-  }
+  res += memcmp(plain, plain2, 32 * sizeof(uint8_t));
+  assert(res == 0);
   return 1;
 }
 
@@ -94,15 +91,14 @@ uint8_t test_aesgcmloop(void) {
   uint8_t iv[32] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
   key[32] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f},
   plain[32] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff},
-  cipher[32] = {0}, tag[32] = {0}, tag2[32] = {0}, aad[32] = {0}, plain2[32] = {0};
+  cipher[32] = {0}, tag[32] = {0}, tag2[32] = {0}, aad[32] = {0}, plain2[32] = {0}, res = 0;
   clock_t start = clock();
   for (int i = 0; i < 1000000; i++) {
     gcm_ciphertag(cipher, tag, key, iv, plain, aad,  32);
     gcm_inv_ciphertag(plain2, tag2, key, iv, cipher, aad, tag);
-    for (int j = 0; j < 32; j++) {
-      assert(plain[j] == plain2[j]);
-    }
+    res += memcmp(plain, plain2, 32 * sizeof(uint8_t));
   }
+  assert(res == 0);
   printf("aesgcmloop: Time %us %ums\n", (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) / 1000, (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) % 1000);
   return 1;
 }
@@ -111,12 +107,11 @@ uint8_t test_aesgcm32bit(void) {
   uint32_t iv[32] = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff},
   key[32] = {0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f, 0x10111213, 0x14151617, 0x18191a1b, 0x1c1d1e1f},
   plain[32] = {0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff, 0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff},
-  cipher[32] = {0}, tag[32] = {0}, tag2[32] = {0}, aad[32] = {0}, plain2[32] = {0};
+  cipher[32] = {0}, tag[32] = {0}, tag2[32] = {0}, aad[32] = {0}, plain2[32] = {0}, res = 0;
   gcm_ciphertag32bit(cipher, tag, key, iv, plain, aad,  32);
   gcm_inv_ciphertag32bit(plain2, tag2, key, iv, cipher, aad, tag);
-  for (int i = 0; i < 8; i++) {
-    assert(plain[i] == plain2[i]);
-  }
+  res += memcmp(plain, plain2, 8 * sizeof(uint32_t));
+  assert(res == 0);
   return 1;
 }
 
@@ -124,15 +119,14 @@ uint8_t test_aesgcm32bitloop(void) {
   uint32_t iv[32] = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff},
   key[32] = {0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f, 0x10111213, 0x14151617, 0x18191a1b, 0x1c1d1e1f},
   plain[32] = {0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff, 0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff},
-  cipher[32] = {0}, tag[32] = {0}, tag2[32] = {0}, aad[32] = {0}, plain2[32] = {0};
+  cipher[32] = {0}, tag[32] = {0}, tag2[32] = {0}, aad[32] = {0}, plain2[32] = {0}, res = 0;
   clock_t start = clock();
   for (int i = 0; i < 1000000; i++) {
     gcm_ciphertag32bit(cipher, tag, key, iv, plain, aad, 8);
     gcm_inv_ciphertag32bit(plain2, tag2, key, iv, cipher, aad, tag);
-    for (int j = 0; j < 8; j++) {
-      assert(plain[j] == plain2[j]);
-    }
+    res += memcmp(plain, plain2, 8 * sizeof(uint32_t));
   }
+  assert(res == 0);
   printf("aesgcm32bitloop: Time %us %ums\n", (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) / 1000, (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) % 1000);
   return 1;
 }
@@ -145,7 +139,6 @@ static void table_filltestdata(ctx **c, binary **bin, FILE *write_ptr) {
   }
   if (write_ptr != NULL) fclose(write_ptr);
 }
-
 
 // Create a local database and search for the age 666
 uint8_t test_db_table(void) {
@@ -182,6 +175,8 @@ uint8_t test_db_table(void) {
 int main(void) {
   uint8_t ret = 1;
   ret &= test_hash();
+  ret &= test_hashloop();
+  ret &= test_hashshakeloop();
   ret &= test_aes();
   ret &= test_aesloop();
   ret &= test_aesgcm();
