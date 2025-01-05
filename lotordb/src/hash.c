@@ -355,19 +355,17 @@ void hash_new(char s[], const uint8_t n[]) {
   bit_hex_str(s, ss, 64);
 }
 
-void hash_shake_new(uint8_t *out, uint32_t outlen, const uint8_t *in, uint32_t inlen) {
+void hash_shake_new(char *out, uint32_t outlen, const uint8_t *in, uint32_t inlen) {
   uint32_t nblocks = outlen / 136;
   uint8_t t[inlen];
   u64 st[25];
   keccak_absorb(st, 136, in, inlen, 0x1F);
-  keccak_squeezeblocks(out, nblocks, st, 136);
+  keccak_squeezeblocks((uint8_t*)out, nblocks, st, 136);
   out += nblocks * 136;
   outlen -= nblocks * 136;
   if (outlen) {
     keccak_squeezeblocks(t, 1, st, 136);
-    for (uint32_t i = 0; i < outlen; i++) {
-      out[i] = t[i];
-    }
+    bit_hex_str(out, t, 64);
   }
 }
 
