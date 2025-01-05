@@ -6,6 +6,7 @@
 #include <assert.h>
 #include "../hash.h"
 #include "../aes.h"
+#include "../ecc.h"
 #include "../crypto_server.h"
 #include "../crypto_client.h"
 #include "../crypto.h"
@@ -172,6 +173,11 @@ uint8_t test_db_table(void) {
   return 0;
 }
 
+uint8_t test_ecc(void) {
+  ecc_sign_gen();
+  return 1;
+}
+
 int main(int argc, char** argv) {
   uint8_t ret = 1;
   if (argc == 1) { // When run without arguments or in CI
@@ -180,6 +186,7 @@ int main(int argc, char** argv) {
     ret &= test_aesgcm();
     ret &= test_aesgcm32bit();
     ret &= test_db_table();
+    ret &= test_ecc();
   } else {
     ret &= test_hash();
     ret &= test_hashloop();
@@ -191,6 +198,7 @@ int main(int argc, char** argv) {
     ret &= test_aesgcm32bit();
     ret &= test_aesgcm32bitloop();
     ret &= test_db_table();
+    ret &= test_ecc();
   }
   if (ret) {
     printf("OK\n");
