@@ -186,7 +186,7 @@ int main(int argc, char** argv) {
     ret &= test_aesgcm();
     ret &= test_aesgcm32bit();
     ret &= test_db_table();
-    //ret &= test_ecc();
+    ret &= test_ecc();
   } else {
     ret &= test_hash();
     ret &= test_hashloop();
