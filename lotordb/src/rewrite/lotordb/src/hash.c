@@ -10,19 +10,19 @@ static char hex[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b',
 
 //
 // 0-255 to 0x0 to 0xff
-static void to_hex(uint8_t h[], uint8_t d) {
+static inline void to_hex(uint8_t h[], uint8_t d) {
   h[0] = d >> 4;
   h[1] = d & 0xf;
 }
 
-static void to_hex_chr(char hs[], uint8_t h[]) {
+static inline void to_hex_chr(char hs[], uint8_t h[]) {
   hs[0] = hex[h[0]];
   hs[1] = hex[h[1]];
 }
 
 //
 // Convert a hex bitstring to a string
-static void bit_hex_str(char hs[], const uint8_t *d, const int len) {
+static inline void bit_hex_str(char hs[], const uint8_t *d, const int len) {
   uint8_t h[2] = {0}, hc[2] = {0};
   hs[0] = '0';
   hs[1] = 'x';
@@ -36,9 +36,10 @@ static void bit_hex_str(char hs[], const uint8_t *d, const int len) {
 
 //
 // Circular shift
-static u64 shift_cir(u64 a, u64 n) {
+static inline u64 shift_cir(u64 a, u64 n) {
   u64 m = MOD(n, 64);
-  if (m != 0) return a << m ^ a >> (64 - m);
+  a = (m != 0) ? (a << m ^ a >> (64 - m)) : a;
+  //if (m != 0) return a << m ^ a >> (64 - m);
   return a;
 }
 
@@ -55,7 +56,7 @@ static u64 shift_cir(u64 a, u64 n) {
 // The corresponding state array, denoted by A, is defined as follows:
 // For all triples (x, y, z) such that 0≤x<5, 0≤y<5, and 0≤z<w, A[x, y, z]=S[w(5y+x)+z].
 // For example, if b=1600, so that w=64,
-static void str2state(u64 (*a)[5][5], const uint8_t *s) {
+static inline void str2state(u64 (*a)[5][5], const uint8_t *s) {
   for (int x = 0; x < 5; x++) {
     for (int y = 0; y < 5; y++) {
       u64 lane = 0;
@@ -72,7 +73,7 @@ static void str2state(u64 (*a)[5][5], const uint8_t *s) {
 // can be constructed from the lanes and planes of A, as follows:
 // For each pair of integers (i, j) such that 0≤i<5 and 0≤j<5, define the string Lane(i, j)
 // by Lane(i,j)= A[i,j,0] || A[i,j,1] || A[i,j,2] || ... || A[i,j,w-2] || A[i,j,w-1].
-static void state2str(uint8_t *s, u64 (*a)[5][5]) {
+static inline void state2str(uint8_t *s, u64 (*a)[5][5]) {
   for (int count = 0, y = 0; y < 5; y++) {
     for (int x = 0; x < 5; x++) {
       for (int z = 0; z < 8; z++) {
@@ -89,7 +90,7 @@ static void state2str(uint8_t *s, u64 (*a)[5][5]) {
 // D[x, z] = C[(x1) mod 5, z] ⊕ C[(x+1) mod 5, (z – 1) mod w].
 // 3. For all triples (x, y, z) such that 0 ≤ x < 5, 0 ≤ y < 5, and 0 ≤ z < w, let
 // A′[x, y, z] = A[x, y, z] ⊕ D[x, z].
-static void theta(u64 (*a)[5][5]) {
+static inline void theta(u64 (*a)[5][5]) {
   u64 c[5] = {0}, d[5] = {0};
   for (int x = 0; x < 5; x++) {
     c[x] = ((*a)[x][0] ^ (*a)[x][1] ^ (*a)[x][2] ^ (*a)[x][3] ^ (*a)[x][4]);
@@ -115,7 +116,7 @@ static void theta(u64 (*a)[5][5]) {
 // a. for all z such that 0 ≤ z < w, let A′[x, y, z] = A[x, y, (z – (t + 1)(t + 2)/2) mod w];
 // b. let (x, y) = (y, (2x + 3y) mod 5).
 // 4. Return A′.
-static void rho(u64 (*a)[5][5]) {
+static inline void rho(u64 (*a)[5][5]) {
   u64 x = 1, y = 0, xtmp = 0, ap[5][5], cb;
   memcpy(ap, *a, sizeof(u64) * 5 * 5);
   for (int t = 0; t < 24; t++) {
@@ -135,7 +136,7 @@ static void rho(u64 (*a)[5][5]) {
 // 1. For all triples (x, y, z) such that 0 ≤ x < 5, 0 ≤ y < 5, and 0 ≤ z < w, let
 // A′[x, y, z]= A[(x + 3y) mod 5, x, z].
 // 2. Return A′.
-static void pi(u64 (*a)[5][5]) {
+static inline void pi(u64 (*a)[5][5]) {
   u64 ap[5][5] = {0};
   memcpy(ap, *a, sizeof(u64) * 5 * 5);
   for (int x = 0; x < 5; x++) {
@@ -149,7 +150,7 @@ static void pi(u64 (*a)[5][5]) {
 // 1. For all triples (x, y, z) such that 0 ≤ x < 5, 0 ≤ y < 5, and 0 ≤ z < w, let
 // A′ [x, y, z] = A[x, y, z] ⊕ ((A[(x+1) mod 5, y, z] ⊕ 1) ⋅ A[(x+2) mod 5, y, z]).
 // 2. Return A′.
-static void chi(u64 (*a)[5][5]) {
+static inline void chi(u64 (*a)[5][5]) {
   u64 ap[5][5] = {0}, one = 1, t1, t2, t3;
   memcpy(ap, *a, sizeof(u64) * 5 * 5);
   for (int x = 0; x < 5; x++) {
@@ -177,7 +178,7 @@ static void chi(u64 (*a)[5][5]) {
 //   e. R[6] = R[6] ⊕ R[8];
 //   f. R =Trunc8[R].
 // 4. Return R[0]
-static uint8_t rc(u64 t) {
+static inline uint8_t rc(u64 t) {
   uint8_t m = MOD(t, 255), r1 = 128, r0;
   if (m == 0) return 1;
   for (u64 i = 1; i <= m; i++) {
@@ -200,7 +201,7 @@ static uint8_t rc(u64 t) {
 // 3. For j from 0 to l, let RC[2j – 1] = rc(j + 7ir).
 // 4. For all z such that 0 ≤ z < w, let A′ [0, 0, z] = A′ [0, 0, z] ⊕ RC[z].
 // 5. Return A′.
-static void iota(u64 (*a)[5][5], const u64 ir) {
+static inline void iota(u64 (*a)[5][5], const u64 ir) {
   u64 r = 0;
   for (u64 i = 0; i <= 6; i++) {
     r += shift_cir(rc(i + 7 * ir), (int)pow(2, i) - 1);
@@ -215,7 +216,7 @@ static void iota(u64 (*a)[5][5], const u64 ir) {
 // 3. Convert A into a string S′ of length b, as described in Sec. 3.1.3.
 // 4. Return S′.
 // Rnd(A, ir) = ι(χ(π(ρ(θ(A)))), ir). // nr = 24; ir = 24 - nr; ir <= 23;
-static void keccak_p(uint8_t s[], u64 (*ss)[5][5], const uint8_t sm[], bool str) {
+static inline void keccak_p(uint8_t s[], u64 (*ss)[5][5], const uint8_t sm[], bool str) {
   u64 a[5][5] = {0};
   if (str) str2state(&a, sm);
   else memcpy(&a, (*ss), 25 * sizeof(u64));
@@ -228,7 +229,7 @@ static void keccak_p(uint8_t s[], u64 (*ss)[5][5], const uint8_t sm[], bool str)
 
 //
 // Concatenate
-static u64 cat(uint8_t z[], const uint8_t x[], const u64 xl, const uint8_t y[], const u64 yl) {
+static inline u64 cat(uint8_t z[], const uint8_t x[], const u64 xl, const uint8_t y[], const u64 yl) {
   u64 zbil = xl + yl, xl8 = xl / 8, mxl8 = MOD(xl, 8);
   memcpy(z, x, xl8);
   for (u64 i = 0; i < mxl8; i++) {
@@ -247,7 +248,7 @@ static u64 cat(uint8_t z[], const uint8_t x[], const u64 xl, const uint8_t y[], 
 // Steps:
 // 1. Let j = (– m – 2) mod x.
 // 2. Return P = 1 || 0j || 1.
-static u64 pad10(uint8_t p[], const u64 x, const u64 m) {
+static inline u64 pad10(uint8_t p[], const u64 x, const u64 m) {
   u64 j = MOD((-m - 2), x) + 2, bl = (j) / 8 + (MOD(j, 8) ? 1 : 0);
   memset(p, 0, bl * sizeof(uint8_t));
   p[0] |= 1;
@@ -268,7 +269,7 @@ static u64 pad10(uint8_t p[], const u64 x, const u64 m) {
 // 8. Let Z=Z || Truncr(S).
 // 9. If d ≤ |Z|, then return Trunc d (Z); else continue.
 // 10. Let S=f(S), and continue with Step 8.
-static void sponge(uint8_t ps[], const uint8_t n[], const int l) {
+static inline void sponge(uint8_t ps[], const uint8_t n[], const int l) {
   uint8_t az[64] = {0}, s[200] = {0}, sc[200] = {0}, sxor[200] = {0}, str[200] = {0};
   uint8_t pad[1600] = {0}, p[1600] = {0}, pi[1600] = {0}, z[1600] = {0};
   u64 b = 1600, c = 512, zl = 0, r = b - SHA3_BITS, len = pad10(pad, r, l), plen = cat(p, n, l, pad, len);
@@ -290,7 +291,7 @@ static void sponge(uint8_t ps[], const uint8_t n[], const int l) {
   }
 }
 
-static void two2one(u64 ret[5][5], u64 a[25]) {
+static inline void two2one(u64 ret[5][5], u64 a[25]) {
   for (int i = 0; i < 5; i++) {
     for (int j = 0; j < 5; j++) {
       ret[j][i] = a[j + 5 * i];
@@ -298,7 +299,7 @@ static void two2one(u64 ret[5][5], u64 a[25]) {
   }
 }
 
-static void one2two(u64 ret[25], u64 a[5][5]) {
+static inline void one2two(u64 ret[25], u64 a[5][5]) {
   for (int i = 0; i < 5; i++) {
     for (int j = 0; j < 5; j++) {
       ret[j + 5 * i] = a[j][i];
@@ -306,7 +307,7 @@ static void one2two(u64 ret[25], u64 a[5][5]) {
   }
 }
 
-static u64 load64(const uint8_t x[8]) {
+static inline u64 load64(const uint8_t x[8]) {
   u64 r = 0;
   for (uint32_t i = 0; i < 8; i++) {
     r |= (u64)x[i] << 8 * i;
@@ -314,13 +315,13 @@ static u64 load64(const uint8_t x[8]) {
   return r;
 }
 
-static void store64(uint8_t x[8], u64 u) {
+static inline void store64(uint8_t x[8], u64 u) {
   for (uint32_t i = 0; i < 8; i++) {
     x[i] = u >> 8 * i;
   }
 }
 
-static void keccak_absorb(u64 s[25], uint32_t r, const uint8_t m[], uint32_t mlen, uint8_t p) {
+static inline void keccak_absorb(u64 s[25], uint32_t r, const uint8_t m[], uint32_t mlen, uint8_t p) {
   uint8_t t[200] = {0};
   u64 ss[5][5] = {0};
   memset(s, 0, 25 * sizeof(u64));
@@ -342,7 +343,7 @@ static void keccak_absorb(u64 s[25], uint32_t r, const uint8_t m[], uint32_t mle
   }
 }
 
-static void keccak_squeezeblocks(uint8_t *out, uint32_t nblocks, u64 s[25], uint32_t r) {
+static inline void keccak_squeezeblocks(uint8_t *out, uint32_t nblocks, u64 s[25], uint32_t r) {
   u64 ss[5][5] = {0};
   two2one(ss, s);
   while (nblocks > 0) {
