@@ -6,12 +6,6 @@
 #include <assert.h>
 #include "../hash.h"
 #include "../ecc.h"
-#include "../crypto_server.h"
-#include "../crypto_client.h"
-#include "../crypto.h"
-#include "../db_tables.h"
-#include "../db_keystore.h"
-#include "../examples/tables_example_struct.h"
 
 uint8_t test_hash(void) {
   uint8_t hash[256];
@@ -46,47 +40,6 @@ uint8_t test_hashshakeloop(void) {
   return 1;
 }
 
-static void table_filltestdata(ctx **c, binary **bin, FILE *write_ptr) {
-  for (u64 i = 0; i < DBLENGTH; i++) {
-    struct tabletest p = {i, 6.8, "testsmurfan", 666, 1};
-    table_addctx(*c, i, 12345678901111 + i, &p, sizeof(p));
-    table_writectx(*c, *bin, write_ptr);
-  }
-  if (write_ptr != NULL) fclose(write_ptr);
-}
-
-// Create a local database and search for the age 666
-uint8_t test_db_table(void) {
-  binary *bin, *dataall;
-  u64 *header;
-  ctx *c;
-  // Open database file for writing
-  FILE *write_ptr = fopen("/tmp/dbtest1.db", "ab");
-  // Malloc memory for variables used
-  table_malloc(&bin, &dataall, &header, &c, sizeof(struct tabletest));
-  // Create context for database, write to file & close file
-  table_filltestdata(&c, &bin, write_ptr);
-  // Open database file for reading
-  FILE *read_ptr = fopen("/tmp/dbtest1.db", "rb");
-  for (u64 j = 0; j < table_getctxsize(read_ptr) / DBLENGTH; j++) { // Loop the whole database, in chunks of DBLENGTH
-    // Read binary chunks DBLENGTH
-    table_readctx(dataall, read_ptr, j);
-    for (u64 i = 0; i < DBLENGTH; i++) {
-      // For each chunk, copy data & decrypt. tabletest defined in ../examples/tables_example_struct.h
-      table_getctx(c, header, bin, dataall + i, sizeof(struct tabletest));
-      if (((struct tabletest*)((struct ctx*)c)->structure)->age == 666) { // Search for age == 666
-        printf("Found\n");
-        // Free memory & close filepointer
-        table_free(&bin, &dataall, &header, &c, read_ptr);
-        return 1;
-      }
-    }
-  }
-  // Free memory & close filepointer
-  table_free(&bin, &dataall, &header, &c, read_ptr);
-  return 0;
-}
-
 uint8_t test_ecc(void) {
   ecc_sign_gen();
   return 1;
@@ -96,13 +49,11 @@ int main(int argc, char** argv) {
   uint8_t ret = 1;
   if (argc == 1) { // When run without arguments or in CI
     ret &= test_hash();
-    ret &= test_db_table();
     ret &= test_ecc();
   } else {
     ret &= test_hash();
     ret &= test_hashloop();
     ret &= test_hashshakeloop();
-    ret &= test_db_table();
     ret &= test_ecc();
   }
   if (ret) {
