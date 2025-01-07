@@ -1,17 +1,14 @@
 CC := gcc -O3 -Wall -pedantic -std=c99
 BUILD := .build
 
-all: mkbuilddir hash aes ecc crypto crypto_server crypto_client db_keystore db_tables test
-local: mkbuilddir hash aes ecc crypto crypto_server crypto_client db_keystore db_tables test_local
+all: mkbuilddir hash ecc crypto crypto_server crypto_client db_keystore db_tables test
+local: mkbuilddir hash ecc crypto crypto_server crypto_client db_keystore db_tables test_local
 
 mkbuilddir:
 	mkdir -p ${BUILD}
 
 hash:
 	${CC} -c hash.c -o .build/hash.o
-
-aes:
-	${CC} -c aes.c -o .build/aes.o
 
 ecc:
 	${CC} -c ecc.c -o .build/ecc.o
