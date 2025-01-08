@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "../ciphers.h"
 #include "../crypto_server.h"
 #include "../crypto_client.h"
 #include "../aes.h"
@@ -14,10 +13,6 @@
 #include "../db_tables.h"
 #include "../db_keystore.h"
 #include "../examples/tables_example_struct.h"
-
-static uint8_t iv1[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-static uint8_t key1[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
-static uint8_t outdec[256] = {0}, outenc[256] = {0}, lain[] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff};
 
 uint8_t test_hash(void) {
   uint8_t hash[256];
@@ -30,24 +25,6 @@ uint8_t test_hashshake(void) {
   char hash[256] = {0};
   hash_shake_new(hash, 128, (uint8_t*)"some string to hash", 19);
   assert(memcmp(hash, "0x117a821877bd84a56e3feefca36f4979f733177186b9e2df97c48e2c5045d7afb85252ba5fa57b666d39f43959f9566eaedad6b54b0e2e09fb1c309408da0f2b", 128) == 0);
-  return 1;
-}
-
-uint8_t test_ciphers_aes_gcm_text32loop(void) {
-  clock_t start = clock();
-  for (int i = 0; i < 1000000; i++) {
-    aes_gcm_encrypt(outenc, lain, 32, key1, 32, iv1, 32);
-    aes_gcm_decrypt(outdec, outenc, sizeof(outenc), key1, 32, iv1, 32);
-    for (int i = 0; i < 32; i++) assert(lain[i] == outdec[i]);
-  }
-  printf("gcmloop: Time %us %ums\n", (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) / 1000, (uint32_t)((clock() - start) * 1000 / CLOCKS_PER_SEC) % 1000);
-  return 1;
-}
-
-uint8_t test_ciphers_aes_gcm_text32(void) {
-  aes_gcm_encrypt(outenc, lain, 32, key1, 32, iv1, 32);
-  aes_gcm_decrypt(outdec, outenc, sizeof(outenc), key1, 32, iv1, 32);
-  for (int i = 0; i < 32; i++) assert(lain[i] == outdec[i]);
   return 1;
 }
 
@@ -217,7 +194,6 @@ int main(int argc, char** argv) {
     ret &= test_aesgcm32bit();
     ret &= test_genkeys();
     ret &= test_keys_verify();
-    ret &= test_ciphers_aes_gcm_text32();
     ret &= test_db_table();
     if (ret) printf("\nOK\n");
     else printf("\nNot OK\n");
@@ -245,8 +221,6 @@ int main(int argc, char** argv) {
       ret &= test_aesgcm32bitloop();
       ret &= test_genkeys();
       ret &= test_keys_verify();
-      ret &= test_ciphers_aes_gcm_text32();
-      ret &= test_ciphers_aes_gcm_text32loop();
       ret &= test_db_table();
       if (ret) printf("\nOK\n");
       else printf("\nNot OK\n");

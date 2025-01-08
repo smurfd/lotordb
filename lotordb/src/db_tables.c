@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "db_tables.h"
-#include "ciphers.h"
+#include "aes.h"
 
 // TODO: Randomize these to file for program to use
 static uint8_t iv1[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,\
@@ -36,8 +36,10 @@ void table_readctx(binary *dataall, FILE *read_ptr, u64 j) {
 }
 
 void table_getctx(ctx *c, u64 *header, binary *bin, binary *dataall, u64 len) {
+  uint8_t tag[512] = {0}, aad[512] = {0};
   memcpy(bin, dataall, sizeof(binary));
-  aes_gcm_decrypt(bin->encrypted, bin->encrypted, 512, key1, 32, iv1, 32);
+  gcm_inv_ciphertag(bin->encrypted, tag, key1, iv1, bin->encrypted, aad, tag);
+
   table_getheaders(header, dataall);
   table_getctxfrombin(c, bin, len);
 }
@@ -63,11 +65,12 @@ void table_addctx(ctx *c, u64 index, u64 pkhdr, void *p, u64 ctxstructlen) {
 
 void table_writectx(ctx *c, binary *bin, FILE *write_ptr) {
   // "convert" ctx to "binary"
+  uint8_t tag[512] = {0}, aad[512] = {0};
   memset(bin->encrypted, (uint8_t)' ', 512); // "PAD" the ctx
   memcpy(bin->encrypted, (uint8_t*)c, sizeof(u64) + sizeof(u64));
   memcpy(bin->encrypted + sizeof(u64) + sizeof(u64), (uint8_t*)c->structure, c->structurelen);
   memcpy(bin->encrypted + sizeof(u64) + sizeof(u64) + c->structurelen, &c->structurelen, sizeof(u64));
-  aes_gcm_encrypt(bin->encrypted, bin->encrypted, 512, key1, 32, iv1, 32);
+  gcm_ciphertag(bin->encrypted, tag, key1, iv1, bin->encrypted, aad, 512);
   fwrite(bin->encrypted, sizeof(binary), 1, write_ptr);
 }
 
