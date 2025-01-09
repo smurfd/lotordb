@@ -7,11 +7,11 @@ local: mkbuilddir hash ecc test_local
 mkbuilddir:
 	mkdir -p ${BUILD}
 
-hash:
-	${CC} -c hash.c -o .build/hash.o
-
 ecc:
 	${CC} -c ecc.c -o .build/ecc.o
+
+hash:
+	${CC} -c ../../../hash.c -o .build/hash.o
 
 test:
 	make -Ctests

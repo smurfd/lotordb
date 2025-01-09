@@ -1,8 +1,8 @@
 CC := gcc -O3 -Wall -pedantic -std=c99
 BUILD:=.build
 
-all: mkbuilddir hash aes keys db_keystore db_tables crypto crypto_server crypto_client test
-local: mkbuilddir hash aes keys db_keystore db_tables crypto crypto_server crypto_client test_local
+all: mkbuilddir hash aes keys tooling db_keystore db_tables crypto crypto_server crypto_client test
+local: mkbuilddir hash aes keys tooling db_keystore db_tables crypto crypto_server crypto_client test_local
 
 mkbuilddir:
 	mkdir -p ${BUILD}
@@ -24,8 +24,10 @@ db_keystore:
 	${CC} -c db_keystore.c -o ${BUILD}/db_keystore.o
 
 hash:
-	${CC} -c hash_tooling.c -o ${BUILD}/hash_tooling.o
 	${CC} -c hash.c -o ${BUILD}/hash.o
+
+tooling:
+	${CC} -c tooling.c -o ${BUILD}/tooling.o
 
 db_tables:
 	${CC} -c db_tables.c -o ${BUILD}/db_tables.o
@@ -45,4 +47,4 @@ test_local:
 clean:
 	rm ${BUILD}/crypto.o ${BUILD}/keys_client.o ${BUILD}/tables_client.o ${BUILD}/tests ${BUILD}/ciphers_aes_gcm.o \
 ${BUILD}/crypto_client.o ${BUILD}/tables_server.o ${BUILD}/keys_server.o ${BUILD}/crypto_server.o ${BUILD}/db_keystore.o \
-${BUILD}/hash.o ${BUILD}/hash_tooling.o ${BUILD}/db_tables.o ${BUILD}/keys.o ${BUILD}/aes.o ${BUILD}/*bin.b
+${BUILD}/hash.o ${BUILD}/tooling.o ${BUILD}/db_tables.o ${BUILD}/keys.o ${BUILD}/aes.o ${BUILD}/*bin.b

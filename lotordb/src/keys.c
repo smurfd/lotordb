@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
-#include "hash_tooling.h"
+#include "tooling.h"
 #include "crypto.h"
 #include "keys.h"
 

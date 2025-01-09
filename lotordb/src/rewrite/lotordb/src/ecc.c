@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
-#include "hash.h"
+#include "../../../hash.h"
 #include "ecc.h"
 
 static inline u64 u64rnd(void) {

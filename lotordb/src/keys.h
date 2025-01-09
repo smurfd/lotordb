@@ -2,7 +2,6 @@
 #ifndef KEYS_H
 #define KEYS_H 1
 #include <stdbool.h>
-
 #define BYTES 48
 #define DIGITS (BYTES / 8)
 #define u64 unsigned long long int // because linux uint64_t is not same as on mac
@@ -12,7 +11,6 @@
 typedef struct pt {u64 x[DIGITS], y[DIGITS];} pt;
 typedef struct prng_t {u64 a, b, c, d;} prng_t;
 __extension__ typedef unsigned __int128 uint128;
-
 u64 keys_write(char *fn, uint8_t data[], int type);
 int keys_make(uint8_t publ[], uint8_t priv[]);
 int keys_secr(const uint8_t pub[], const uint8_t prv[], uint8_t scr[]);
