@@ -7,7 +7,10 @@
 #define u64 unsigned long long int // because linux uint64_t is not same as on mac
 // Imitate pythons %. -1 % 5 = 4, not -1
 #define MOD(n, m) (((int)n % (int)m) + (int)m) % (int)m
-
+struct pt {
+  u64 x[6], y[6];
+};
+typedef struct pt pt;
 void ecc_sign_gen(void);
 #endif
 
@@ -45,7 +48,7 @@ void ecc_sign_gen(void);
 //   4. Calculate the curve point (x1, y1) = k x G
 //   5. Calculate r = x1 mod n. If r == 0, goto step 3
 //   6. Calculate s = k-1(z + rda) mod n. If s == 0, goto step 3
-//   7. The signature is the pair (r, s). And (r, -s mod n) is also a valid signature 
+//   7. The signature is the pair (r, s). And (r, -s mod n) is also a valid signature
 
 
 // Signature verification algorithm
