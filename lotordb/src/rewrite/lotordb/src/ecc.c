@@ -75,21 +75,40 @@ void ecc_pt_multiplication(pt R0, pt R1, pt P) {
 //   7. The signature is the pair (r, s). And (r, -s mod n) is also a valid signature
 // L = 3072, N = 256 (3072 / 8 = 384)
 void ecc_sign_gen(void) {
-  char e[384] = {0}, hash[666] = {0}, z[384] = {0};
-  pt curvep, curveg, pk;
-  u64 k[6] = {0}, x1 = 0, y1 = 0, r = 1, s = 0, st = 0, n = 1;
-  uint8_t h[6] = {0};
+  char e[384] = {0}, hash[666] = {0};
+  pt *curvep = malloc(sizeof(struct pt)), *curveg = malloc(sizeof(struct pt)), *pk = malloc(sizeof(struct pt));
+  u64 k[6] = {0}, x1 = 0, y1 = 0, rr[6] = {0}, r = 1, s[6] = {0}, st[0] = {0}, n = 1, rda[6] = {0}, privkey[6] = {0}, zrda[6] = {0}, stzrda[6] = {0};
+  uint8_t h[6] = {0}, h2[6] = {0}, z[384] = {0};
   hash_new((char*)hash, (uint8_t*)"some string to hash");
   memcpy(e, hash, 384);
   memcpy(z, hash, 384);
+
   while (r != 0) {
-    //k = u64rnd();
     u64rnd_array(h, k, 6);
-    ecc_pt_multiplication(pk, curvep, curveg); //incorrect curveg
-    curvep.x[1] = (curveg.x[1] * k[1]);
-    curvep.y[1] = (curveg.y[1] * k[1]);
-    r = MOD(curvep.x[1], n);
-    st = pow(k[1], -1);
+    u64rnd_array(h2, privkey, 6);
+    ecc_pt_multiplication(*pk, *curvep, *curveg); //incorrect curveg
+    curvep->x[1] = (curveg->x[1] * k[1]);
+    curvep->y[1] = (curveg->y[1] * k[1]);
+    for (int i = 0; i < 6; i++) {
+      rr[i] = MOD(curvep->x[i], n);
+    }
+    if (r != 0) {
+      for (int i = 0; i < 6; i++) {
+        st[i] = pow(k[i], -1);
+        rda[i] = privkey[i] * r;
+        zrda[i] = z[i] + rda[i];
+        stzrda[i] = st[i] * zrda[i];
+        s[i] = MOD(stzrda[i], n);
+      }
+      r = 0;
+    }
+  }
+  free(curvep);
+  free(curveg);
+  free(pk);
+  // signature: rr, s ??
+  for (int i = 0; i < 6; i++) {
+    printf("sig: %llu, %llu: %llu, %llu\n", rr[i], s[i], privkey[i], k[i]);
   }
 }
 // ECDSA

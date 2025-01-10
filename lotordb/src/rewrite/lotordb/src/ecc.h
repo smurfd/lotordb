@@ -20,9 +20,9 @@ void ecc_sign_gen(void);
 //               |                                     |
 //        message digest                        message digest
 //               |                                     |
-// --- priv key \                 public key \
+// --- priv key v                 public key v
 //      Signature generation                  Signature verification
-//                    \                                         \
+//                    v                                         v
 //                      --- signature  ----                        valid?
 
 // https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm
