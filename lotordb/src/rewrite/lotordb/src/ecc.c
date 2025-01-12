@@ -45,7 +45,7 @@ static inline uint32_t read_big_endian_uint32(const uint8_t *a) {
 // https://datatracker.ietf.org/doc/html/rfc6979
 static inline uint32_t bits2int(const uint8_t *q, const uint32_t blen, const uint32_t qlen) {
   uint8_t ret[32] = {0};
-  uint32_t r = 0;
+  u64 r = 0;
   if (qlen < blen) memcpy(ret, q, qlen);
   else {
     memset(ret, 0, qlen - blen);
@@ -55,6 +55,7 @@ static inline uint32_t bits2int(const uint8_t *q, const uint32_t blen, const uin
     r += ret[co++] * (2 ^ i);
     //r += ret[i - (qlen - 1)] * (2 ^ i);
   }
+  printf("R: %llu\n", r);
   return r;
 }
 
@@ -95,7 +96,7 @@ static inline void ecc_signgen(uint32_t r, uint32_t s, const char *msg) {
   r = MOD(bits2int(gg, 32, 32), q); // TODO: fix length
   uint32_t s1 = (h + x * r)/k;
   s = MOD(s1, q);
-  //printf("sig: %lu, %lu\n", r, s); // TODO: overflow of r, s?
+  printf("sig: %llu, %llu\n", r, s); // TODO: overflow of r, s?
 }
 
 // montgomerys ladder
