@@ -82,9 +82,9 @@ static inline void bits2octets(uint8_t *o, const uint8_t *b, const uint32_t q, c
   int2octets(o, z2);
 }
 
-static inline void ecc_hmac(uint8_t *k, const char *msg, const uint32_t q) {
-  uint8_t h1[512] = {0}, V[512] = {0}, K[512] = {0}, Vcat[512] = {0}, xo[512] = {0}, h1o[512] = {0};
-  uint32_t x = 0x3133731337; // x = private key
+static inline void ecc_hmac(uint32_t knew, const char *msg, const uint32_t q) {
+  uint8_t h1[512] = {0}, V[512] = {0}, K[512] = {0}, Vcat[512] = {0}, xo[512] = {0}, h1o[512] = {0}, T[512] = {0}, k[512] = {0};
+  uint32_t x = 0x3133731337, tlen = 0, qlen = 32; // x = private key
   hash_new((char*)h1, (uint8_t*)msg);
   memset(V, 0x01, 32); // 8 * ceil(hlen / 8)
   memset(K, 0x00, 32); // 8 * ceil(hlen / 8)
@@ -95,7 +95,17 @@ static inline void ecc_hmac(uint8_t *k, const char *msg, const uint32_t q) {
   memset(Vcat + 32, 0x00, 1);
   memcpy(Vcat + 32 + 1, xo, 8);
   memcpy(Vcat + 32 + 1 + 8, h1o, 8);
-  hash_new((char*)k, (uint8_t*)Vcat);
+  hash_new((char*)k, (uint8_t*)Vcat); // TOOD: we are not using k when hashing
+  hash_new(V, V); // TOOD: we are not using k when hashing
+  while (tlen < qlen) {
+    hash_new(V, V);
+    if (tlen == 0) memset(T, 0, 1);
+    else memcpy(T, T, tlen);
+    memcpy(T + tlen, V, qlen);
+    tlen += 32;
+    knew = bits2int(T, 32, 32);
+  }
+  if (q < knew) {printf("need to loop hmac again\n");} // TODO: actually loop until k is smaller than q
 }
 
 // E    an elliptic curve, defined over a given finite field
@@ -104,9 +114,9 @@ static inline void ecc_hmac(uint8_t *k, const char *msg, const uint32_t q) {
 // qG = 0
 static inline void ecc_signgen(uint32_t r, uint32_t s, const char *msg) {
   char hash[512] = {""};
-  uint8_t knew[512] = {0}, gg[32] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20};
+  uint8_t gg[32] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20};
   hash_new((char*)hash, (uint8_t*)msg);
-  uint32_t q = UINT32_MAX/2, h = MOD(bits2int(hash, 32, 32), q), k = 0, x = 0x3133731337; // x = private key
+  uint32_t knew = 0, q = UINT32_MAX/2, h = MOD(bits2int(hash, 32, 32), q), k = 0, x = 0x3133731337; // x = private key
   while (k == 0) {k = MOD(u64rnd(), q);} // K, shall never be 0
   printf("K=%llu\n", k);
   r = MOD(bits2int(gg, 32, 32), q); // TODO: fix length
@@ -114,8 +124,8 @@ static inline void ecc_signgen(uint32_t r, uint32_t s, const char *msg) {
   s = MOD(s1, q);
   printf("sig: %llu, %llu\n", r, s);
   ecc_hmac(knew, msg, q);
+  printf("Knew=%llu\n", knew);
 }
-
 
 // montgomerys ladder
 // Pt multiplication
