@@ -71,15 +71,31 @@ uint8_t isPrime(uint32_t n) {
 }
 */
 
-static inline void int2octets(uint8_t *r, uint32_t value) {
+static inline void int2octets(uint8_t *r, const uint32_t value) {
   //uint32_t rlen = 8 * ceil(qlen / 8);
   big_endian_uint32(r, value);
 }
 
 // q = big prime = UINT32_MAX/2 for now
-static inline void bits2octets(uint8_t *o, const uint8_t *b, uint32_t q, const uint32_t blen, uint32_t qlen) {
+static inline void bits2octets(uint8_t *o, const uint8_t *b, const uint32_t q, const uint32_t blen, const uint32_t qlen) {
   uint32_t z1 = bits2int(b, blen, qlen), z2 = MOD(z1, q);
   int2octets(o, z2);
+}
+
+static inline void ecc_hmac(uint8_t *k, const char *msg, const uint32_t q) {
+  uint8_t h1[512] = {0}, V[512] = {0}, K[512] = {0}, Vcat[512] = {0}, xo[512] = {0}, h1o[512] = {0};
+  uint32_t x = 0x3133731337; // x = private key
+  hash_new((char*)h1, (uint8_t*)msg);
+  memset(V, 0x01, 32); // 8 * ceil(hlen / 8)
+  memset(K, 0x00, 32); // 8 * ceil(hlen / 8)
+  int2octets(xo, x);
+  bits2octets(h1o, h1, q, 32, 32);
+  // K = HMAC_K(V || 0x00 || int2octets(x) || bits2octets(h1))
+  memcpy(Vcat, V, 32); // TODO: Concatinaton!?
+  memset(Vcat + 32, 0x00, 1);
+  memcpy(Vcat + 32 + 1, xo, 8);
+  memcpy(Vcat + 32 + 1 + 8, h1o, 8);
+  hash_new((char*)k, (uint8_t*)Vcat);
 }
 
 // E    an elliptic curve, defined over a given finite field
@@ -88,16 +104,18 @@ static inline void bits2octets(uint8_t *o, const uint8_t *b, uint32_t q, const u
 // qG = 0
 static inline void ecc_signgen(uint32_t r, uint32_t s, const char *msg) {
   char hash[512] = {""};
-  uint8_t gg[32] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20};
+  uint8_t knew[512] = {0}, gg[32] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20};
   hash_new((char*)hash, (uint8_t*)msg);
-  uint32_t q = UINT32_MAX/2, h = MOD(bits2int(hash, 32, 32), q), k = 0, x = 32; // TODO: x??
+  uint32_t q = UINT32_MAX/2, h = MOD(bits2int(hash, 32, 32), q), k = 0, x = 0x3133731337; // x = private key
   while (k == 0) {k = MOD(u64rnd(), q);} // K, shall never be 0
   printf("K=%llu\n", k);
   r = MOD(bits2int(gg, 32, 32), q); // TODO: fix length
   uint32_t s1 = (h + x * r)/k;
   s = MOD(s1, q);
-  printf("sig: %llu, %llu\n", r, s); // TODO: overflow of r, s?
+  printf("sig: %llu, %llu\n", r, s);
+  ecc_hmac(knew, msg, q);
 }
+
 
 // montgomerys ladder
 // Pt multiplication
