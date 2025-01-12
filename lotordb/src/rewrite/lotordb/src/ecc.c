@@ -51,8 +51,9 @@ static inline uint32_t bits2int(const uint8_t *q, const uint32_t blen, const uin
     memset(ret, 0, qlen - blen);
     memcpy(ret + (qlen - blen), q, qlen);
   }
-  for (int i = qlen - 1; i >= 0; i--) {
-    r += ret[i - (qlen - 1)] * (2 ^ i);
+  for (int co = 0, i = qlen - 1; i >= 0; i--) {
+    r += ret[co++] * (2 ^ i);
+    //r += ret[i - (qlen - 1)] * (2 ^ i);
   }
   return r;
 }
@@ -94,7 +95,7 @@ static inline void ecc_signgen(uint32_t r, uint32_t s, const char *msg) {
   r = MOD(bits2int(gg, 32, 32), q); // TODO: fix length
   uint32_t s1 = (h + x * r)/k;
   s = MOD(s1, q);
-  printf("sig: %lu, %lu\n", r, s);
+  //printf("sig: %lu, %lu\n", r, s); // TODO: overflow of r, s?
 }
 
 // montgomerys ladder
@@ -202,7 +203,7 @@ void ecc_sign_gen(void) {
   }
   uint32_t r1 = 0, s1 = 0;
   ecc_signgen(r1, s1, "some string to hash");
-  printf("sig: %lu, %lu\n", r1, s1);
+  //printf("sig: %lu, %lu\n", r1, s1);
 }
 // ECDSA
 // https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm
