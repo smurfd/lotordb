@@ -83,7 +83,7 @@ static inline void bits2octets(uint8_t *o, const uint8_t *b, const uint32_t q, c
 }
 
 static inline void ecc_hmac(uint32_t knew, const char *msg, const uint32_t q) {
-  uint8_t h1[512] = {0}, V[512] = {0}, K[512] = {0}, Vcat[512] = {0}, xo[512] = {0}, h1o[512] = {0}, T[512] = {0}, k[512] = {0};
+  uint8_t h1[512] = {0}, V[512] = {0}, K[512] = {0}, Vcat[512] = {0}, xo[512] = {0}, h1o[512] = {0}, T[512] = {0}, k[512] = {0}, Ttmp[512] = {0};
   uint32_t x = 0x31337, tlen = 0, qlen = 32; // x = private key
   hash_new((char*)h1, (uint8_t*)msg);
   memset(V, 0x01, 32); // 8 * ceil(hlen / 8)
@@ -100,7 +100,10 @@ static inline void ecc_hmac(uint32_t knew, const char *msg, const uint32_t q) {
   while (tlen < qlen) {
     hash_new((char*)V, (uint8_t*)V);
     if (tlen == 0) memset(T, 0, 1);
-    else memcpy(T, T, tlen);
+    else {
+      memcpy(Ttmp, T, tlen);
+      memcpy(T, Ttmp, tlen);
+    }
     memcpy(T + tlen, V, qlen);
     tlen += 32;
     knew = bits2int(T, 32, 32);
