@@ -84,7 +84,7 @@ static inline void bits2octets(uint8_t *o, const uint8_t *b, const uint32_t q, c
 
 static inline void ecc_hmac(uint32_t knew, const char *msg, const uint32_t q) {
   uint8_t h1[512] = {0}, V[512] = {0}, K[512] = {0}, Vcat[512] = {0}, xo[512] = {0}, h1o[512] = {0}, T[512] = {0}, k[512] = {0};
-  uint32_t x = 0x3133731337, tlen = 0, qlen = 32; // x = private key
+  uint32_t x = 0x31337, tlen = 0, qlen = 32; // x = private key
   hash_new((char*)h1, (uint8_t*)msg);
   memset(V, 0x01, 32); // 8 * ceil(hlen / 8)
   memset(K, 0x00, 32); // 8 * ceil(hlen / 8)
@@ -96,9 +96,9 @@ static inline void ecc_hmac(uint32_t knew, const char *msg, const uint32_t q) {
   memcpy(Vcat + 32 + 1, xo, 8);
   memcpy(Vcat + 32 + 1 + 8, h1o, 8);
   hash_new((char*)k, (uint8_t*)Vcat); // TOOD: we are not using k when hashing
-  hash_new(V, V); // TOOD: we are not using k when hashing
+  hash_new((char*)V, (uint8_t*)V); // TOOD: we are not using k when hashing
   while (tlen < qlen) {
-    hash_new(V, V);
+    hash_new((char*)V, (uint8_t*)V);
     if (tlen == 0) memset(T, 0, 1);
     else memcpy(T, T, tlen);
     memcpy(T + tlen, V, qlen);
@@ -114,17 +114,17 @@ static inline void ecc_hmac(uint32_t knew, const char *msg, const uint32_t q) {
 // qG = 0
 static inline void ecc_signgen(uint32_t r, uint32_t s, const char *msg) {
   char hash[512] = {""};
-  uint8_t gg[32] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20};
+  uint8_t gg[32] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
   hash_new((char*)hash, (uint8_t*)msg);
-  uint32_t knew = 0, q = UINT32_MAX/2, h = MOD(bits2int(hash, 32, 32), q), k = 0, x = 0x3133731337; // x = private key
+  uint32_t knew = 0, q = UINT32_MAX/2, h = MOD(bits2int((uint8_t*)hash, 32, 32), q), k = 0, x = 0x31337; // x = private key
   while (k == 0) {k = MOD(u64rnd(), q);} // K, shall never be 0
-  printf("K=%llu\n", k);
+  printf("K=%u\n", k);
   r = MOD(bits2int(gg, 32, 32), q); // TODO: fix length
   uint32_t s1 = (h + x * r)/k;
   s = MOD(s1, q);
-  printf("sig: %llu, %llu\n", r, s);
+  printf("sig: %u, %u\n", r, s);
   ecc_hmac(knew, msg, q);
-  printf("Knew=%llu\n", knew);
+  printf("Knew=%u\n", knew);
 }
 
 // montgomerys ladder
@@ -182,7 +182,7 @@ void ecc_pt_multiplication(pt R0, pt R1, pt P) {
 void ecc_sign_gen(void) {
   char e[384] = {0}, hash[666] = {0};
   pt *curvep = malloc(sizeof(struct pt)), *curveg = malloc(sizeof(struct pt)), *pk = malloc(sizeof(struct pt));
-  u64 k[6] = {0}, x1 = 0, y1 = 0, rr[6] = {0}, r = 1, s[6] = {0}, st[0] = {0}, n[] = {0xecec196accc52973, 0x581a0db248b0a77a,
+  u64 k[6] = {0}, rr[6] = {0}, r = 1, s[6] = {0}, st[6] = {0}, n[] = {0xecec196accc52973, 0x581a0db248b0a77a,
   0xc7634d81f4372ddf, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff}, rda[6] = {0}, privkey[6] = {0}, zrda[6] = {0}, stzrda[6] = {0};
   uint8_t h[6] = {0}, h2[6] = {0}, z[384] = {0};
   hash_new((char*)hash, (uint8_t*)"some string to hash");
@@ -228,7 +228,7 @@ void ecc_sign_gen(void) {
   free(pk);
   // signature: rr, s ??
   for (int i = 0; i < 6; i++) {
-    printf("sig: %llu, %llu: %llu, %llu, %d %llu %llu\n", rr[i], s[i], privkey[i], k[i], hash[i], z[i], rda[i]);
+    printf("sig: %llu, %llu: %llu, %llu, %d %hhu %llu\n", rr[i], s[i], privkey[i], k[i], hash[i], z[i], rda[i]);
   }
   uint32_t r1 = 0, s1 = 0;
   ecc_signgen(r1, s1, "some string to hash");
