@@ -2,8 +2,8 @@ CC := gcc -O3 -ffast-math -Wall -pedantic -std=c99
 BUILD:=.build
 SUBMODULES := lotorssl
 
-all: mkbuilddir checksubmodules hash aes keys tooling db_keystore db_tables crypto crypto_server crypto_client test
-local: mkbuilddir checksubmodules hash aes keys tooling db_keystore db_tables crypto crypto_server crypto_client test_local
+all: mkbuilddir checksubmodules hash aes keys ssl tooling db_keystore db_tables crypto crypto_server crypto_client test
+local: mkbuilddir checksubmodules hash aes keys ssl tooling db_keystore db_tables crypto crypto_server crypto_client test_local
 
 mkbuilddir:
 	mkdir -p ${BUILD}
@@ -48,6 +48,10 @@ keys:
 
 aes:
 	${CC} -c aes.c -o .build/aes.o
+
+ssl:
+	echo "compiling ssl"
+	make -Clotorssl/lotorssl/src
 
 test:
 	make -Ctests
