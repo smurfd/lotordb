@@ -1,0 +1,3 @@
+[submodule "src/lotorssl"]
+	path = src/lotorssl
+	url = https://github.com/smurfd/lotorssl
