@@ -13,6 +13,7 @@
 #include "../db_tables.h"
 #include "../db_keystore.h"
 #include "../examples/tables_example_struct.h"
+#include "../lotorssl/src/bmec.h"
 
 uint8_t test_hash(void) {
   uint8_t hash[256];

@@ -51,8 +51,9 @@ aes:
 	${CC} -c aes.c -o .build/aes.o
 
 ssl:
-	echo "compiling ssl"
 	make -Clotorssl/src
+	${CC} -c lotorssl/src/lotormath/src/lotormath.c -o ${BUILD}/lotormath.o
+	${CC} -c lotorssl/src/bmec.c ${BUILD}/lotormath.o -o ${BUILD}/bmec.o
 
 test:
 	make -Ctests
