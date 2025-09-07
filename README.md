@@ -15,27 +15,14 @@
 
 Database and Key value store written in C & Python. No dependencies.
 
-#### Usage Python backend
-```
-PYTHONPATH="." python3 lotordb/server.py keys  # Run in one terminal, key value store server
-PYTHONPATH="." python3 lotordb/client.py keys  # Run in one terminal, key value store client
-
-PYTHONPATH="." python3 lotordb/server.py tables  # Run in one terminal, table server
-PYTHONPATH="." python3 lotordb/client.py tables  # Run in one terminal, table client
-```
-##### Test Python backend
-```
-python3 -m pytest lotordb/test
-```
-
 #### Usage C backend
 ```
-make -Clotordb/src  # Builds and runs test suite
+make -Csrc  # Builds and runs test suite
 
-./lotordb/src/.build/tests server keys  # Run in one terminal, key value store server
-./lotordb/src/.build/tests client keys  # Run in one terminal, key value store client
+./src/.build/tests server keys  # Run in one terminal, key value store server
+./src/.build/tests client keys  # Run in one terminal, key value store client
 
-./lotordb/src/.build/tests server tables  # Run in one terminal, table server
-./lotordb/src/.build/tests client tables  # Run in one terminal, table client
+./src/.build/tests server tables  # Run in one terminal, table server
+./src/.build/tests client tables  # Run in one terminal, table client
 ```
 "[o.o]"

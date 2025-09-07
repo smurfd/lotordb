@@ -7,5 +7,5 @@
 .lib/
 lotordb/src/.build
 .python-version
-lotordb/src/lotorssl
-lotordb/src/lotormath
+src/lotorssl
+src/lotormath

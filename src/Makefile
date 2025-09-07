@@ -12,6 +12,7 @@ checksubmodules:
 	for s in ${SUBMODULES} ; do \
 		if [ -d $$s ]; then \
 			echo "Deleting $$s ..."; \
+			rm -rf $$s; \
 		fi; \
 		git submodule add --force https://github.com/smurfd/$$s; \
 		git submodule init; \
@@ -51,7 +52,7 @@ aes:
 
 ssl:
 	echo "compiling ssl"
-	make -Clotorssl/lotorssl/src
+	make -Clotorssl/src
 
 test:
 	make -Ctests
