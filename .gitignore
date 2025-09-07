@@ -8,3 +8,5 @@
 lotordb/src/.build
 .python-version
 lotordb/src/rewrite/lotordb/src/.build
+lotordb/src/lotorssl
+lotordb/src/lotormath

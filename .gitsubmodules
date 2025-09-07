@@ -1,0 +1,7 @@
+[submodule "lotordb/src/lotorssl"]
+	path = lotordb/src/lotorssl
+	url = https://github.com/smurfd/lotorssl
+
+[submodule "lotordb/src/lotorssl/lotorssl/src/lotormath"]
+	path = lotordb/src/lotorssl/lotorssl/src/lotormath
+	url = https://github.com/smurfd/lotormath

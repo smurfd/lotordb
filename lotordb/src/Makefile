@@ -1,11 +1,22 @@
-CC := gcc -O3 -Wall -pedantic -std=c99
+CC := gcc -O3 -ffast-math -Wall -pedantic -std=c99
 BUILD:=.build
+SUBMODULES := lotorssl
 
-all: mkbuilddir hash aes keys tooling db_keystore db_tables crypto crypto_server crypto_client test
-local: mkbuilddir hash aes keys tooling db_keystore db_tables crypto crypto_server crypto_client test_local
+all: mkbuilddir checksubmodules hash aes keys tooling db_keystore db_tables crypto crypto_server crypto_client test
+local: mkbuilddir checksubmodules hash aes keys tooling db_keystore db_tables crypto crypto_server crypto_client test_local
 
 mkbuilddir:
 	mkdir -p ${BUILD}
+
+checksubmodules:
+	for s in ${SUBMODULES} ; do \
+		if [ -d $$s ]; then \
+			echo "Deleting $$s ..."; \
+		fi; \
+		git submodule add --force https://github.com/smurfd/$$s; \
+		git submodule init; \
+		git submodule update; \
+	done
 
 crypto:
 	${CC} -c crypto.c -o ${BUILD}/crypto.o
