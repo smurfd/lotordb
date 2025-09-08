@@ -2,8 +2,9 @@ CC := gcc -O3 -ffast-math -Wall -pedantic -std=c99
 BUILD:=.build
 SUBMODULES := lotorssl
 
-all: mkbuilddir checksubmodules hash aes keys ssl tooling db_keystore db_tables crypto crypto_server crypto_client test
-local: mkbuilddir checksubmodules hash aes keys ssl tooling db_keystore db_tables crypto crypto_server crypto_client test_local
+all: mkbuilddir checksubmodules keys ssl tooling db_keystore db_tables crypto crypto_server crypto_client test
+local: mkbuilddir checksubmodules keys ssl tooling db_keystore db_tables crypto crypto_server crypto_client test_local
+
 
 mkbuilddir:
 	mkdir -p ${BUILD}
@@ -35,9 +36,6 @@ crypto_client:
 db_keystore:
 	${CC} -c db_keystore.c -o ${BUILD}/db_keystore.o
 
-hash:
-	${CC} -c hash.c -o ${BUILD}/hash.o
-
 tooling:
 	${CC} -c tooling.c -o ${BUILD}/tooling.o
 
@@ -47,13 +45,12 @@ db_tables:
 keys:
 	${CC} -c keys.c -o ${BUILD}/keys.o
 
-aes:
-	${CC} -c aes.c -o .build/aes.o
-
 ssl:
-	make -Clotorssl/src
+	make -Clotorssl/src  # to pull down lotormath
 	${CC} -c lotorssl/src/lotormath/src/lotormath.c -o ${BUILD}/lotormath.o
-	${CC} -c lotorssl/src/bmec.c ${BUILD}/lotormath.o -o ${BUILD}/bmec.o
+	${CC} -c lotorssl/src/bmec.c -o ${BUILD}/bmec.o
+	${CC} -c lotorssl/src/hash.c -o ${BUILD}/hash.o
+	${CC} -c lotorssl/src/ciph.c -o ${BUILD}/ciph.o
 
 test:
 	make -Ctests
@@ -62,6 +59,4 @@ test_local:
 	make -Ctests local
 
 clean:
-	rm ${BUILD}/crypto.o ${BUILD}/keys_client.o ${BUILD}/tables_client.o ${BUILD}/tests ${BUILD}/ciphers_aes_gcm.o \
-${BUILD}/crypto_client.o ${BUILD}/tables_server.o ${BUILD}/keys_server.o ${BUILD}/crypto_server.o ${BUILD}/db_keystore.o \
-${BUILD}/hash.o ${BUILD}/tooling.o ${BUILD}/db_tables.o ${BUILD}/keys.o ${BUILD}/aes.o ${BUILD}/*bin.b
+	rm ${BUILD}/*.o ${BUILD}/tests ${BUILD}/*bin.b
