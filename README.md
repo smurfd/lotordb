@@ -17,6 +17,7 @@ Database and Key value store written in C & Python. No dependencies.
 
 #### Usage C backend
 ```
+git clone https://github.com/smurfd/lotordb
 make -Csrc  # Builds and runs test suite
 
 ./src/.build/tests server keys  # Run in one terminal, key value store server
