@@ -15,11 +15,14 @@
 
 Database and Key value store written in C & Python. No dependencies.
 
+#### Build
+```
+git clone https://github.com/smurfd/lotordb && cd lotordb
+make -Csrc # fetches submodules if they dont exist
+```
+
 #### Usage C backend
 ```
-git clone https://github.com/smurfd/lotordb
-make -Csrc  # Builds and runs test suite
-
 ./src/.build/tests server keys  # Run in one terminal, key value store server
 ./src/.build/tests client keys  # Run in one terminal, key value store client
 
