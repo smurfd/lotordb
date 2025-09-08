@@ -2,8 +2,8 @@ CC := gcc -O3 -ffast-math -Wall -pedantic -std=c99
 BUILD:=.build
 SUBMODULES := lotorssl
 
-all: mkbuilddir checksubmodules keys ssl tooling db_keystore db_tables crypto crypto_server crypto_client test
-local: mkbuilddir checksubmodules keys ssl tooling db_keystore db_tables crypto crypto_server crypto_client test_local
+all: mkbuilddir checksubmodules ssl tooling db_keystore db_tables crypto crypto_server crypto_client test
+local: mkbuilddir checksubmodules ssl tooling db_keystore db_tables crypto crypto_server crypto_client test_local
 
 
 mkbuilddir:
@@ -41,9 +41,6 @@ tooling:
 
 db_tables:
 	${CC} -c db_tables.c -o ${BUILD}/db_tables.o
-
-keys:
-	${CC} -c keys.c -o ${BUILD}/keys.o
 
 ssl:
 	make -Clotorssl/src  # to pull down lotormath

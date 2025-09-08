@@ -7,7 +7,7 @@
 #include "../crypto_server.h"
 #include "../crypto_client.h"
 //#include "../aes.h"
-#include "../keys.h"
+//#include "../keys.h"
 //#include "../hash.h"
 #include "../crypto.h"
 #include "../db_tables.h"
@@ -235,7 +235,7 @@ uint8_t test_aesgcm32bitloop(void) {
 }
 
 
-
+/*
 //
 // Generate a keypair & shared key then print it (test / demo)
 uint8_t test_genkeys(void) {
@@ -263,6 +263,44 @@ uint8_t test_keys_verify(void) {
   assert(keys_vrfy(pubkey, h, sig));
   assert(!keys_vrfy(privkey, h, sig)); // assert failure
   return 1;
+}
+*/
+
+uint8_t tester_bint_PK(void) { // TODO: check if the point is on curve
+  bint alsk = bcreate(), bosk = bcreate();
+  bint alpkx = bcreate(), alpky = bcreate(), bopkx = bcreate(), bopky = bcreate();
+  bint alshrx = bcreate(), alshry = bcreate(), boshrx = bcreate(), boshry = bcreate(), sx = bcreate(), sy = bcreate();
+  genkeypair(&alpkx, &alpky, &alsk); // Alice's keypair generated
+  genkeypair(&bopkx, &bopky, &bosk); // Bob's keypair generated
+  gensharedsecret(&alshrx, &alshry, &bosk, &alpkx, &alpky); // Alice's shared secret
+  gensharedsecret(&boshrx, &boshry, &alsk, &bopkx, &bopky); // Bob's shared secret
+  verifysharedsecret(&alshrx, &alshry, &boshrx, &boshry, &alsk, &bosk); // Verify Alice's and Bob's shared secrets
+  sign(&sx, &sy, &bosk, "hellu wurld"); // Sign and verify
+  assert(verify(&bopkx, &bopky, "hellu wurld", &sx, &sy) == 1);
+  return 1;
+}
+
+uint8_t tester_bint_PK_loop(void) { // TODO: check if the point is on curve
+  bint alsk = bcreate(), bosk = bcreate();
+  clock_t start = clock();
+  for (int i = 0; i < 1000; i++) {
+    bint alpkx = bcreate(), alpky = bcreate(), bopkx = bcreate(), bopky = bcreate();
+    bint alshrx = bcreate(), alshry = bcreate(), boshrx = bcreate(), boshry = bcreate(), sx = bcreate(), sy = bcreate();
+    genkeypair(&alpkx, &alpky, &alsk); // Alice's keypair generated
+    genkeypair(&bopkx, &bopky, &bosk); // Bob's keypair generated
+    gensharedsecret(&alshrx, &alshry, &bosk, &alpkx, &alpky); // Alice's shared secret
+    gensharedsecret(&boshrx, &boshry, &alsk, &bopkx, &bopky); // Bob's shared secret
+    verifysharedsecret(&alshrx, &alshry, &boshrx, &boshry, &alsk, &bosk); // Verify Alice's and Bob's shared secrets
+    sign(&sx, &sy, &bosk, "hellu wurld"); // Sign and verify
+    assert(verify(&bopkx, &bopky, "hellu wurld", &sx, &sy) == 1);
+  }
+  clock_t cs = clock() - start;
+  printf("bint pk: Time %us %ums\n", (uint32_t)((cs) * 1000 / CLOCKS_PER_SEC) / 1000, (uint32_t)((cs) * 1000 / CLOCKS_PER_SEC) % 1000);
+  return 1;
+  // bint pk: Time 137s 92ms
+  // bint pk: Time 136s 901ms
+  // bint pk: Time 135s 94ms (35s without sign and verify: TODO Look into those)
+  // bint pk: Time 133s 505ms
 }
 
 static void table_filltestdata(ctx **c, binary **bin, FILE *write_ptr) {
@@ -408,8 +446,9 @@ int main(int argc, char** argv) {
     //ret &= test_aes();
     //ret &= test_aesgcm();
     //ret &= test_aesgcm32bit();
-    ret &= test_genkeys();
-    ret &= test_keys_verify();
+    //ret &= test_genkeys();
+    //ret &= test_keys_verify();
+    ret &= tester_bint_PK();
     ret &= test_db_table();
     if (ret) printf("\nOK\n");
     else printf("\nNot OK\n");
@@ -450,8 +489,9 @@ int main(int argc, char** argv) {
       //ret &= test_aesgcmloop();
       //ret &= test_aesgcm32bit();
       //ret &= test_aesgcm32bitloop();
-      ret &= test_genkeys();
-      ret &= test_keys_verify();
+      //ret &= test_genkeys();
+      //ret &= test_keys_verify();
+      ret &= tester_bint_PK_loop(); // Slow as fudge
       ret &= test_db_table();
       if (ret) printf("\nOK\n");
       else printf("\nNot OK\n");
