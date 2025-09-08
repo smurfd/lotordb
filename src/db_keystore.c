@@ -6,7 +6,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include "db_keystore.h"
-#include "hash.h"
+#include "lotorssl/src/hash.h"
 
 void key_set(kvsh *k, char key[256], char value[256], char store[256]) {
   strncpy((*k).key, key, 255);

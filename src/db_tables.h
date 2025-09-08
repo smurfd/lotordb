@@ -2,7 +2,6 @@
 #define DB_TABLES_H 1
 #include "db_keystore.h"
 #include "lotorssl/src/ciph.h"
-//#include "aes.h"
 
 #define u64 unsigned long long int // because linux uint64_t is not same as on mac
 #define DBLENGTH 1000
