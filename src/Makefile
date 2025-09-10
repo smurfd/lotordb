@@ -1,5 +1,4 @@
-CC := gcc -O3 -ffast-math -Wall -pedantic -std=c11 -march=native
-#CC := gcc -O3 -ffast-math -Wall -pedantic -std=c99 -march=native
+CC := gcc -O3 -ffast-math -Wall -pedantic -std=c99 -march=native
 BUILD := .build
 MODULES := mkbuilddir checksubmodules ssl tooling db_keystore db_tables crypto crypto_server crypto_client
 SUBMODULES := lotorssl
@@ -45,7 +44,7 @@ tooling:
 	${CC} -c tooling.c -o ${BUILD}/tooling.o
 
 ssl:
-	${MAKE} -Clotorssl/src  # to pull down lotormath
+	${MAKE} -Clotorssl/src build  # to pull down lotormath
 	${CC} -c lotorssl/src/lotormath/src/lotormath.c -o ${BUILD}/lotormath.o
 	${CC} -c lotorssl/src/bmec.c -o ${BUILD}/bmec.o
 	${CC} -c lotorssl/src/hash.c -o ${BUILD}/hash.o

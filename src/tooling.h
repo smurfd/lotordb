@@ -8,4 +8,6 @@ void bit_pack(u64 big[], const uint8_t byte[]);
 void bit_unpack(uint8_t byte[], const u64 big[]);
 int base64enc(char ed[], const uint8_t *data, int inl);
 int base64dec(uint8_t dd[], const char *data, int inl);
+u64 u64rnd(void);
+void u64rnd_array(uint8_t h[], u64 k[], int len);
 #endif

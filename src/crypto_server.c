@@ -9,6 +9,7 @@
 #include "examples/keys_example_server.h"
 #include "crypto_server.h"
 #include "db_tables.h"
+#include "tooling.h"
 #include "crypto.h"
 
 static cryptokey *clear_cryptokey(cryptokey *k) {

@@ -47,8 +47,6 @@ cryptokey generate_cryptokeys(head *h);
 void handler_cryptography(u64 data, cryptokey k, u64 *enc);
 
 // Tooling
-u64 u64rnd(void);
-void u64rnd_array(uint8_t h[], u64 k[], int len);
 int usage(char *arg, int count, char *clisrv);
 #endif
 

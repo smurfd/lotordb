@@ -1,16 +1,14 @@
 // Auth: smurfd, 2023 More reading & Borrow/Stolen parts read at the bottom of the file; 2 spacs indent; 120 width    //
 #include <math.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include "db_keystore.h"
 #include "db_tables.h"
 #include "crypto.h"
-
+#include "tooling.h"
 // TODO: Add AES for encryption/decryption (lightssl)
 // TODO: Add ECDSA for keyexchange (lightssl)
 
@@ -107,28 +105,5 @@ cryptokey generate_cryptokeys(head *h) {
   k.priv = u64rnd();
   k.publ = (long long int)pow((*h).g, k.priv) % (*h).p;
   return k;
-}
-
-//
-// urandom generate u64
-u64 u64rnd(void) {
-  u64 f7 = 0x7fffffffffffffff;
-  int r[5], f = open("/dev/urandom", O_RDONLY);
-  int rr = read(f, &r, sizeof r);
-  close(f);
-  if (rr < 0) return -1;
-  return (r[0] & f7) << 48 ^ (r[1] & f7) << 35 ^ (r[2] & f7) << 22 ^ (r[3] & f7) << 9 ^ (r[4] & f7) >> 4;
-}
-
-void u64rnd_array(uint8_t h[], u64 k[], int len) {
-  u64 f7 = 0x7fffffffffffffff;
-  int r[2*len], f = open("/dev/urandom", O_RDONLY);
-  int rr = read(f, &r, sizeof r);
-  close(f);
-  if (rr >= 0)
-  for (int i = 0; i < len; ++i) {
-    h[i] = (uint8_t)(r[i] & f7);
-    k[i] = (u64)(r[i] & f7);
-  }
 }
 // Very simple handshake
