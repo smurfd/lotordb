@@ -10,7 +10,7 @@
 
 static void table_filltestdata(ctx **c, binary **bin, FILE *write_ptr) {
   for (u64 i = 0; i < DBLENGTH; i++) {
-    struct tabletest p = {i, 6.8, "testsmurfan", 666, 1};
+    struct tabletest p = {i, 6.8, "testsmurfan", 66, 1};
     table_addctx(*c, i, 12345678901111 + i, &p, sizeof(p));
     table_writectx(*c, *bin, write_ptr);
   }
@@ -23,7 +23,7 @@ uint8_t test_db_table(void) {
   u64 *header;
   ctx *c;
   // Open database file for writing
-  FILE *write_ptr = fopen("/tmp/dbtest1.db", "ab");
+  FILE *write_ptr = fopen("/tmp/dbtest1.db", "wb");
   // Malloc memory for variables used
   table_malloc(&bin, &dataall, &header, &c, sizeof(struct tabletest));
   // Create context for database, write to file & close file
@@ -36,7 +36,7 @@ uint8_t test_db_table(void) {
     for (u64 i = 0; i < DBLENGTH; i++) {
       // For each chunk, copy data & decrypt. tabletest defined in ../examples/tables_example_struct.h
       table_getctx(c, header, bin, dataall + i, sizeof(struct tabletest));
-      if (((struct tabletest*)((struct ctx*)c)->structure)->age == 666) { // Search for age == 666
+      if (((struct tabletest*)((struct ctx*)c)->structure)->age == 66) { // Search for age == 666
         printf("Found\n");
         // Free memory & close filepointer
         table_free(&bin, &dataall, &header, &c, read_ptr);

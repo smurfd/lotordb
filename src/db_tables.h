@@ -4,7 +4,7 @@
 #include "lotorssl/src/ciph.h"
 
 #define u64 unsigned long long int // because linux uint64_t is not same as on mac
-#define DBLENGTH 1000
+#define DBLENGTH 100
 
 typedef struct binary {
   uint8_t encrypted[512];
