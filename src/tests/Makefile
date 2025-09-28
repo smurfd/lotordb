@@ -1,6 +1,5 @@
-CC := gcc -O3 -ffast-math -Wall -pedantic -std=c99 -march=native
+CC := gcc -O3 -ffast-math -Wall -Wextra -pedantic -std=c99 -march=native
 BUILD := ../.build
-
 all: build runner
 local: build runner_local
 

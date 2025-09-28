@@ -1,11 +1,10 @@
-CC := gcc -O3 -ffast-math -Wall -pedantic -std=c99 -march=native
+CC := gcc -O3 -ffast-math -Wall -Wextra -pedantic -std=c99 -march=native
 BUILD := .build
-MODULES := mkbuilddir checksubmodules ssl tooling db_keystore db_tables crypto crypto_server crypto_client
+MODULES := mkbuilddir checksubmodules ssl db_keystore db_tables
 SUBMODULES := lotorssl
 
 all: ${MODULES} test
 local: ${MODULES} test_local
-
 
 mkbuilddir:
 	mkdir -p ${BUILD}
@@ -21,34 +20,22 @@ checksubmodules:
 		git submodule update; \
 	done
 
-crypto:
-	${CC} -c crypto.c -o ${BUILD}/crypto.o
-
-crypto_server:
-	${CC} -c examples/tables_example_server.c -o ${BUILD}/tables_server.o
-	${CC} -c examples/keys_example_server.c -o ${BUILD}/keys_server.o
-	${CC} -c crypto_server.c -o ${BUILD}/crypto_server.o
-
-crypto_client:
-	${CC} -c examples/tables_example_client.c -o ${BUILD}/tables_client.o
-	${CC} -c examples/keys_example_client.c -o ${BUILD}/keys_client.o
-	${CC} -c crypto_client.c -o ${BUILD}/crypto_client.o
-
 db_keystore:
 	${CC} -c db_keystore.c -o ${BUILD}/db_keystore.o
 
 db_tables:
 	${CC} -c db_tables.c -o ${BUILD}/db_tables.o
 
-tooling:
-	${CC} -c tooling.c -o ${BUILD}/tooling.o
-
 ssl:
 	${MAKE} -Clotorssl/src build  # to pull down lotormath
 	${CC} -c lotorssl/src/lotormath/src/lotormath.c -o ${BUILD}/lotormath.o
+	${CC} -c lotorssl/src/tooling.c -o ${BUILD}/tooling.o
 	${CC} -c lotorssl/src/bmec.c -o ${BUILD}/bmec.o
 	${CC} -c lotorssl/src/hash.c -o ${BUILD}/hash.o
 	${CC} -c lotorssl/src/ciph.c -o ${BUILD}/ciph.o
+	${CC} -c lotorssl/src/crpt.c -o ${BUILD}/crpt.o
+	${CC} -c lotorssl/src/crpt_cli.c -o ${BUILD}/crpt_cli.o
+	${CC} -c lotorssl/src/crpt_srv.c -o ${BUILD}/crpt_srv.o
 
 test:
 	${MAKE} -Ctests
