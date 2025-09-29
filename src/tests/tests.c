@@ -40,14 +40,29 @@ uint8_t test_db_tables(void) { // Create a local database and search for age 66
   return 0;
 }
 
+uint8_t test_db_keystore(void) {
+  char key[256] = {' '}, value[256] = {' '}, store[256] = {' '};
+  kvsh *k = (kvsh*)malloc(sizeof(struct kvsh));
+  memcpy(key, "0001", 4);
+  memcpy(value, "testvalue", 9);
+  memcpy(store, "/tmp", 4);
+  keystore_set(k, key, value, store);
+  keystore_write(k);
+  keystore_del(k);
+  if (k != NULL) free(k);
+  return 1;
+}
+
 int main(int argc, char** argv) {
   int ret = 1;
   if (argc == 1) { // When run without arguments
     printf("\"[o.o]\"  testing ...  \"[o.o]\"\n\n");
     ret &= test_db_tables();
+    ret &= test_db_keystore();
   } else if (strcmp(argv[1], "local") == 0) { // When run locally to measure speed
     printf("\"[o.o]\"  testing locally...  \"[o.o]\"\n\n");
     ret &= test_db_tables();
+    ret &= test_db_keystore();
   }
   if (ret) {
     printf("OK\n");
