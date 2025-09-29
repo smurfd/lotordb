@@ -13,7 +13,7 @@
 `https://en.wikipedia.org/wiki/Raccoon`
 
 
-Database and Key value store written in C & Python. No dependencies.
+Database and Key value store written in C. No dependencies.
 
 #### Build
 ```
