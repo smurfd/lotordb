@@ -2,7 +2,6 @@ CC := gcc -O3 -ffast-math -Wall -Wextra -pedantic -std=c99 -march=native
 BUILD := .build
 MODULES := mkbuilddir checksubmodules ssl db_keystore db_tables
 SUBMODULES := lotorssl
-
 all: ${MODULES} test
 local: ${MODULES} test_local
 

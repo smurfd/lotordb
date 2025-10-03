@@ -37,21 +37,3 @@ void tables_getctx(ctx *c, u64 *header, binary *bin, binary *dataall, u64 len);
 void tables_malloc(binary **bin, binary **dataall, u64 **header, ctx **c, u64 len);
 void tables_free(binary **bin, binary **dataall, u64 **header, ctx **c, FILE *read_ptr);
 #endif
-
-/*
-# get data
-decrypt index file
-read unique_id to get size of data and path to data file
-open data path
-decrypt data file
-find unique id
-read size
-decrypt
-use data
-
-# write data
-decrypt datafile
-encrypt x=data+hash
-append x to /pth/to/x.txt
-add row to index file, with path, len of encrypted data and add a padded unique id like smurfd@gmail.com
-*/

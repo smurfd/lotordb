@@ -13,16 +13,16 @@
 `https://en.wikipedia.org/wiki/Raccoon`
 
 
-Database and Key value store written in C. No dependencies.
+Database and Key value store written in C. No dependencies (submodules i have written, yes)
 
 #### Build
-```
+```bash
 git clone https://github.com/smurfd/lotordb && cd lotordb
 make -Csrc # fetches submodules if they dont exist
 ```
 
 #### Usage C backend
-```
+```bash
 ./src/.build/tests server keys  # Run in one terminal, key value store server
 ./src/.build/tests client keys  # Run in one terminal, key value store client
 
