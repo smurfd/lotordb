@@ -2,7 +2,6 @@
 #define DB_TABLES_H 1
 #include "lotorssl/src/ciph.h"
 
-#define u64 unsigned long long int // because linux uint64_t is not same as on mac
 #define DBLENGTH 100
 
 typedef struct binary {

@@ -41,9 +41,7 @@ void tables_getctx(ctx *c, u64 *header, binary *bin, binary *dataall, u64 len) {
 }
 
 void tables_getheaders(u64 *header, binary *bin) {
-  for (u64 i = 0; i < DBLENGTH; i++) {
-    memcpy(&header[i], bin[i].encrypted, sizeof(u64));
-  }
+  memcpy(header, bin->encrypted, sizeof(u64) * DBLENGTH); // TODO
 }
 
 u64 tables_getctxsize(FILE *ptr) {
@@ -56,7 +54,7 @@ void tables_addctx(ctx *c, u64 index, u64 pkhdr, void *p, u64 ctxstructlen) {
   c->packedheader = pkhdr;
   c->index = index;
   memcpy(c->structure, p, ctxstructlen);
-  c->structurelen = ctxstructlen; // ideally arpart of packedheader in the future
+  c->structurelen = ctxstructlen; // ideally a part of packedheader in the future
 }
 
 void tables_writectx(ctx *c, binary *bin, FILE *write_ptr) {
@@ -70,8 +68,8 @@ void tables_writectx(ctx *c, binary *bin, FILE *write_ptr) {
   } else {
     gcm_read_key4file(key, iv0, "/tmp/ctxkeyiv.txt");
   }
-  memset(bin->encrypted, (uint8_t)' ', 1024); // "PAD" the ctx
-  memcpy(bin->encrypted, (uint8_t*)c, sizeof(u64) + sizeof(u64)); // "convert" ctx to "binary"
+  memset(bin->encrypted, 0, 1024); // clear
+  memcpy(bin->encrypted, (uint8_t*)c, sizeof(u64) + sizeof(u64)); // "convert" ctx to "binary" // TODO: replace u64 with 8 * uint8_t?
   memcpy(bin->encrypted + sizeof(u64) + sizeof(u64), (uint8_t*)c->structure, c->structurelen);
   memcpy(bin->encrypted + sizeof(u64) + sizeof(u64) + c->structurelen, &c->structurelen, sizeof(u64));
   gcm_ciphertag(bin->encrypted, tag, key, iv0, bin->encrypted, aad, 1024);
