@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdio.h>
 #include "db_tables.h"
 #include "lotorssl/src/ciph.h"
@@ -31,9 +32,10 @@ void tables_readctx(binary *dataall, FILE *read_ptr, u64 j) {
 }
 
 void tables_getctx(ctx *c, u64 *header, binary *bin, binary *dataall, u64 len) {
-  uint8_t tag[512] = {0}, aad[512] = {0};
+  uint8_t tag[1024] = {0}, aad[1024] = {0}, key[32] = {0}, iv0[32] = {0};
   memcpy(bin, dataall, sizeof(binary));
-  gcm_inv_ciphertag(bin->encrypted, tag, key1, iv1, bin->encrypted, aad, tag);
+  gcm_read_key4file(key, iv0, "/tmp/ctxkeyiv.txt");
+  gcm_inv_ciphertag(bin->encrypted, tag, key, iv0, bin->encrypted, aad, tag);
   tables_getheaders(header, dataall);
   tables_getctxfrombin(c, bin, len);
 }
@@ -58,12 +60,21 @@ void tables_addctx(ctx *c, u64 index, u64 pkhdr, void *p, u64 ctxstructlen) {
 }
 
 void tables_writectx(ctx *c, binary *bin, FILE *write_ptr) {
-  uint8_t tag[512] = {0}, aad[512] = {0};
-  memset(bin->encrypted, (uint8_t)' ', 512); // "PAD" the ctx
+  uint8_t tag[1024] = {0}, aad[1024] = {0}, key[32] = {0}, iv0[32] = {0};
+  if (access("/tmp/ctxkeyiv.txt", F_OK) != 0) {
+    FILE *f = fopen("/dev/urandom", "r");
+    fread(key, sizeof(uint8_t), 32, f);
+    fread(iv0, sizeof(uint8_t), 32, f);
+    fclose(f);
+    gcm_write_key2file("/tmp/ctxkeyiv.txt", key, iv0);
+  } else {
+    gcm_read_key4file(key, iv0, "/tmp/ctxkeyiv.txt");
+  }
+  memset(bin->encrypted, (uint8_t)' ', 1024); // "PAD" the ctx
   memcpy(bin->encrypted, (uint8_t*)c, sizeof(u64) + sizeof(u64)); // "convert" ctx to "binary"
   memcpy(bin->encrypted + sizeof(u64) + sizeof(u64), (uint8_t*)c->structure, c->structurelen);
   memcpy(bin->encrypted + sizeof(u64) + sizeof(u64) + c->structurelen, &c->structurelen, sizeof(u64));
-  gcm_ciphertag(bin->encrypted, tag, key1, iv1, bin->encrypted, aad, 512);
+  gcm_ciphertag(bin->encrypted, tag, key, iv0, bin->encrypted, aad, 1024);
   fwrite(bin->encrypted, sizeof(binary), 1, write_ptr);
 }
 

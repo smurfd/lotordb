@@ -64,9 +64,8 @@ int main(int argc, char** argv) {
     ret &= test_db_tables();
     ret &= test_db_keystore();
   }
-  if (ret) {
-    printf("OK\n");
-  } else {
-    printf("Fail\n");
+  if (!ret) {
+    printf("Not ");
   }
+  printf("OK\n");
 }
