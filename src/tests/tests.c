@@ -11,7 +11,7 @@
 static void tables_filltestdata(ctx **c, binary **bin, FILE *write_ptr) {
   for (u64 i = 0; i < DBLENGTH; i++) {
     struct tabletest p = {i, 6.8, "testsmurfan", 66, 1};
-    tables_addctx(*c, i, 12345678901111 + i, &p, sizeof(p));
+    tables_addctx(*c, i, (u64)(1844674407370955161 - i), &p, sizeof(p));
     tables_writectx(*c, *bin, write_ptr);
   }
   if (write_ptr != NULL) fclose(write_ptr);

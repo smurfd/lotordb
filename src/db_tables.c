@@ -7,6 +7,12 @@
 #include "db_tables.h"
 #include "lotorssl/src/ciph.h"
 
+
+// encrypted = [Binary blob with some data in it 555]
+// packedheader = [Binary bl]
+// index = [ob with ]
+// structure = [some data in it ]
+// strlen = 555
 static void tables_getctxfrombin(ctx *c, binary *bin, u64 ctxstructlen) {
   memcpy(&c->packedheader, bin->encrypted, sizeof(u64));
   memcpy(&c->index, (bin->encrypted) + sizeof(u64), sizeof(u64));
@@ -31,17 +37,43 @@ void tables_readctx(binary *dataall, FILE *read_ptr, u64 j) {
   fread(dataall, sizeof(binary) * DBLENGTH, 1, read_ptr);
 }
 
-void tables_getctx(ctx *c, u64 *header, binary *bin, binary *dataall, u64 len) {
+void tables_getctx(ctx *c, u64 *head, binary *bin, binary *dataall, u64 len) {
   uint8_t tag[1024] = {0}, aad[1024] = {0}, key[32] = {0}, iv0[32] = {0};
   memcpy(bin, dataall, sizeof(binary));
   gcm_read_key4file(key, iv0, "/tmp/ctxkeyiv.txt");
   gcm_inv_ciphertag(bin->encrypted, tag, key, iv0, bin->encrypted, aad, tag);
-  tables_getheaders(header, dataall);
+  tables_getheaders(head, dataall);
   tables_getctxfrombin(c, bin, len);
 }
 
-void tables_getheaders(u64 *header, binary *bin) {
-  memcpy(header, bin->encrypted, sizeof(u64) * DBLENGTH); // TODO
+
+static u64 tables_packheader(u64 head, const uint8_t *data) {
+  head =
+  ((u64)(data[7]) << 56) |
+  ((u64)(data[6]) << 48) |
+  ((u64)(data[5]) << 40) |
+  ((u64)(data[4]) << 32) |
+  ((u64)(data[3]) << 24) |
+  ((u64)(data[2]) << 16) |
+  ((u64)(data[1]) << 8)  |
+  ((u64)(data[0]) << 0);
+  return head;
+}
+
+static void tables_unpackheader(uint8_t *data, const u64 head) {
+  for (uint8_t i = 0; i < 8; i++) {
+    data[i] = (uint8_t)((head >> 8 * (7 - i)) & 0xff);
+  }
+}
+
+void tables_getheader(header *head, binary *bin) {
+  u64 h;
+  memcpy(&h, bin->encrypted, sizeof(u64));
+  tables_unpackheader(head->h, h);
+}
+
+void tables_getheaders(u64 *head, binary *bin) {
+  memcpy(head, bin->encrypted, sizeof(u64) * DBLENGTH); // TODO
 }
 
 u64 tables_getctxsize(FILE *ptr) {
@@ -76,18 +108,18 @@ void tables_writectx(ctx *c, binary *bin, FILE *write_ptr) {
   fwrite(bin->encrypted, sizeof(binary), 1, write_ptr);
 }
 
-void tables_malloc(binary **bin, binary **dataall, u64 **header, ctx **c, u64 len) {
+void tables_malloc(binary **bin, binary **dataall, u64 **head, ctx **c, u64 len) {
   (*bin) = malloc(sizeof(binary));
   (*dataall) = malloc(sizeof(binary) * DBLENGTH);
-  (*header) = malloc(sizeof(u64) * DBLENGTH);
+  (*head) = malloc(sizeof(u64) * DBLENGTH);
   (*c) = (void*)malloc(sizeof(ctx));
   (*c)->structure = malloc(len);
 }
 
-void tables_free(binary **bin, binary **dataall, u64 **header, ctx **c, FILE *read_ptr) {
+void tables_free(binary **bin, binary **dataall, u64 **head, ctx **c, FILE *read_ptr) {
   if ((*bin) != NULL) free((*bin));
   if ((*dataall) != NULL) free((*dataall));
-  if ((*header) != NULL) free((*header));
+  if ((*head) != NULL) free((*head));
   if ((*c) != NULL) free((*c));
   if ((*c)->structure != NULL) free((*c)->structure);
   if (read_ptr != NULL) fclose(read_ptr);
