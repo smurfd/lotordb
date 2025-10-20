@@ -47,7 +47,7 @@ void tables_getctx(ctx *c, u64 *head, binary *bin, binary *dataall, u64 len) {
 }
 
 
-static u64 tables_packheader(u64 head, const uint8_t *data) {
+u64 tables_packheader(u64 head, const uint8_t *data) {
   head =
   ((u64)(data[7]) << 56) |
   ((u64)(data[6]) << 48) |
@@ -60,7 +60,7 @@ static u64 tables_packheader(u64 head, const uint8_t *data) {
   return head;
 }
 
-static void tables_unpackheader(uint8_t *data, const u64 head) {
+void tables_unpackheader(uint8_t *data, const u64 head) {
   for (uint8_t i = 0; i < 8; i++) {
     data[i] = (uint8_t)((head >> 8 * (7 - i)) & 0xff);
   }

@@ -9,9 +9,12 @@
 #include "../examples/tables_example_struct.h"
 
 static void tables_filltestdata(ctx **c, binary **bin, FILE *write_ptr) {
+  u64 head = 0;
   for (u64 i = 0; i < DBLENGTH; i++) {
-    struct tabletest p = {i, 6.8, "testsmurfan", 66, 1};
-    tables_addctx(*c, i, (u64)(1844674407370955161 - i), &p, sizeof(p));
+    uint8_t pk[8] = {i + 0, i + 1, i + 2, i + 3, i + 4, i + 5, i + 6, i + 7};
+    tables_packheader(head, pk);
+    struct tabletest p = {i, 6.8, "testsmurfan", i, 1};
+    tables_addctx(*c, i, head, &p, sizeof(p));
     tables_writectx(*c, *bin, write_ptr);
   }
   if (write_ptr != NULL) fclose(write_ptr);
