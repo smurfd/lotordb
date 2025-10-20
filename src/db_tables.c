@@ -37,12 +37,12 @@ void tables_readctx(binary *dataall, FILE *read_ptr, u64 j) {
   fread(dataall, sizeof(binary) * DBLENGTH, 1, read_ptr);
 }
 
-void tables_getctx(ctx *c, u64 *head, binary *bin, binary *dataall, u64 len) {
+void tables_getctx(ctx *c, header *head, binary *bin, binary *dataall, u64 len) {
   uint8_t tag[1024] = {0}, aad[1024] = {0}, key[32] = {0}, iv0[32] = {0};
   memcpy(bin, dataall, sizeof(binary));
   gcm_read_key4file(key, iv0, "/tmp/ctxkeyiv.txt");
   gcm_inv_ciphertag(bin->encrypted, tag, key, iv0, bin->encrypted, aad, tag);
-  tables_getheaders(head, dataall);
+  tables_getheader(head, dataall);
   tables_getctxfrombin(c, bin, len);
 }
 
@@ -108,15 +108,15 @@ void tables_writectx(ctx *c, binary *bin, FILE *write_ptr) {
   fwrite(bin->encrypted, sizeof(binary), 1, write_ptr);
 }
 
-void tables_malloc(binary **bin, binary **dataall, u64 **head, ctx **c, u64 len) {
+void tables_malloc(binary **bin, binary **dataall, header **head, ctx **c, u64 len) {
   (*bin) = malloc(sizeof(binary));
   (*dataall) = malloc(sizeof(binary) * DBLENGTH);
-  (*head) = malloc(sizeof(u64) * DBLENGTH);
+  (*head) = malloc(sizeof(header));
   (*c) = (void*)malloc(sizeof(ctx));
   (*c)->structure = malloc(len);
 }
 
-void tables_free(binary **bin, binary **dataall, u64 **head, ctx **c, FILE *read_ptr) {
+void tables_free(binary **bin, binary **dataall, header **head, ctx **c, FILE *read_ptr) {
   if ((*bin) != NULL) free((*bin));
   if ((*dataall) != NULL) free((*dataall));
   if ((*head) != NULL) free((*head));

@@ -35,7 +35,7 @@ void tables_readctx(binary *dataall, FILE *read_ptr, u64 j);
 u64 tables_packheader(u64 head, const uint8_t *data);
 void tables_unpackheader(uint8_t *data, const u64 head);
 void tables_addctx(ctx *c, u64 index, u64 pkhdr, void *p, u64 ctxstructlen);
-void tables_getctx(ctx *c, u64 *head, binary *bin, binary *dataall, u64 len);
-void tables_malloc(binary **bin, binary **dataall, u64 **head, ctx **c, u64 len);
-void tables_free(binary **bin, binary **dataall, u64 **head, ctx **c, FILE *read_ptr);
+void tables_getctx(ctx *c, header *head, binary *bin, binary *dataall, u64 len);
+void tables_malloc(binary **bin, binary **dataall, header **head, ctx **c, u64 len);
+void tables_free(binary **bin, binary **dataall, header **head, ctx **c, FILE *read_ptr);
 #endif
