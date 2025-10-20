@@ -29,7 +29,6 @@ void tables_send(const int s, tbls *t);
 void tables_recv(const int s, tbls *t);
 void tables_setctx(tbls *t, ctx c, u64 len);
 void tables_getheader(header *h, binary *bin);
-void tables_getheaders(u64 *head, binary *bin);
 void tables_writectx(ctx *c, binary *bin, FILE *write_ptr);
 void tables_readctx(binary *dataall, FILE *read_ptr, u64 j);
 u64 tables_packheader(u64 head, const uint8_t *data);

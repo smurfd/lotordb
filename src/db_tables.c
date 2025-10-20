@@ -72,10 +72,6 @@ void tables_getheader(header *head, binary *bin) {
   tables_unpackheader(head->h, h);
 }
 
-void tables_getheaders(u64 *head, binary *bin) {
-  memcpy(head, bin->encrypted, sizeof(u64) * DBLENGTH); // TODO
-}
-
 u64 tables_getctxsize(FILE *ptr) {
   fseek(ptr, 0, SEEK_END);
   return ftell(ptr) / sizeof(binary);
