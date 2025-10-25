@@ -8,14 +8,14 @@
 #include "../db_keystore.h"
 #include "../examples/tables_example_struct.h"
 
-static void tables_filltestdata(ctx **c, binary **bin, FILE *write_ptr) {
+static void tables_filltestdata(tbls **t, binary **bin, FILE *write_ptr) {
   u64 head = 0;
   for (u64 i = 0; i < DBLENGTH; i++) {
     uint8_t pk[8] = {i + 0, i + 1, i + 2, i + 3, i + 4, i + 5, i + 6, i + 7};
     tables_packheader(head, pk);
     struct tabletest p = {i, 6.8, "testsmurfan", i, 1};
-    tables_addctx(*c, i, head, &p, sizeof(p));
-    tables_writectx(*c, *bin, write_ptr);
+    tables_addctx(*t, i, head, &p, sizeof(p));
+    tables_writectx(*t, *bin, write_ptr);
   }
   if (write_ptr != NULL) fclose(write_ptr);
 }
@@ -23,23 +23,23 @@ static void tables_filltestdata(ctx **c, binary **bin, FILE *write_ptr) {
 uint8_t test_db_tables(void) { // Create a local database and search for age 66
   binary *bin, *dataall;
   header *head;
-  ctx *c;
+  tbls *t = NULL;
   FILE *write_ptr = fopen("/tmp/dbtest1.db", "wb"); // Open database for writing // TODO: should be 'ab'
-  tables_malloc(&bin, &dataall, &head, &c, sizeof(struct tabletest)); // Malloc for variables used
-  tables_filltestdata(&c, &bin, write_ptr); // Create context for database, write to file
+  tables_malloc(&bin, &dataall, &t, &head, sizeof(struct tabletest)); // Malloc for variables used
+  tables_filltestdata(&t, &bin, write_ptr); // Create context for database, write to file
   FILE *read_ptr = fopen("/tmp/dbtest1.db", "rb"); // Open database for reading
   for (u64 j = 0; j < tables_getctxsize(read_ptr) / DBLENGTH; j++) { // Loop the whole database, in chunks of DBLENGTH
     tables_readctx(dataall, read_ptr, j); // Read binary chunks DBLENGTH
     for (u64 i = 0; i < DBLENGTH; i++) {
-      tables_getctx(c, head, bin, dataall + i, sizeof(struct tabletest)); // For each chunk, copy & decrypt. Tabletest defined in tables_example_struct.h
-      if (((struct tabletest*)((struct ctx*)c)->structure)->age == 66) { // Search for age == 66
+      tables_getctx(t, head, bin, dataall + i, sizeof(struct tabletest)); // For each chunk, copy & decrypt. Tabletest defined in tables_example_struct.h
+      if (((struct tabletest*)((struct tbls*)t)->c->structure)->age == 66) { // Search for age == 66
         printf("Found\n");
-        tables_free(&bin, &dataall, &head, &c, read_ptr); // Free memory & close filepointer
+        tables_free(&bin, &dataall, &t, &head, read_ptr); // Free memory & close filepointer
         return 1;
       }
     }
   }
-  tables_free(&bin, &dataall, &head, &c, read_ptr); // Free memory & close filepointer
+  tables_free(&bin, &dataall, &t, &head, read_ptr); // Free memory & close filepointer
   return 0;
 }
 
