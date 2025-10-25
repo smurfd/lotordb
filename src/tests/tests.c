@@ -34,12 +34,12 @@ uint8_t test_db_tables(void) { // Create a local database and search for age 66
       tables_getctx(t, head, bin, dataall + i, sizeof(struct tabletest)); // For each chunk, copy & decrypt. Tabletest defined in tables_example_struct.h
       if (((struct tabletest*)((struct tbls*)t)->c->structure)->age == 66) { // Search for age == 66
         printf("Found\n");
-        tables_free(&bin, &dataall, &t, &head, read_ptr); // Free memory & close filepointer
+        tables_free(bin, dataall, t, head, read_ptr); // Free memory & close filepointer
         return 1;
       }
     }
   }
-  tables_free(&bin, &dataall, &t, &head, read_ptr); // Free memory & close filepointer
+  tables_free(bin, dataall, t, head, read_ptr); // Free memory & close filepointer
   return 0;
 }
 
