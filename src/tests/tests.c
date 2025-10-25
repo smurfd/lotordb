@@ -8,25 +8,25 @@
 #include "../db_keystore.h"
 #include "../examples/tables_example_struct.h"
 
-static void tables_filltestdata(tbls **t, binary **bin, FILE *write_ptr) {
+static void tables_filltestdata(tbls *t, binary *bin, FILE *write_ptr) {
   u64 head = 0;
   for (u64 i = 0; i < DBLENGTH; i++) {
     uint8_t pk[8] = {i + 0, i + 1, i + 2, i + 3, i + 4, i + 5, i + 6, i + 7};
     tables_packheader(head, pk);
     struct tabletest p = {i, 6.8, "testsmurfan", i, 1};
-    tables_addctx(*t, i, head, &p, sizeof(p));
-    tables_writectx(*t, *bin, write_ptr);
+    tables_addctx(t, i, head, &p, sizeof(p));
+    tables_writectx(t, bin, write_ptr);
   }
   if (write_ptr != NULL) fclose(write_ptr);
 }
 
 uint8_t test_db_tables(void) { // Create a local database and search for age 66
-  binary *bin, *dataall;
-  header *head;
+  binary *bin = NULL, *dataall = NULL;
+  header *head = NULL;
   tbls *t = NULL;
   FILE *write_ptr = fopen("/tmp/dbtest1.db", "wb"); // Open database for writing // TODO: should be 'ab'
   tables_malloc(&bin, &dataall, &t, &head, sizeof(struct tabletest)); // Malloc for variables used
-  tables_filltestdata(&t, &bin, write_ptr); // Create context for database, write to file
+  tables_filltestdata(t, bin, write_ptr); // Create context for database, write to file
   FILE *read_ptr = fopen("/tmp/dbtest1.db", "rb"); // Open database for reading
   for (u64 j = 0; j < tables_getctxsize(read_ptr) / DBLENGTH; j++) { // Loop the whole database, in chunks of DBLENGTH
     tables_readctx(dataall, read_ptr, j); // Read binary chunks DBLENGTH
