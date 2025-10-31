@@ -13,7 +13,7 @@ typedef struct ctx {
   u64 tableindex;     // what table to insert data into
   void *structure;    // structure of the data
   u64 structurelen;   // length of the structure
-} ctx;
+} *ctx;
 
 typedef struct header {
   uint8_t h[8];       // header entries
@@ -22,7 +22,7 @@ typedef struct header {
 
 typedef struct tbls {
   header *h;
-  ctx *c;
+  ctx c;
 } tbls;
 
 int tables_find(u64 nr);

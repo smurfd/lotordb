@@ -24,7 +24,7 @@ void tables_recv(const int s, tbls *t) {
 }
 
 void tables_setctx(tbls *t, ctx c, u64 len) {
-  memcpy(t->c, &c, sizeof(u64) + sizeof(u64) + sizeof(u64) + len);
+  memcpy(t->c, c, sizeof(u64) + sizeof(u64) + sizeof(u64) + len);
 }
 
 void tables_readctx(binary *dataall, FILE *read_ptr, u64 j) {
