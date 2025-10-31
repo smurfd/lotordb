@@ -22,7 +22,7 @@ static void tables_filltestdata(tbls *t, binary *bin, FILE *write_ptr) {
 
 uint8_t test_db_tables(void) { // Create a local database and search for age 66
   binary *bin = NULL, *dataall = NULL;
-  header *head = NULL;
+  header head = NULL;
   tbls *t = NULL;
   FILE *write_ptr = fopen("/tmp/dbtest1.db", "wb"); // Open database for writing // TODO: should be 'ab'
   tables_malloc(&bin, &dataall, &t, &head, sizeof(struct tabletest)); // Malloc for variables used
