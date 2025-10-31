@@ -8,7 +8,7 @@
 #include "lotorssl/src/ciph.h"
 
 
-static void tables_getctxfrombin(tbls *t, binary *bin, u64 ctxstructlen) {
+static void tables_getctxfrombin(tbls *t, binary bin, u64 ctxstructlen) {
   memcpy(&t->h->packed, bin->encrypted, sizeof(u64));
   memcpy(&t->c->tableindex, bin->encrypted + sizeof(u64), sizeof(u64));
   memcpy(t->c->structure, bin->encrypted + sizeof(u64) + sizeof(u64), ctxstructlen);
@@ -27,14 +27,14 @@ void tables_setctx(tbls *t, ctx c, u64 len) {
   memcpy(t->c, c, sizeof(u64) + sizeof(u64) + sizeof(u64) + len);
 }
 
-void tables_readctx(binary *dataall, FILE *read_ptr, u64 j) {
-  fseek(read_ptr, j * (DBLENGTH * sizeof(binary) + 1), SEEK_SET);
-  fread(dataall, sizeof(binary) * DBLENGTH, 1, read_ptr);
+void tables_readctx(binary dataall, FILE *read_ptr, u64 j) {
+  fseek(read_ptr, j * (DBLENGTH * sizeof(struct binary) + 1), SEEK_SET);
+  fread(dataall, sizeof(struct binary) * DBLENGTH, 1, read_ptr);
 }
 
-void tables_getctx(tbls *t, header head, binary *bin, binary *dataall, u64 len) {
+void tables_getctx(tbls *t, header head, binary bin, binary dataall, u64 len) {
   uint8_t tag[1024] = {0}, aad[1024] = {0}, key[32] = {0}, iv0[32] = {0};
-  memcpy(bin, dataall, sizeof(binary));
+  memcpy(bin, dataall, sizeof(struct binary));
   gcm_read_key4file(key, iv0, "/tmp/ctxkeyiv.txt");
   gcm_inv_ciphertag(bin->encrypted, tag, key, iv0, bin->encrypted, aad, tag);
   tables_getheader(head, dataall);
@@ -60,7 +60,7 @@ void tables_unpackheader(uint8_t *data, const u64 head) {
   }
 }
 
-void tables_getheader(header head, binary *bin) {
+void tables_getheader(header head, binary bin) {
   u64 h;
   memcpy(&h, bin->encrypted, sizeof(u64));
   tables_unpackheader(head->h, h);
@@ -68,7 +68,7 @@ void tables_getheader(header head, binary *bin) {
 
 u64 tables_getctxsize(FILE *ptr) {
   fseek(ptr, 0, SEEK_END);
-  return ftell(ptr) / sizeof(binary);
+  return ftell(ptr) / sizeof(struct binary);
 }
 
 void tables_addctx(tbls *t, u64 index, u64 pkhdr, void *p, u64 ctxstructlen) {
@@ -78,7 +78,7 @@ void tables_addctx(tbls *t, u64 index, u64 pkhdr, void *p, u64 ctxstructlen) {
   t->c->structurelen = ctxstructlen; // ideally a part of packedheader in the future
 }
 
-void tables_writectx(tbls *t, binary *bin, FILE *write_ptr) {
+void tables_writectx(tbls *t, binary bin, FILE *write_ptr) {
   uint8_t tag[1024] = {0}, aad[1024] = {0}, key[32] = {0}, iv0[32] = {0};
   if (access("/tmp/ctxkeyiv.txt", F_OK) != 0) {
     FILE *f = fopen("/dev/urandom", "r");
@@ -94,20 +94,20 @@ void tables_writectx(tbls *t, binary *bin, FILE *write_ptr) {
   memcpy(bin->encrypted + sizeof(u64) + sizeof(u64), (uint8_t*)t->c->structure, t->c->structurelen);
   memcpy(bin->encrypted + sizeof(u64) + sizeof(u64) + t->c->structurelen, &t->c->structurelen, sizeof(u64));
   gcm_ciphertag(bin->encrypted, tag, key, iv0, bin->encrypted, aad, 1024);
-  fwrite(bin->encrypted, sizeof(binary), 1, write_ptr);
+  fwrite(bin->encrypted, sizeof(struct binary), 1, write_ptr);
 }
 
-void tables_malloc(binary **bin, binary **dataall, tbls **t, header *head, u64 len) {
-  (*bin) = malloc(sizeof(binary));
-  (*dataall) = malloc(sizeof(binary) * DBLENGTH);
-  (*head) = malloc(sizeof(header));
+void tables_malloc(binary *bin, binary *dataall, tbls **t, header *head, u64 len) {
+  (*bin) = malloc(sizeof(struct binary));
+  (*dataall) = malloc(sizeof(struct binary) * DBLENGTH);
+  (*head) = malloc(sizeof(struct header));
   (*t) = malloc(sizeof(tbls));
   (*t)->c = malloc(sizeof(ctx));
   (*t)->h = malloc(sizeof(header));
   (*t)->c->structure = malloc(len);
 }
 
-void tables_free(binary *bin, binary *dataall, tbls *t, header head, FILE *read_ptr) {
+void tables_free(binary bin, binary dataall, tbls *t, header head, FILE *read_ptr) {
   if (bin != NULL) free(bin);
   if (dataall != NULL) free(dataall);
   if (head != NULL) free(head);

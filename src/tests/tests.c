@@ -8,7 +8,7 @@
 #include "../db_keystore.h"
 #include "../examples/tables_example_struct.h"
 
-static void tables_filltestdata(tbls *t, binary *bin, FILE *write_ptr) {
+static void tables_filltestdata(tbls *t, binary bin, FILE *write_ptr) {
   u64 head = 0;
   for (u64 i = 0; i < DBLENGTH; i++) {
     uint8_t pk[8] = {i + 0, i + 1, i + 2, i + 3, i + 4, i + 5, i + 6, i + 7};
@@ -21,7 +21,7 @@ static void tables_filltestdata(tbls *t, binary *bin, FILE *write_ptr) {
 }
 
 uint8_t test_db_tables(void) { // Create a local database and search for age 66
-  binary *bin = NULL, *dataall = NULL;
+  binary bin = NULL, dataall = NULL;
   header head = NULL;
   tbls *t = NULL;
   FILE *write_ptr = fopen("/tmp/dbtest1.db", "wb"); // Open database for writing // TODO: should be 'ab'
