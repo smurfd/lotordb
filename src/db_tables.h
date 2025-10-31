@@ -27,16 +27,16 @@ typedef struct tbls {
 
 int tables_find(u64 nr);
 u64 tables_getctxsize(FILE *ptr);
-void tables_send(const int s, tbls t);
-void tables_recv(const int s, tbls t);
-void tables_setctx(tbls t, ctx c, u64 len);
-void tables_getheader(header h, binary bin);
-void tables_writectx(tbls t, binary bin, FILE *write_ptr);
-void tables_readctx(binary dataall, FILE *read_ptr, u64 j);
+void tables_send(const int s, tbls *t);
+void tables_recv(const int s, tbls *t);
+void tables_setctx(tbls *t, ctx *c, u64 len);
+void tables_getheader(header *h, binary *bin);
+void tables_writectx(tbls *t, binary *bin, FILE *write_ptr);
+void tables_readctx(binary *dataall, FILE *read_ptr, u64 j);
 u64 tables_packheader(u64 head, const uint8_t *data);
 void tables_unpackheader(uint8_t *data, const u64 head);
-void tables_addctx(tbls t, u64 index, u64 pkhdr, void *p, u64 ctxstructlen);
-void tables_getctx(tbls t, header head, binary bin, binary dataall, u64 len);
+void tables_addctx(tbls *t, u64 index, u64 pkhdr, void *p, u64 ctxstructlen);
+void tables_getctx(tbls *t, header *head, binary *bin, binary *dataall, u64 len);
 void tables_malloc(binary *bin, binary *dataall, tbls *t, header *head, u64 len);
 void tables_free(binary *bin, binary *dataall, tbls *t, header *head, FILE *read_ptr);
 #endif
