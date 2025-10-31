@@ -38,7 +38,7 @@ void tables_unpackheader(uint8_t *data, const u64 head);
 void tables_addctx(tbls t, u64 index, u64 pkhdr, void *p, u64 ctxstructlen);
 void tables_getctx(tbls t, header head, binary bin, binary dataall, u64 len);
 void tables_malloc(binary *bin, binary *dataall, tbls *t, header *head, u64 len);
-void tables_free(binary bin, binary dataall, tbls t, header head, FILE *read_ptr);
+void tables_free(binary *bin, binary *dataall, tbls *t, header *head, FILE *read_ptr);
 #endif
 
 //struct tabletest {

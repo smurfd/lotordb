@@ -107,13 +107,13 @@ void tables_malloc(binary *bin, binary *dataall, tbls *t, header *head, u64 len)
   (*t)->c->structure = malloc(len);
 }
 
-void tables_free(binary bin, binary dataall, tbls t, header head, FILE *read_ptr) {
-  if (bin != NULL) free(bin);
-  if (dataall != NULL) free(dataall);
-  if (head != NULL) free(head);
-  if (t->c->structure != NULL) free(t->c->structure);
-  if (t->h != NULL) free(t->h);
-  if (t->c != NULL) free(t->c);
-  if (t != NULL) free(t);
+void tables_free(binary *bin, binary *dataall, tbls *t, header *head, FILE *read_ptr) {
+  if ((*bin) != NULL) free((*bin));
+  if ((*dataall) != NULL) free((*dataall));
+  if ((*head) != NULL) free((*head));
+  if ((*t)->c->structure != NULL) free((*t)->c->structure);
+  if ((*t)->h != NULL) free((*t)->h);
+  if ((*t)->c != NULL) free((*t)->c);
+  if ((*t) != NULL) free((*t));
   if (read_ptr != NULL) fclose(read_ptr);
 }
