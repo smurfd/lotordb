@@ -5,38 +5,42 @@
 #define DBLENGTH 100
 
 typedef struct binary {
-  uint8_t encrypted[1024];
+  uint8_t encrypted[1024];  // u64 packed header + encrypted data
 } *binary;
 
 typedef struct ctx {
-  u64 packedheader;   // packed header
-  u64 tableindex;     // what table to insert data into
-  void *structure;    // structure of the data
-  u64 structurelen;   // length of the structure
+  u64 packedheader;         // packed header
+  u64 tableindex;           // what table to insert data into
+  void *structure;          // structure of the data
+  u64 structurelen;         // length of the structure
 } *ctx;
 
 typedef struct header {
-  uint8_t h[8];       // header entries
-  u64 packed;         // packed header
+  uint8_t header[8];        // header entries
+  u64 packed;               // packed header
 } *header;
 
 typedef struct tbls {
-  header h;
-  ctx c;
+  header header;            // header
+  ctx ctx;                  // context
 } *tbls;
 
 int tables_find(u64 nr);
+// ctx
 u64 tables_getctxsize(FILE *ptr);
-void tables_send(const int s, tbls *t);
-void tables_recv(const int s, tbls *t);
-void tables_setctx(tbls *t, ctx *c, u64 len);
-void tables_getheader(header *h, binary *bin);
+void tables_addctx(tbls *t, u64 index, u64 pkhdr, void *p, u64 ctxstructlen);
+void tables_setctx(tbls *t, const ctx *c, const u64 len);
+void tables_getctx(tbls *t, header *head, binary *bin, const binary *dataall, const u64 len);
+void tables_readctx(binary *dataall, FILE *read_ptr, const u64 j);
 void tables_writectx(tbls *t, binary *bin, FILE *write_ptr);
-void tables_readctx(binary *dataall, FILE *read_ptr, u64 j);
+// header
+void tables_getheader(header *h, const binary *bin);
 u64 tables_packheader(u64 head, const uint8_t *data);
 void tables_unpackheader(uint8_t *data, const u64 head);
-void tables_addctx(tbls *t, u64 index, u64 pkhdr, void *p, u64 ctxstructlen);
-void tables_getctx(tbls *t, header *head, binary *bin, binary *dataall, u64 len);
+// communicate
+void tables_send(const tbls *t, const int s);
+void tables_recv(tbls *t, const int s);
+// memory
 void tables_malloc(binary *bin, binary *dataall, tbls *t, header *head, u64 len);
 void tables_free(binary *bin, binary *dataall, tbls *t, header *head, FILE *read_ptr);
 #endif

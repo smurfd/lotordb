@@ -20,28 +20,28 @@ static void tables_filltestdata(tbls t, binary bin, FILE *write_ptr) {
   if (write_ptr != NULL) fclose(write_ptr);
 }
 
-uint8_t test_db_tables(void) { // Create a local database and search for age 66
+uint8_t test_db_tables(void) {                                                 // Create a local database and search for age 66
   binary bin = NULL, dataall = NULL, d = malloc(sizeof(struct binary));
   header head = NULL;
   tbls t = NULL;
-  FILE *write_ptr = fopen("/tmp/dbtest1.db", "wb"); // Open database for writing // TODO: should be 'ab'
-  tables_malloc(&bin, &dataall, &t, &head, sizeof(struct tabletest)); // Malloc for variables used
-  tables_filltestdata(t, bin, write_ptr); // Create context for database, write to file
-  FILE *read_ptr = fopen("/tmp/dbtest1.db", "rb"); // Open database for reading
-  for (u64 j = 0; j < tables_getctxsize(read_ptr) / DBLENGTH; j++) { // Loop the whole database, in chunks of DBLENGTH
-    tables_readctx(&dataall, read_ptr, j); // Read binary chunks DBLENGTH
+  FILE *write_ptr = fopen("/tmp/dbtest1.db", "wb");                            // Open database for writing // TODO: should be 'ab'
+  tables_malloc(&bin, &dataall, &t, &head, sizeof(struct tabletest));          // Malloc for variables used
+  tables_filltestdata(t, bin, write_ptr);                                      // Create context for database, write to file
+  FILE *read_ptr = fopen("/tmp/dbtest1.db", "rb");                             // Open database for reading
+  for (u64 j = 0; j < tables_getctxsize(read_ptr) / DBLENGTH; j++) {           // Loop the whole database, in chunks of DBLENGTH
+    tables_readctx(&dataall, read_ptr, j);                                     // Read binary chunks DBLENGTH
     for (u64 i = 0; i < DBLENGTH; i++) {
-      memcpy(d, dataall + i, sizeof(struct binary));
-      tables_getctx(&t, &head, &bin, &d, sizeof(struct tabletest)); // For each chunk, copy & decrypt. Tabletest defined in tables_example_struct.h
-      if (((struct tabletest*)((struct tbls*)t)->c->structure)->age == 66) { // Search for age == 66
+      memcpy(d, dataall + i, sizeof(struct binary));                           // Copy a chunk from binary blob to d
+      tables_getctx(&t, &head, &bin, &d, sizeof(struct tabletest));            // For each chunk, copy & decrypt. Tabletest defined in tables_example_struct.h
+      if (((struct tabletest*)((struct tbls*)t)->ctx->structure)->age == 66) { // Search for age == 66
         printf("Found\n");
-        tables_free(&bin, &dataall, &t, &head, read_ptr); // Free memory & close filepointer
+        tables_free(&bin, &dataall, &t, &head, read_ptr);                      // Free memory & close filepointer
         return 1;
       }
     }
   }
   free(d);
-  tables_free(&bin, &dataall, &t, &head, read_ptr); // Free memory & close filepointer
+  tables_free(&bin, &dataall, &t, &head, read_ptr);                            // Free memory & close filepointer
   return 0;
 }
 
@@ -60,11 +60,11 @@ uint8_t test_db_keystore(void) {
 
 int main(int argc, char** argv) {
   int ret = 1;
-  if (argc == 1) { // When run without arguments
+  if (argc == 1) {                                                             // When run without arguments
     printf("\"[o.o]\"  testing ...  \"[o.o]\"\n\n");
     ret &= test_db_tables();
     ret &= test_db_keystore();
-  } else if (strcmp(argv[1], "local") == 0) { // When run locally to measure speed
+  } else if (strcmp(argv[1], "local") == 0) {                                  // When run locally to measure speed
     printf("\"[o.o]\"  testing locally...  \"[o.o]\"\n\n");
     ret &= test_db_tables();
     ret &= test_db_keystore();
